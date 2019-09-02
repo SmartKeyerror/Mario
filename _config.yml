@@ -7,8 +7,8 @@ paginate: 5
 language: 'en-uk'
 
 # Website info
-name: 'Finding The Way Home'
-description: "A beautiful narrative written with the world's most elegant publishing platform. The story begins here."
+name: '知其然, 知其所以然'
+description: ""
 
 short_url: 'IllegalMonkey.github.io/'
 google_analytics: UA-69281367-1
