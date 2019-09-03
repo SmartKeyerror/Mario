@@ -22,7 +22,9 @@ permalink: /:title
 # permalink: /tag/:tag
 
 # gems and other configs
-plugins: [jekyll-paginate]
+plugins:
+  - jekyll-paginate
+  - jekyll-sitemap
 
 # Additional settings available on the front-matter
 # Site logo in the index.html (as in demo.ghost.io)
