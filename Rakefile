@@ -50,13 +50,8 @@ namespace :site do
     # Configure git if this is run in Travis CI
 
     sh "git config --global user.name $GIT_NAME"
-    sh "echo $GIT_NAM"
-
     sh "git config --global user.email $GIT_EMAIL"
-    sh "echo $GIT_EMAILM"
-
     sh "git config --global push.default simple"
-
 
     # Make sure destination folder exists as git repo
     check_destination
