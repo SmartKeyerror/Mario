@@ -10,9 +10,9 @@ language: 'en-uk'
 name: '知其然, 知其所以然'
 description: ""
 
-short_url: 'IllegalMonkey.github.io/'
+short_url: 'smartkeyerror.com/'
 google_analytics: UA-69281367-1
-disqus: username
+disqus:
 # edit baseurl to simply '/' if using as your personal page (instead of a project page)
 baseurl: /
 
@@ -49,13 +49,13 @@ excerpt_separator: '<!-- more -->'
 # or "master" otherwise
 safe: false
 lsi: false
-username: IllegalMonkey
-repo: IllegalMonkey.github.io
+username: SmartKeyerror
+repo: Mario
 branch: master
-relative_source: ../IllegalMonkey.github.io/
-destination: ../jasper-pages/
-production_url:  https://IllegalMonkey.github.io
-source_url:  https://github.com/IllegalMonkey/IllegalMonkey.github.io
+relative_source: ../Mario/
+destination: ../blog-pages/
+production_url:  https://smartkeyerror.github.io
+source_url:  https://github.com/SmartKeyerror/Mario
 
 exclude:
   - README.md
