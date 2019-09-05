@@ -13,7 +13,12 @@ CONFIG = YAML.load(File.read('_config.yml'))
 USERNAME = CONFIG["username"]
 REPO = CONFIG["repo"]
 SOURCE_BRANCH = CONFIG["branch"]
-DESTINATION_BRANCH = "gh-pages"
+
+# test
+DESTINATION_BRANCH = "test"
+
+# production
+# DESTINATION_BRANCH = "gh-pages"
 
 def check_destination
   unless Dir.exist? CONFIG["destination"]
@@ -69,7 +74,7 @@ namespace :site do
       sh "if [ -n '$(git status)' ]; then
             git add --all .;
             git commit -m 'Updating to #{USERNAME}/#{REPO}@#{sha}.';
-            git push --quiet origin #{DESTINATION_BRANCH};
+            git push --quiet origin #{DESTINATION_BRANCH} --force;
          fi"
       puts "Pushed updated branch #{DESTINATION_BRANCH} to GitHub Pages"
     end
