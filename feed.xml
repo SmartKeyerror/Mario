@@ -4,7 +4,7 @@
     <title>知其然, 知其所以然 - Articles</title>
     <description></description>
     <link>
-    </link>
+    https://smartkeyerror.com</link>
     
       
       <item>
@@ -63,8 +63,8 @@ excerpt_separator: ‘&lt;/p&gt;
         
         <pubDate>Thu, 19 Nov 1863 10:18:00 +0000</pubDate>
         <link>
-        /test</link>
-        <guid isPermaLink="true">/test</guid>
+        https://smartkeyerror.com/test</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/test</guid>
       </item>
       
     

@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
-<loc>/test</loc>
+<loc>https://smartkeyerror.com/test</loc>
 <lastmod>1863-11-19T10:18:00+00:00</lastmod>
 </url>
 <url>
-<loc>/</loc>
+<loc>https://smartkeyerror.com/</loc>
 </url>
 <url>
-<loc>/about/</loc>
+<loc>https://smartkeyerror.com/about/</loc>
 </url>
 <url>
-<loc>/tag/test/</loc>
+<loc>https://smartkeyerror.com/tag/test/</loc>
 </url>
 <url>
-<loc>/author/smartkeyerror/</loc>
+<loc>https://smartkeyerror.com/author/smartkeyerror/</loc>
 </url>
 </urlset>
