@@ -74,7 +74,7 @@ namespace :site do
       sh "if [ -n '$(git status)' ]; then
             git add --all .;
             git commit -m 'Updating to #{USERNAME}/#{REPO}@#{sha}.';
-            git push --quiet origin #{DESTINATION_BRANCH} --force;
+            git push --quiet origin #{DESTINATION_BRANCH};
          fi"
       puts "Pushed updated branch #{DESTINATION_BRANCH} to GitHub Pages"
     end
