@@ -26,7 +26,7 @@ plugins:
   - jekyll-paginate
   - jekyll-sitemap
 
-excerpt_separator: '<!-- more -->'
+excerpt_separator: '<!---more--->'
 
 # Additional settings available on the front-matter
 # Site logo in the index.html (as in demo.ghost.io)
