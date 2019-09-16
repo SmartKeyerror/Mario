@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Java基础编程(02)--接口与抽象类</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Java-Interface-and-abstract-class" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java基础编程(02)--接口与抽象类" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//Java-Interface-and-abstract-class" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Java基础编程(02)--接口与抽象类" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Java-Interface-and-abstract-class" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Java基础编程(02)--接口与抽象类",
+    "url": "https://smartkeyerror.com//Java-Interface-and-abstract-class",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Java基础编程(02)--接口与抽象类</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-11-30">30 Nov 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/Java基础'>Java基础</a>
+                    
+                
+                    
+                       <a href='/tag/设计原则'>设计原则</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在<code class="highlighter-rouge">Java</code>中， 我认为接口和抽象类是能够让”匠人”充分发挥其想象力和创造力的地方， 这两个类结构使得软件大师们能够编写出精美， 优雅和巧妙的代码。 而在我这种低端程序员手中， 它仅仅只是一个结构而已， 离品尝到其设计精髓不知还隔着多少座大山。</p>
+
+<!---more--->
+
+<h4 id="1-抽象类">1. 抽象类</h4>
+<p>抽象类不能被实例化， 仅作为一个通用接口来操纵一系列的导出类。 在<code class="highlighter-rouge">Java</code>中提供了抽象方法： 仅有声明而没有方法体。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">abstract</span> <span class="kt">void</span> <span class="nf">f</span><span class="o">();</span>
+</code></pre></div></div>
+<p>包含抽象方法的类叫做抽象类， 如果一个类包含一个或多个抽象方法， 那么该类必须定义为抽象类(否则， 编译器会教你重新写代码)。</p>
+
+<p>如果从一个抽象类继承， 并想创建新类的对象， 那么就必须为基类中的所有抽象方法提供方法定义。 如果不这样做的话， 导出类也是抽象类， 并且编译器会强制的要求使用<code class="highlighter-rouge">abstract</code>关键字来限定导出类。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">Shape</span> <span class="o">{</span>
+    <span class="c1">// 可以定义成员变量</span>
+    <span class="kd">public</span> <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="s">"biubiu"</span><span class="o">;</span>
+
+    <span class="c1">// 可以定义静态变量</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">color</span> <span class="o">=</span> <span class="s">"blue"</span><span class="o">;</span>
+
+    <span class="c1">// 这是我们的抽象方法，没有函数体，只有函数定义</span>
+    <span class="kd">public</span> <span class="kd">abstract</span> <span class="kt">void</span> <span class="nf">draw</span><span class="o">();</span>
+
+    <span class="c1">// 成员方法</span>
+    <span class="kd">public</span> <span class="n">String</span> <span class="nf">getName</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">name</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="c1">// 构造方法也可以有</span>
+    <span class="n">Shape</span><span class="o">(){</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Shape...."</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>除了不能实例化以外， 抽象类和普通的类并没有什么区别， 成员变量， 静态变量以及构造函数等等， 都可以在抽象类中进行定义， 并且子类也能够对其进行访问。</p>
+
+<p>实现一个抽象类的方式是继承该抽象类， 并实现该抽象类中的所有抽象方法。</p>
+
+<h4 id="2-接口">2. 接口</h4>
+<p>接口在抽象化这个层面上比抽象类走的更远， 接口中只允许完全抽象的函数。在接口中可以添加一些字段(field)， 只不过这些字段均为<code class="highlighter-rouge">static</code> &amp; <code class="highlighter-rouge">final</code> 。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">interface</span> <span class="nc">Men</span> <span class="o">{</span>
+
+    <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="s">"smart"</span><span class="o">;</span>
+
+    <span class="n">String</span> <span class="nf">getName</span><span class="o">();</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">SuperMen</span> <span class="kd">implements</span> <span class="n">Men</span> <span class="o">{</span>
+
+    <span class="kd">public</span> <span class="n">String</span> <span class="nf">getName</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">// name = "keyerror"; 不能够改变interface中的Field</span>
+        <span class="k">return</span> <span class="n">name</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">printName</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">SuperMen</span> <span class="n">superMen</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SuperMen</span><span class="o">();</span>
+        <span class="n">superMen</span><span class="o">.</span><span class="na">printName</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>接口的定义极其简单， 将<code class="highlighter-rouge">class</code>替换成<code class="highlighter-rouge">interface</code>， 声明函数的定义即可。</p>
+
+<p>接口表示”所有实现了该特定接口的类看起来都这样”，  并且我们可以通过实现不同的接口来达到多重继承的目的。</p>
+
+<p>这里对接口和抽象类做一个比较：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>特性</th>
+      <th>接口</th>
+      <th>抽象类</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>方法实现</td>
+      <td>无任何方法实现</td>
+      <td>可以有自己的方法实现</td>
+    </tr>
+    <tr>
+      <td>实现</td>
+      <td>子类使用implements来实现接口， 需要实现接口中的所有方法</td>
+      <td>子类extends抽象类， 实现父类的抽象方法即可。</td>
+    </tr>
+    <tr>
+      <td>构造器</td>
+      <td>不允许有构造器</td>
+      <td>可以有构造器</td>
+    </tr>
+    <tr>
+      <td>访问修饰符</td>
+      <td>只允许public修饰符存在</td>
+      <td>可以有private, public以及protected修饰符</td>
+    </tr>
+    <tr>
+      <td>类变量的定义</td>
+      <td>只有静态final变量可以进行定义</td>
+      <td>可以定义静态变量， 也可以定义成员变量</td>
+    </tr>
+    <tr>
+      <td>与普通类的区别</td>
+      <td>完全不同</td>
+      <td>除了不能实例化以外， 其余于普通类完全相同</td>
+    </tr>
+    <tr>
+      <td>多重继承</td>
+      <td>允许某一个类实现多个接口</td>
+      <td>只允许单根继承</td>
+    </tr>
+    <tr>
+      <td>添加新方法</td>
+      <td>接口添加新方法之后，所有实现了该接口的类都必须修改</td>
+      <td>抽象类可以提供一个默认的实现方式， 不必改变所有子类代码。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="3-软件设计的原则">3. 软件设计的原则</h4>
+<p>既然在开篇提到了抽象类和接口的一个主要目的是用于软件设计， 那么不可避免就需要了解软件设计中有哪些常用的原则。</p>
+
+<p>在<code class="highlighter-rouge">敏捷软件开发：原则、模式与实践</code>一书中， 列举了诸多被业界所公认的设计原则， 分别为： 单一职责原则， 开放-封闭原则， 里氏替换原则， 依赖倒置原则， 接口隔离原则。 本文将会对这5种设计原则进行理解和拓展。</p>
+
+<h4 id="4-单一职责原则">4. 单一职责原则</h4>
+<p>单一职责原则与我们常说的：”一个函数或者一个类， 只做一件事情”有相似的地方：</p>
+
+<blockquote>
+  <p>就一个类而言， 应该仅有一个引起它变化的原因。</p>
+</blockquote>
+
+<p>比如在获取一个url的html页面的函数中， 我们将所有的代码都写到里面：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">getUrl</span><span class="o">(</span><span class="n">String</span> <span class="n">url</span><span class="o">)</span> <span class="o">{</span>
+    <span class="cm">/* 构建请求对象 */</span>
+    <span class="cm">/* 发起请求 */</span>
+    <span class="cm">/* 得到请求结果 */</span>
+    <span class="cm">/* 对请求结果进行解码， 以及一些清洗 */</span>
+    <span class="cm">/* 将结果保存至DB中 */</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>由于业务是多变的， 那么该函数可能会经常的发生变动， 在每次该代码的时候都需要理解这一行代码和下一行代码做了什么， 到后面代码会被改的非常混乱。 有人说我们可以加注释嘛， 文字注释不是注释代码的， 而是注释业务的， 代码才是最好的注释， 这一点非常重要。</p>
+
+<p>将这一整个函数拆分为不同的函数， 每一个函数只做一件事情， 并给予恰当的函数名称， 函数名称还拥有解释代码的副作用， 一眼就能知道这个函数做了什么。</p>
+
+<p>我们把视角从函数上升到一个类时也是一样的， 一个类不应该又是爬虫类， 又是获取代理IP的类， 应该将其拆分。</p>
+
+<h4 id="5-开放-封闭原则">5. 开放-封闭原则</h4>
+
+<blockquote>
+  <p>软件实体(类， 模块， 函数等)应该对拓展开放， 而对修改关闭。</p>
+</blockquote>
+
+<p>简单的来说就是当我们新增一个功能时， 不能对原有的代码直接进行修改， 而是对其进行拓展。 如果读者有接触过<code class="highlighter-rouge">Python</code>这门语言的话， 那么装饰器就是直接的体现了开放-封闭原则。</p>
+
+<p>要想实现开放-封闭原则， 最为关键的一点就是抽象。 客户端在调用底层的方法时， 不直接持有底层的具体实现， 而是持有其抽象类或者接口。</p>
+
+<p>在<code class="highlighter-rouge">Java</code>中， 装饰模式是对开放-封闭原则较为直接的体现， 该模式的具体实现请见<code class="highlighter-rouge">Java基础编程--I/O系统</code>。</p>
+
+<h4 id="6-里氏替换原则">6. 里氏替换原则</h4>
+<p>里氏替换原则的原有声明非常的绕口， 所以这里就不再贴原有的声明， 放出我对其的理解。 里氏替换原则， 我认为就是子类对象能够随意的替换父类对象， 而程序逻辑不变。</p>
+
+<p>首先举一个不符合里氏替换原则的例子：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">Parent</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="n">String</span> <span class="nf">getValue</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="s">"Biu"</span><span class="o">;</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Child2</span> <span class="kd">extends</span> <span class="n">Parent</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="n">String</span> <span class="nf">getValue</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="s">"Po"</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">LSP</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">Parent</span> <span class="n">parent</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Child2</span><span class="o">();</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">parent</span><span class="o">.</span><span class="na">getValue</span><span class="o">()</span> <span class="o">==</span> <span class="s">"Biu"</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"True"</span><span class="o">);</span>
+            <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"False"</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>这里不是一个特别恰当的例子， <code class="highlighter-rouge">Child2</code>继承自<code class="highlighter-rouge">Parent</code>， 并覆盖了父类的<code class="highlighter-rouge">getValue</code>方法， 返回了一个与父类完全不同的字符串。 当我们的业务代码如同<code class="highlighter-rouge">main</code>方法中时(实际上该方法仅用于举例， 实际生产中没人会这么写)， 子类和父类的实例没有办法进行替换， 也就违背了里氏替换原则。</p>
+
+<p>通常来讲我们使用继承， 一是为了代码的复用， 而是利用多态机制。</p>
+
+<p>在使用代码复用时， 子类不应该覆盖父类的方法， 而应该使用其余的方法进行拓展， 这种情况下自然就不会出现问题。</p>
+
+<p>在利用多态机制时， 更重要的是类的类型， 而不是类中的方法， 所以此时父类应该被定义为抽象类或者是接口， 具体选择哪一个视业务情况而定。</p>
+
+<h4 id="7-依赖倒置原则">7. 依赖倒置原则</h4>
+<p>依赖倒置原则， 其核心思想就是将代码划分成不同的层次， 使高层次模块不依赖于低层次模块， 两者应依赖其抽象。 抽象不应该依赖具体实现， 而是相反， 具体实现应该依赖抽象。</p>
+
+<blockquote>
+  <ol>
+    <li>High-level modules should not depend on low-level modules. Both should depend on abstractions.</li>
+    <li>Abstractions should not depend on details. Details should depend on abstractions.</li>
+  </ol>
+</blockquote>
+
+<p>原则的原有声明很绕口， 又是依赖又是抽象的， 提取一些细节出来。 当高层次模块对低层次模块有依赖时(持有实例， 或者调用方法， 都称为依赖)， 高层次模块通常就是我们的主要业务逻辑代码， 需要有较强的复用性。 当产生上述依赖时， 应该将这种依赖进行拆分， 使这两个模块均依赖于同一个抽象。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-24%2016-53-36%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>图示就是这么个意思， 举一个现实生活中的例子： 程序员喜欢买键盘， 比如我， 就喜欢cherry轴的， 有时候会用红轴， 有时候会用黑轴， 都会拿来打代码：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">Coder</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="n">RedSwitch</span> <span class="n">redSwitch</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="n">BlackSwitch</span> <span class="n">blackSwitch</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">RedSwitch</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="s">"红轴"</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">BlackSwitch</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="s">"黑轴"</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>最开始我们使用直接实现的方式， <code class="highlighter-rouge">coder</code>类直接依赖轴体键盘的具体实现。 那么问题就来了， 我怎么能够进行任意的切换键盘？ 每一个键盘的特性是不一样的， 如何体现？ 这个时候直接依赖的问题就出现了， 因为耦合的非常严重， 导致灵活性大大降低， 所以我们对其进行分离。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">Coder</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="n">Switch</span> <span class="n">aSwitch</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="n">Switch</span> <span class="nf">getaSwitch</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">aSwitch</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setaSwitch</span><span class="o">(</span><span class="n">Switch</span> <span class="n">aSwitch</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">aSwitch</span> <span class="o">=</span> <span class="n">aSwitch</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">Switch</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="n">String</span> <span class="n">name</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">class</span> <span class="nc">RedSwitch</span> <span class="kd">extends</span> <span class="n">Switch</span><span class="o">{</span>
+    <span class="kd">private</span> <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="s">"红轴"</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">class</span> <span class="nc">BlackSwitch</span> <span class="kd">extends</span> <span class="n">Switch</span><span class="o">{</span>
+    <span class="kd">private</span> <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="s">"黑轴"</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>我们在中间添加一个抽象类， 让<code class="highlighter-rouge">Coder</code>对象依赖该抽象类， 具体的轴体实现去继承该抽象类， 那么此时的灵活性就大大增强， 不管有多少种具体的实现， 上述代码都可以完成特定对象的注入。</p>
+
+<p>这个其实就是依赖倒置原则， 我们也可以说是面向接口编程， 面向约定编程， 等等。</p>
+
+<p>适配器模式可以说比较完整的体现了依赖倒置原则的内容， 适配器模式的主要核心概念就是在新接口和老接口之间进行适配， 让其协同完成工作。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-26%2011-16-03%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p><code class="highlighter-rouge">services</code>和<code class="highlighter-rouge">NewService</code>是两个不同的接口， 但是现在我们需要使用新的实现来实现原有的功能， 而在<code class="highlighter-rouge">Application</code>类中依赖的是<code class="highlighter-rouge">services</code>接口， 所以适配器接口也要实现该接口， 然后使用代理的方式进行方法的覆盖， 最终达到方法改写的目的。</p>
+
+<p>适配器模式同样也是依赖其接口， 而不依赖具体的实现。 所以说适配器模式对依赖倒置原则有一个较好的表达。</p>
+
+<h4 id="8-接口隔离原则">8. 接口隔离原则</h4>
+<p>接口隔离原则与单一职责原则非常相似， 只不过该原则针对的对象是接口。 接口隔离原则说白了就是不要让一个接口太过于臃肿， 把接口设计成一个所有类方法的并集， 这样一来系统的耦合性就会非常的高， 而且是无意义的耦合。</p>
+
+<p>一个接口只对应一个类， 或者是一小部分类， 剩余的类由一个或多个接口进行定义。</p>
+
+<h4 id="9-小结">9. 小结</h4>
+<p>在本篇文章中， 首先是对抽象类和接口进行了一个简单的介绍和比较， 后续又对5种设计原则进行了介绍和demo的演示， 而掌握这些设计原则仅仅只是摸到了设计的门槛而已， 还有根据这些设计原则所衍生的设计模式。 不管是设计原则也好， 还是设计模式也罢， 都需要根据不同的业务场景来进行选择。</p>
+
+<p>讲实话， 这一部分关于设计的内容， 实操性和经验占了非常大的比重， 见的多了， 写的多了， 自然也就理解了。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Java基础编程(02)--接口与抽象类&amp;url=https://smartkeyerror.comJava-Interface-and-abstract-class"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comJava-Interface-and-abstract-class"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comJava-Interface-and-abstract-class"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Java-Container">
+            <section class="post">
+                <h2>Java基础编程(03)--容器</h2>
+                <p>Java中的各种容器类是对基本数据结构， 如顺序表， 链表， 平衡二叉树， 红黑树等最直接的体现， 容器在使用时最重要的就是其在不同的应用场景下的时间复杂度。 例如， 需要一个有序的容器， 需要频繁的向其头部和尾部分别执行删除和插入操作， 此时选择数组所实现的容器就非常的不明智。 所以， 如果想要彻底理解Java中的容器， 首先要理解计算机世界中的基础数据结构。 另外需要说明的是， 本篇博文没有任何代码，...</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Java-IO">
+            <section class="post">
+                <h2>Java基础编程(01)--I/O系统</h2>
+                <p>Java中的I/O系统相较于Python要复杂许多， 不管是从设计上还是实现上。 这一块儿的内容也是我在学习Java时遇到的最大的困难(并发包都比这个好理解)， 经过了持(san)之(tian)以(da)恒(yu)的学习之后， 算是对Java I/O系统有一个基本的认识和理解。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+   
+      <title>smartkeyerror.com/</title>
+   
+   <link>https://smartkeyerror.com</link>
+   <description></description>
+   <language>en-uk</language>
+   <managingEditor> </managingEditor>
+   <atom:link href="rss" rel="self" type="application/rss+xml" />
+   
+	<item>
+	  <title>Java基础编程(06)--反射</title>
+	  <link>//Reflect</link>
+	  <author></author>
+	  <pubDate>2018-12-07T08:49:09+00:00</pubDate>
+	  <guid>//Reflect</guid>
+	  <description><![CDATA[
+	     <p>为了保持<code class="highlighter-rouge">Java基础编程</code>系列的完整性， 反射机制还是写一下， 没有什么太难的地方。 在文章的最后与<code class="highlighter-rouge">Python</code>进行了一个对比和演示， 用于加深对这两种语言设计本身的理解。</p>
+
+<!---more--->
+
+<h4 id="1-什么是反射">1. 什么是反射</h4>
+<p>以我目前的理解来看， 反射就是一种在运行时借助<code class="highlighter-rouge">Class</code>对象获取一个类所有信息的机制， 包括变量， 构造器以及方法等。 简单的来说就是使用某个产品的说明书， 反向的构造出这个产品， 在构造这个产品的时候， 会发现一些产品所隐藏的信息。</p>
+
+<p>更具体地来讲， 反射能够<strong>在运行时</strong>判断任意一个对象所属的类， 构造任意一个类的对象， 判断任意一个类所具有的成员变量和方法， 以及调用任意一个对象的方法， 包括私有方法。</p>
+
+<p>那么为什么需要有反射机制？ 反射机制在<code class="highlighter-rouge">RPC</code>框架下有着非常重要的应用， 此外， 像<code class="highlighter-rouge">SpringBoot</code>等Web框架也是基于反射机制而构建的， 并且更功利的讲， <code class="highlighter-rouge">EventBus</code>就是用的反射机制来实现观察者模式的。</p>
+
+<h4 id="2-什么是class对象">2. 什么是Class对象</h4>
+<p>我们知道使用多态机制能够简化代码的复杂度， 使代码更加的灵活， 如下面的代码片段：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">interface</span> <span class="nc">Animal</span> <span class="o">{</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">();</span> <span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Cat</span> <span class="kd">implements</span> <span class="n">Animal</span><span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Cat running"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Dog</span> <span class="kd">implements</span> <span class="n">Animal</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Dog running"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Square</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">game</span><span class="o">(</span><span class="n">Animal</span> <span class="n">animal</span><span class="o">)</span> <span class="o">{</span> <span class="n">animal</span><span class="o">.</span><span class="na">run</span><span class="o">();</span> <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>在这里我们只对操作基类(<code class="highlighter-rouge">Animal</code>)的引用， 这样一来如果想要对代码进行扩展， 我们可以很轻松的做到， 而不必更改原有的代码结构。 客户端的程序员使用泛化的<code class="highlighter-rouge">Animal</code>来调用<code class="highlighter-rouge">run</code>方法， 尽管对象被泛化了， 但是依然能够产生正确的行为， 那么这个就是多态机制。</p>
+
+<p><code class="highlighter-rouge">Java</code>多态机制的实现是通过<code class="highlighter-rouge">Class</code>对象所实现的， 任何一个<code class="highlighter-rouge">Java</code>类都会有一个唯一的<code class="highlighter-rouge">Class</code>对象， 保存在与类同名的<code class="highlighter-rouge">.class</code>文件中。</p>
+
+<h4 id="3-获取class对象">3. 获取Class对象</h4>
+<p>有3种方式可以获取<code class="highlighter-rouge">Class</code>对象， 第一个是<code class="highlighter-rouge">Class</code>类所提供的<code class="highlighter-rouge">forName</code>静态方法， 二是类字面量， 最后一个是<code class="highlighter-rouge">Object</code>对象所提供的<code class="highlighter-rouge">getClass</code>方法。</p>
+
+<h5 id="31-classforname">3.1 Class.forName</h5>
+<p>该静态方法接受一个完整的类名， 即<code class="highlighter-rouge">包名.类名</code>， 返回一个该类所对应的<code class="highlighter-rouge">Class</code>对象， 该方法会抛出<code class="highlighter-rouge">ClassNotFoundException</code>， 在没有找到该类的情况下。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">clazz</span> <span class="o">=</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="s">"chapter21.Reflection.Student"</span><span class="o">);</span>
+</code></pre></div></div>
+
+<h5 id="32-类字面量">3.2 类字面量</h5>
+<p>有时候我们可以直接导入一个类， 例如<code class="highlighter-rouge">ArrayList</code>， 那么此时就可以直接使用<code class="highlighter-rouge">ArrayList.class</code>来获取<code class="highlighter-rouge">Class</code>对象：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">arrayListClass</span> <span class="o">=</span> <span class="n">ArrayList</span><span class="o">.</span><span class="na">class</span><span class="o">;</span>
+</code></pre></div></div>
+
+<h5 id="33-objectgetclass">3.3 Object.getClass</h5>
+<p>有时候我们可以拿到一个实例对象， 通过该实例对象也可以获取到<code class="highlighter-rouge">Class</code>对象。 该方法是由<code class="highlighter-rouge">Object</code>所提供的， 也就是说任意一个对象都可以使用：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">String</span> <span class="n">fullName</span> <span class="o">=</span> <span class="s">"SmartKeyerror"</span><span class="o">;</span>
+<span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">stringClass</span> <span class="o">=</span> <span class="n">fullName</span><span class="o">.</span><span class="na">getClass</span><span class="o">();</span>
+</code></pre></div></div>
+
+<h4 id="4-获取类结构信息">4. 获取类结构信息</h4>
+<p>一个类， 通常由成员变量， 构造函数， 成员方法， 静态方法等所组成， <code class="highlighter-rouge">Class</code>对象提供了一系的方法来获取这些信息。</p>
+
+<p>首先定义一个测试类：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">Student</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">ID</span> <span class="o">=</span> <span class="mi">10</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="n">String</span> <span class="n">name</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="n">String</span> <span class="nf">getName</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="n">name</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setName</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span> <span class="k">this</span><span class="o">.</span><span class="na">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="n">String</span> <span class="nf">toString</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="s">"Student: "</span> <span class="o">+</span> <span class="n">name</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">printHello</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"hello~"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>通过<code class="highlighter-rouge">getDeclaredMethods</code>可以获取所有的方法， 包括私有， 静态以及成员方法：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">clazz</span> <span class="o">=</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="s">"chapter21.Reflection.Student"</span><span class="o">);</span>
+<span class="cm">/* 方法返回Method对象所组成的数组 */</span>
+<span class="n">Method</span><span class="o">[]</span> <span class="n">methods</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getDeclaredMethods</span><span class="o">();</span>
+<span class="cm">/* 打印所有的方法名称 */</span>
+<span class="n">Arrays</span><span class="o">.</span><span class="na">stream</span><span class="o">(</span><span class="n">methods</span><span class="o">).</span><span class="na">forEach</span><span class="o">(</span><span class="n">t</span> <span class="o">-&gt;</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">t</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span> <span class="o">});</span>
+</code></pre></div></div>
+
+<p>通过<code class="highlighter-rouge">getDeclaredFields</code>可以获得所有的变量， 包括私有， 静态以及成员变量：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Field</span><span class="o">[]</span> <span class="n">fields</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getDeclaredFields</span><span class="o">();</span>
+<span class="n">Arrays</span><span class="o">.</span><span class="na">stream</span><span class="o">(</span><span class="n">fields</span><span class="o">).</span><span class="na">forEach</span><span class="o">(</span><span class="n">t</span> <span class="o">-&gt;</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">t</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span> <span class="o">});</span>
+</code></pre></div></div>
+
+<p>通过<code class="highlighter-rouge">getDeclaredConstructors</code>可以获取所有的构造方法， 包括私有的构造方法：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Constructor</span><span class="o">[]</span> <span class="n">constructors</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getDeclaredConstructors</span><span class="o">();</span>
+<span class="n">Arrays</span><span class="o">.</span><span class="na">stream</span><span class="o">(</span><span class="n">constructors</span><span class="o">).</span><span class="na">forEach</span><span class="o">(</span><span class="n">t</span> <span class="o">-&gt;</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">t</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span> <span class="o">});</span>
+</code></pre></div></div>
+
+<p>除了这三个方法以外， 对应的， 还有<code class="highlighter-rouge">getMethods</code>， <code class="highlighter-rouge">getFields</code>， <code class="highlighter-rouge">getConstructors</code>， 这三个方法作用与上面的相同， 只不过无法获取私有的方法， 变量或者是构造器而已。</p>
+
+<p>通过这些方法我们基本上已经能够较为完整的还原出一个类的结构了， 能够知道一个变量是否私有， 名称以及类型； 方法是否私有， 返回类型以及参数类型， 但是无法获取函数的方法体代码， 这个是无法做到的。 以及构造函数的数量和参数类型这些信息。</p>
+
+<h4 id="5-获取准确信息">5. 获取准确信息</h4>
+<p>从全局的角度来看， 我们能够通过<code class="highlighter-rouge">Class</code>对象获取各种方法和各种变量所组成的数组， 同样地， 可以根据一些条件来准确的获取单一的方法或者是变量。</p>
+
+<p>在一个类中， 区分一个函数的两个标志就是函数名称和参数类型(虽然参数类型的顺序也可以用来区分， 但是这属于极差的编码习惯)， 同样的， 可以使用这两个信息来准确的找出我们想要的方法：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* 获取setName方法, 参数为函数名称以及参数类型的Class对象 */</span>
+<span class="n">Method</span> <span class="n">setNameMethod</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getMethod</span><span class="o">(</span><span class="s">"setName"</span><span class="o">,</span> <span class="n">String</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+
+<span class="cm">/* 获取该类的一个实例， 相当于new Student()， 使用无参构造函数 */</span>
+<span class="n">Object</span> <span class="n">instance</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
+
+<span class="cm">/* 调用该方法， 由于是成员方法， 所以得有个实例 */</span>
+<span class="n">setNameMethod</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">instance</span><span class="o">,</span> <span class="s">"smart"</span><span class="o">);</span>
+
+<span class="cm">/* 检测方法调用是否成功 */</span>
+<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(((</span><span class="n">Student</span><span class="o">)</span><span class="n">instance</span><span class="o">).</span><span class="na">getName</span><span class="o">());</span>
+</code></pre></div></div>
+
+<p>获取字段的准确信息要简单一些， 因为字段名称本就是唯一的：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Field</span> <span class="n">nameField</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">"name"</span><span class="o">);</span>
+<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">nameField</span><span class="o">.</span><span class="na">getType</span><span class="o">().</span><span class="na">getName</span><span class="o">());</span>
+</code></pre></div></div>
+
+<p>基本上这些就是反射机制的核心内容了， 剩下的就是一些细节的处理， 这些内容可以通过查看javadoc来进行了解。</p>
+
+<h4 id="6-python中的反射机制">6. Python中的反射机制</h4>
+<p>没有对比就没有伤害， <code class="highlighter-rouge">Python</code>作为一个面向对象的语言， 与<code class="highlighter-rouge">Java</code>一样， 拥有反射机制， 只不过<code class="highlighter-rouge">Python</code>中， 大家更乐意称之为特殊方法， 并且获取信息更加的方便。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Student</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="s">"""
+    This is Student class
+    """</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__name</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__name</span>
+
+    <span class="k">def</span> <span class="nf">set_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__name</span> <span class="o">=</span> <span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">__private_method</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"This is private"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>我们可以通过以<code class="highlighter-rouge">__</code>开头的一些特殊方法来获取指定类的结构信息， 例如使用<code class="highlighter-rouge">Student.__dict__</code>来获取<code class="highlighter-rouge">Student</code>的所有方法和一些基本属性：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span>
+    <span class="s">'__module__'</span><span class="p">:</span> <span class="s">'__main__'</span><span class="p">,</span>
+    <span class="s">'__doc__'</span><span class="p">:</span> <span class="s">'</span><span class="se">\n</span><span class="s">    This is Student class</span><span class="se">\n</span><span class="s">    '</span><span class="p">,</span>
+    <span class="s">'__init__'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">function</span> <span class="n">Student</span><span class="o">.</span><span class="n">__init__</span> <span class="n">at</span> <span class="mh">0x7f2d7403b510</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="s">'get_name'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">function</span> <span class="n">Student</span><span class="o">.</span><span class="n">get_name</span> <span class="n">at</span> <span class="mh">0x7f2d722e49d8</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="s">'set_name'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">function</span> <span class="n">Student</span><span class="o">.</span><span class="n">set_name</span> <span class="n">at</span> <span class="mh">0x7f2d722e4950</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="s">'_Student__private_method'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">function</span> <span class="n">Student</span><span class="o">.</span><span class="n">__private_method</span> <span class="n">at</span> <span class="mh">0x7f2d722e4a60</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="s">'__dict__'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">attribute</span> <span class="s">'__dict__'</span> <span class="n">of</span> <span class="s">'Student'</span> <span class="n">objects</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="s">'__weakref__'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">attribute</span> <span class="s">'__weakref__'</span> <span class="n">of</span> <span class="s">'Student'</span> <span class="n">objects</span><span class="o">&gt;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>可以看到<code class="highlighter-rouge">Python</code>中的私有方法其实最终会变成<code class="highlighter-rouge">_Student__private_method</code>， 我们是可以直接调用这个方法的。</p>
+
+<p>通过实例的<code class="highlighter-rouge">__class__</code>方法可以获取实例的类信息：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">print</span><span class="p">(</span><span class="n">Student</span><span class="p">()</span><span class="o">.</span><span class="n">__class__</span><span class="p">)</span>
+
+<span class="o">&lt;</span><span class="k">class</span> <span class="err">'</span><span class="nc">__main__</span><span class="o">.</span><span class="n">Student</span><span class="s">'&gt;</span><span class="err">
+</span></code></pre></div></div>
+
+<p>由于实例变量是可以动态添加和修改的， 所以获取这个信息没有什么太大意义， <code class="highlighter-rouge">Python</code>也没有提供。</p>
+
+<p>两种语言对同一个机制放在一起做对比， 很容易就能发现两者的不同， 以及进一步加深对语言本身的理解。 做对比的主要目的还是想传达自己的一个观点： 编程语言， 在很大程度上都是互通的。</p>
+
+	  ]]></description>
+	</item>
+
+
+</channel>
+</rss>

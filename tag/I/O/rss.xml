@@ -1,0 +1,550 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+   
+      <title>smartkeyerror.com/</title>
+   
+   <link>https://smartkeyerror.com</link>
+   <description></description>
+   <language>en-uk</language>
+   <managingEditor> </managingEditor>
+   <atom:link href="rss" rel="self" type="application/rss+xml" />
+   
+	<item>
+	  <title>Java基础编程(01)--I/O系统</title>
+	  <link>//Java-IO</link>
+	  <author></author>
+	  <pubDate>2018-11-29T02:49:09+00:00</pubDate>
+	  <guid>//Java-IO</guid>
+	  <description><![CDATA[
+	     <p><code class="highlighter-rouge">Java</code>中的I/O系统相较于<code class="highlighter-rouge">Python</code>要复杂许多， 不管是从设计上还是实现上。 这一块儿的内容也是我在学习<code class="highlighter-rouge">Java</code>时遇到的最大的困难(并发包都比这个好理解)， 经过了持(san)之(tian)以(da)恒(yu)的学习之后， 算是对Java I/O系统有一个基本的认识和理解。</p>
+
+<!---more--->
+
+<h4 id="1-python语言下的io系统">1. Python语言下的I/O系统</h4>
+<p>作为一个PythonCoder， 首先当然是要对Python I/O系统做一个详细的梳理， 在比较中理解和提高。 在<code class="highlighter-rouge">Python</code>中， 所有的文件操作， 不管是读还是写， 都以打开一个文件起手， 同时为了更好的管理文件资源， 可以使用上下文管理器<code class="highlighter-rouge">with</code>语句：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 读文件</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"hello.txt"</span><span class="p">,</span> <span class="s">"rt"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+<span class="c"># 写文件(覆盖写)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"hello.txt"</span><span class="p">,</span> <span class="s">"wt"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">"hello</span><span class="se">\n</span><span class="s">world</span><span class="se">\n</span><span class="s">!"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>不得不说， 是真的简单…那么我们就需要彻底的理解<code class="highlighter-rouge">Python</code>对文件的操作， 越是简单的内容， 越是不能掉以轻心。 最佳的参考文献就是<code class="highlighter-rouge">builts.py</code>中的文档注释。</p>
+
+<p>首先来看<code class="highlighter-rouge">open</code>函数中的模式选择， 一共有8种操作模式， 其中<code class="highlighter-rouge">U</code>模式并不建议使用：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">字符</th>
+      <th>含义</th>
+      <th style="text-align: center">字符</th>
+      <th>含义</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">r</td>
+      <td>打开一个文件并进行读取</td>
+      <td style="text-align: center">w</td>
+      <td>打开一个文件并进行写入(覆盖原有文件内容)</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">x</td>
+      <td>创建一个新的文件， 并将其打开准备写入</td>
+      <td style="text-align: center">a</td>
+      <td>打开一个文件并以追加的方式进行写入</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">b</td>
+      <td>以二进制的格式打开文件</td>
+      <td style="text-align: center">t</td>
+      <td>以文本的格式打开文件</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">+</td>
+      <td>打开一个文件并进行更新， 可读可写</td>
+      <td style="text-align: center"> </td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<p>文档描述的非常清楚， 举几个非常常见的例子： <code class="highlighter-rouge">rb</code>， 以二进制的方式读取文件， 在读取文件时将会得到<code class="highlighter-rouge">bytes</code>类型； <code class="highlighter-rouge">wt</code>， 以文本的方式对文件进行清空写入， 不管写不写内容， 文件内容在调用<code class="highlighter-rouge">open</code>函数时就直接被清空； 如果以<code class="highlighter-rouge">ab</code>模式写入字符类型， 将会抛出异常， 如果想要已字节模式写入中文， 需要对字符进行<code class="highlighter-rouge">encode("utf-8")</code>操作， 将其转换为字节。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"hello.txt"</span><span class="p">,</span> <span class="s">"ab"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">"你好"</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">"utf-8"</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>Emoji既可以以字符写入， 也可以以byts写入， 读取的话进行一个编码的转换即可：</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"hello.txt"</span><span class="p">,</span> <span class="s">"ab"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="c"># 以bytes模式打开， 那么需要写入bytes</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">"😍 😱"</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">"utf-8"</span><span class="p">))</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"hello.txt"</span><span class="p">,</span> <span class="s">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="c"># 得到的data为bytes</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="c"># 打印字符串需要对其进行解码</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">"utf-8"</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>在文档的末尾有这样一段话： <code class="highlighter-rouge">open</code>方法将会返回一个<code class="highlighter-rouge">file</code>对象， 当我们使用<code class="highlighter-rouge">t</code>模式打开一个文件时， 将会返回<code class="highlighter-rouge">TextIOWrapper</code>对象； 当使用<code class="highlighter-rouge">b</code>模式， 并且读文件时， 返回<code class="highlighter-rouge">BufferedReader</code>对象， 写文件时返回<code class="highlighter-rouge">BufferedWriter</code>对象； 当使用<code class="highlighter-rouge">+</code>模式时， 将会返回一个<code class="highlighter-rouge">BufferedRandom</code>对象。</p>
+
+<p>不管是以什么样的方式去读取或者写入文件， <code class="highlighter-rouge">buffer</code>对象是跑不掉的。 之所以有buffer存在， 是因为内存和磁盘之间的读写速度差距过大， 添加buffer可以调节两者之间的速度差， 对I/O操作进行优化。 在文档中也说明了每一种模式下的buffer大小。</p>
+
+<p>在Ubuntu下进行测试时， 使用<code class="highlighter-rouge">rb</code>模式buffer大小为4096， 使用<code class="highlighter-rouge">rt</code>模式buffer大小为8192。 之所以是4096， 一方面是因为在<code class="highlighter-rouge">ext4</code>磁盘文件格式下， 其默认的<code class="highlighter-rouge">block size</code>即为4096， 另一方面当超过4096时， 其效率并没有显著的提高(具体的测试数据在<code class="highlighter-rouge">unix环境高级编程</code>有给出)。  在<code class="highlighter-rouge">Python</code>中， 使用buffer去装填数据的过程由语言底层帮我们完成， 而在<code class="highlighter-rouge">Java</code>中， 这个过程由我们自己完成。</p>
+
+<p>基本上这些就是<code class="highlighter-rouge">Python</code>中对文件的读写操作了， 可以看到语言将一些细节封装到了底层， 使用者可以不用关心这些细节， 专注于自己的业务场景。 但是在<code class="highlighter-rouge">Java</code>语言中， I/O就没有那么简单了。</p>
+
+<h4 id="2-file类">2. File类</h4>
+<p>在<code class="highlighter-rouge">Python</code>中， 可以直接在<code class="highlighter-rouge">open</code>方法返回的<code class="highlighter-rouge">file</code>对象上对文件的内容进行读取和写入， 但是在<code class="highlighter-rouge">Java</code>中， <code class="highlighter-rouge">File</code>类仅表示一个文件对象， 或者说是对系统磁盘文件的操作， 包括创建一个空文件， 查看文件的创建日期， 大小以及权限等。</p>
+
+<p>常用的构造器：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">File</span><span class="o">(</span><span class="n">String</span> <span class="n">path</span><span class="o">)</span>
+<span class="n">File</span><span class="o">(</span><span class="n">File</span> <span class="n">parent</span><span class="o">,</span> <span class="n">String</span> <span class="n">child</span><span class="o">)</span>
+<span class="n">File</span><span class="o">(</span><span class="n">String</span> <span class="n">parent</span><span class="o">,</span> <span class="n">String</span> <span class="n">child</span><span class="o">)</span>
+</code></pre></div></div>
+
+<p>归根结底就是需要传入一个文件的路径， 该路径可以使用字符串表示， 也可以将路径拆分成2个字符串或者是一个文件对象和一个字符串。 那么创建一个文件就有了很多种写法：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">CreateFileTest</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">File</span> <span class="n">file</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="s">"/home/smartkeyerror/JavaProjects/LearningJava/hello.txt"</span><span class="o">);</span>
+        <span class="kt">boolean</span> <span class="n">isCreated</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="na">createNewFile</span><span class="o">();</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">isCreated</span><span class="o">);</span>
+
+        <span class="n">File</span> <span class="n">file1</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="s">"/home/smartkeyerror/JavaProjects/LearningJava"</span><span class="o">,</span> <span class="s">"hello1.txt"</span><span class="o">);</span>
+        <span class="kt">boolean</span> <span class="n">isCreated1</span> <span class="o">=</span> <span class="n">file1</span><span class="o">.</span><span class="na">createNewFile</span><span class="o">();</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">isCreated1</span><span class="o">);</span>
+
+        <span class="n">File</span> <span class="n">file2</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="s">"."</span><span class="o">),</span> <span class="s">"hello2.txt"</span><span class="o">);</span>
+        <span class="kt">boolean</span> <span class="n">isCreated2</span> <span class="o">=</span> <span class="n">file2</span><span class="o">.</span><span class="na">createNewFile</span><span class="o">();</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">isCreated2</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>并不是很复杂， 此外<code class="highlighter-rouge">File</code>类还提供了<code class="highlighter-rouge">mkdir</code>以及<code class="highlighter-rouge">mkdirs</code>方法来创建目录， 其中<code class="highlighter-rouge">mkdir</code>如果在文件路径中有文件并不存在， 则会抛出异常； 而<code class="highlighter-rouge">mkdirs</code>则会帮我们创建该路径下所有的文件目录， 如果该目录在磁盘中不存在的话。</p>
+
+<p><code class="highlighter-rouge">list</code>方法将会返回路径下所有的文件和目录的名称所形成的字符数组， <code class="highlighter-rouge">listFiles</code>将会返回目录下所有的文件对象：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">File</span> <span class="n">fileNew</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="s">"."</span><span class="o">);</span>
+<span class="n">File</span><span class="o">[]</span> <span class="n">files</span> <span class="o">=</span> <span class="n">fileNew</span><span class="o">.</span><span class="na">listFiles</span><span class="o">();</span>
+<span class="k">for</span> <span class="o">(</span><span class="n">File</span> <span class="n">file3</span> <span class="o">:</span> <span class="n">files</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">file3</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span>  <span class="c1">// 获取文件或目录名称</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">file3</span><span class="o">.</span><span class="na">isDirectory</span><span class="o">());</span>  <span class="c1">// 判断是否为目录</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">file3</span><span class="o">.</span><span class="na">isFile</span><span class="o">());</span>  <span class="c1">// 判断是否为文件</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>比较值得一提的就是文件查找时策略模式的应用： 当我们想要找到目录中所有以<code class="highlighter-rouge">.txt</code>结尾的文件时， 固然可以使用循环遍历在进行判断， 同时也可以使用<code class="highlighter-rouge">FilenameFilter</code>这个”策略”对象来实现：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">File</span> <span class="n">file</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="s">"."</span><span class="o">);</span>
+<span class="n">String</span><span class="o">[]</span> <span class="n">files</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="na">list</span><span class="o">(</span><span class="k">new</span> <span class="n">FilenameFilter</span><span class="o">()</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">accept</span><span class="o">(</span><span class="n">File</span> <span class="n">dir</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">name</span><span class="o">.</span><span class="na">endsWith</span><span class="o">(</span><span class="s">".txt"</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">});</span>
+</code></pre></div></div>
+
+<p>我们可以看一下<code class="highlighter-rouge">list</code>方法的源码：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="n">String</span><span class="o">[]</span> <span class="nf">list</span><span class="o">(</span><span class="n">FilenameFilter</span> <span class="n">filter</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">String</span> <span class="n">names</span><span class="o">[]</span> <span class="o">=</span> <span class="n">list</span><span class="o">();</span>
+    <span class="cm">/** 当filter为null时直接返回names数组 */</span>
+    <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;();</span>
+    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span> <span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">names</span><span class="o">.</span><span class="na">length</span> <span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">filter</span><span class="o">.</span><span class="na">accept</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">names</span><span class="o">[</span><span class="n">i</span><span class="o">]))</span> <span class="o">{</span>
+            <span class="n">v</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">names</span><span class="o">[</span><span class="n">i</span><span class="o">]);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="n">v</span><span class="o">.</span><span class="na">toArray</span><span class="o">(</span><span class="k">new</span> <span class="n">String</span><span class="o">[</span><span class="n">v</span><span class="o">.</span><span class="na">size</span><span class="o">()]);</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>可以看到具体的实现还是一个循环遍历， 但是这个循环遍历交给了JDK去处理， 我们只需要定义一个<code class="highlighter-rouge">filter</code>对象并赋予其相关规则即可， 简化开发人员代码编写的数量(当然， 按行数算工资的当我没说)。</p>
+
+<h4 id="3-stream类">3. Stream类</h4>
+<p>当我们使用<code class="highlighter-rouge">new File</code>创建了一个文件对象， 紧随其后的就是读取或者向文件写入内容， 那么此时就有了2种选择：以字符的方法读取/写入， 以字节的方式进行读取/写入。 基于此， <code class="highlighter-rouge">Java</code>才会有4个抽象类， 来对应不同模式的读和写。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-20%2011-32-30%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>我们可以使用不同的组合来实现不同模式的读取和写入， 例如使用<code class="highlighter-rouge">InputStream</code>读取bytes， 然后使用<code class="highlighter-rouge">Writer</code>将bytes转换成字符之后写入， 或者以相反的方式来对文件内容进行操作。 在涉及具体的实现类之前， 首先要理解读文件和写文件的基本模式：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 读/写数据的逻辑：</span>
+open a stream
+<span class="k">while </span>more information
+    <span class="nb">read</span>/write information
+close stream
+</code></pre></div></div>
+
+<p>文件操作在开发中最为常见， 所以就以<code class="highlighter-rouge">FileInputStream</code>和<code class="highlighter-rouge">OutputStream</code>为例， 进行梳理。 首先来看<code class="highlighter-rouge">read</code>方法， 最完整的参数列表如下：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">int</span> <span class="nf">read</span><span class="o">(</span><span class="kt">byte</span> <span class="n">b</span><span class="o">[],</span> <span class="kt">int</span> <span class="n">off</span><span class="o">,</span> <span class="kt">int</span> <span class="n">len</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span>
+</code></pre></div></div>
+
+<p>其中的<code class="highlighter-rouge">b[]</code>即为一个buffer数组， 用于接受文件数据； <code class="highlighter-rouge">off</code>为读取文件时的偏移量， 即从哪个地方开始读取； <code class="highlighter-rouge">len</code>表示每一次的读取最多读多少数据， 该参数的最大值不能超过buffer数组的大小减去偏移量的大小， 如果偏移量为0， 那么该值最大为数组大小。 通常来讲4096就好， 参考第一小节的解释。</p>
+
+<p>该函数将会返回每次读到的bytes数量， 如果说已经读到了<code class="highlighter-rouge">EOF</code>， 即文件末尾， 将会返回-1， 该值会作为我们判断文件是否读完的标志。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">FileReadTest</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="cm">/* 创建文件对象 */</span>
+        <span class="n">File</span> <span class="n">file</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="s">"."</span><span class="o">,</span> <span class="s">"hello.txt"</span><span class="o">);</span>
+        <span class="cm">/* 创建buffer数组， 大小为4096 */</span>
+        <span class="kt">byte</span><span class="o">[]</span> <span class="n">buffer</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">byte</span><span class="o">[</span><span class="mi">4096</span><span class="o">];</span>
+        <span class="cm">/* 传入文件文对象， 打开一个流 */</span>
+        <span class="n">FileInputStream</span> <span class="n">fileInputStream</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FileInputStream</span><span class="o">(</span><span class="n">file</span><span class="o">);</span>
+
+        <span class="kt">int</span> <span class="n">length</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+        <span class="cm">/* 当文件没有读完时， 将所读取到的数据转换成为字符并向控制台输出 */</span>
+        <span class="k">while</span> <span class="o">((</span><span class="n">length</span> <span class="o">=</span> <span class="n">fileInputStream</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">buffer</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">4096</span><span class="o">))</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">String</span> <span class="n">string</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="n">buffer</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">length</span><span class="o">);</span>
+            <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">string</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="cm">/* 最后需要关闭这个流 */</span>
+        <span class="n">fileInputStream</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>写文件的话要稍微简单一些， 流程与读文件基本类似：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">FileOutputTest</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+
+        <span class="n">FileOutputStream</span> <span class="n">fileOutputStream</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FileOutputStream</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">);</span>
+
+        <span class="n">StringBuilder</span> <span class="n">buffer</span> <span class="o">=</span> <span class="k">new</span> <span class="n">StringBuilder</span><span class="o">();</span>
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="n">buffer</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="s">"hello World~ \n"</span><span class="o">);</span>
+        <span class="o">}</span>
+
+        <span class="n">fileOutputStream</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">buffer</span><span class="o">.</span><span class="na">toString</span><span class="o">().</span><span class="na">getBytes</span><span class="o">());</span>
+
+        <span class="n">fileOutputStream</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>针对于输入的来源， 还有<code class="highlighter-rouge">ByteArrayInputStream</code>, 将字节数组作为输入源； <code class="highlighter-rouge">StringBufferInputStream</code>， 将String对象作为输入源； <code class="highlighter-rouge">SequenceInputStream</code>将多个输入流合并成一个输入流。 此外还有<code class="highlighter-rouge">FilterInputStream</code>这个抽象类作为装饰者对输入流进行装饰， 具体的内容在后面梳理。</p>
+
+<p>有输入那么自然就会有输出， 除了<code class="highlighter-rouge">FileOutputStream</code>向文件中输出以外， 还有<code class="highlighter-rouge">ByteArrayOutputStream</code>， 在内存中创建一个缓冲区， 数据写入该缓冲区； <code class="highlighter-rouge">PipedOutputStream</code>， 实现管道化的概念。 以及<code class="highlighter-rouge">FilterOutputStream</code>对输出流进行装饰。</p>
+
+<h4 id="4-randomaccessfile类">4. RandomAccessFile类</h4>
+<p><code class="highlighter-rouge">RandomAccessFile</code>提供了与<code class="highlighter-rouge">Python</code>非常类似的文件读写方式， 但是前提是我们对文件的结构有一个清晰的了解， 例如要记录数据的大小以及位置。</p>
+
+<p>首先来看构造参数， 第一个参数可以是<code class="highlighter-rouge">String</code>或者是<code class="highlighter-rouge">File</code>对象， 表示文件路径； 第二个参数表示模式的选择， 一共有4种模式：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>字符</th>
+      <th>含义</th>
+      <th>字符</th>
+      <th>含义</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>r</td>
+      <td>只读模式打开文件</td>
+      <td>rw</td>
+      <td>以读/写的方式打开文件， 若文件不存在则尝试创建</td>
+    </tr>
+    <tr>
+      <td>rws</td>
+      <td>以读/写的方式打开文件, 并且内容或源数据更新时将数据立即同步到磁盘中</td>
+      <td> </td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>rwd</td>
+      <td>与rws非常类似， 内容数据更新时将数据立即同步到磁盘中</td>
+      <td> </td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="highlighter-rouge">RandomAccessFile</code>包含了一个指针对象，用于标识当前流的读写位置， 并为该对象提供了<code class="highlighter-rouge">get</code>和<code class="highlighter-rouge">set</code>方法， 只不过名称是<code class="highlighter-rouge">getFilePoint</code>和<code class="highlighter-rouge">seek</code>。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">RandomAccessFileDemo</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">RandomAccessFile</span> <span class="n">file</span> <span class="o">=</span> <span class="k">new</span> <span class="n">RandomAccessFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">,</span> <span class="s">"rw"</span><span class="o">);</span>
+
+        <span class="kt">byte</span><span class="o">[]</span> <span class="n">buffer</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">byte</span><span class="o">[</span><span class="mi">4096</span><span class="o">];</span>
+
+        <span class="kt">int</span> <span class="n">length</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+        <span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+
+        <span class="k">while</span> <span class="o">((</span><span class="n">length</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">buffer</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">buffer</span><span class="o">.</span><span class="na">length</span><span class="o">))</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="n">buffer</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">length</span><span class="o">));</span>
+            <span class="cm">/* 记录已经读取的字节数 */</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="n">length</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="cm">/* 跳过已读取字节数个字节 */</span>
+        <span class="n">file</span><span class="o">.</span><span class="na">skipBytes</span><span class="o">(</span><span class="n">count</span><span class="o">);</span>
+        <span class="cm">/* 相当于文件末尾追加数据 */</span>
+        <span class="n">file</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="s">"append"</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
+
+        <span class="n">file</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>没有使用任何的<code class="highlighter-rouge">InputStream</code>以及<code class="highlighter-rouge">OutputStream</code>， 就对同一个文件进行了读写操作。 上面演示的为向文件末尾进行追加， 使用了自定义的<code class="highlighter-rouge">count</code>来记录已读的数据， 实际上可以直接使用：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">file</span><span class="o">.</span><span class="na">seek</span><span class="o">(</span><span class="n">file</span><span class="o">.</span><span class="na">length</span><span class="o">());</span>
+<span class="n">file</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="s">"\nappend"</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">file.length</code>将会返回当前文件的字节大小， 我们直接使用<code class="highlighter-rouge">seek</code>方法将指针定位到末尾， 进行追加写入即可。</p>
+
+<h4 id="5-filter装饰类">5. Filter装饰类</h4>
+<p><code class="highlighter-rouge">Filter</code>装饰类是对”流”进行装饰的类， 同样分为字节装饰和字符装饰， 并且根据输入/输出的不同也存在着不同的实现结构。</p>
+
+<p>首先来看字节的相关装饰类：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>类</th>
+      <th>功能</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>DataInputStream， DataOutputStream</td>
+      <td>允许读取/写入Java基本类型数据</td>
+    </tr>
+    <tr>
+      <td>BufferedInputStream， BufferedOutputStream</td>
+      <td>使用缓冲区的方式读取/写入数据， 减少I/O次数</td>
+    </tr>
+    <tr>
+      <td>PushbackInputStream</td>
+      <td>主要由编译器使用， 业务开发基本不会用到</td>
+    </tr>
+    <tr>
+      <td>PrintStream</td>
+      <td>属于输出装饰， 用于格式化的输出</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>字符相关装饰类：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>类</th>
+      <th>功能</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>BufferedReader， BufferedWriter</td>
+      <td>以缓冲区的方式进行读写， 减少I/O次数</td>
+    </tr>
+    <tr>
+      <td>LineNumberReader</td>
+      <td>可以使用<code class="highlighter-rouge">readLine</code>方法逐行读取</td>
+    </tr>
+    <tr>
+      <td>PrintWriter</td>
+      <td>格式化输出</td>
+    </tr>
+    <tr>
+      <td>PushbackReader</td>
+      <td>通过缓存机制， 进行预读</td>
+    </tr>
+    <tr>
+      <td>InputStreamReader， OutputStreamWriter</td>
+      <td>字节流和字符流的相互转换</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SimpleDemo</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">FileInputStream</span> <span class="n">in</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FileInputStream</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">);</span>
+        <span class="n">BufferedInputStream</span> <span class="n">bufferedInputStream</span> <span class="o">=</span> <span class="k">new</span> <span class="n">BufferedInputStream</span><span class="o">(</span><span class="n">in</span><span class="o">);</span>
+        <span class="n">InputStreamReader</span> <span class="n">inputStreamReader</span> <span class="o">=</span> <span class="k">new</span> <span class="n">InputStreamReader</span><span class="o">(</span><span class="n">bufferedInputStream</span><span class="o">);</span>
+
+        <span class="cm">/* 首先我们先将其读出来, 此时已经是字符流 */</span>
+        <span class="kt">char</span><span class="o">[]</span> <span class="n">chunk</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">char</span><span class="o">[</span><span class="mi">4096</span><span class="o">];</span>
+        <span class="kt">int</span> <span class="n">data</span> <span class="o">=</span> <span class="n">inputStreamReader</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">chunk</span><span class="o">);</span>
+
+        <span class="cm">/* 新建输出流 */</span>
+        <span class="n">FileWriter</span> <span class="n">fileWriter</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FileWriter</span><span class="o">(</span><span class="s">"hello1.txt"</span><span class="o">);</span>
+        <span class="n">BufferedWriter</span> <span class="n">bufferedWriter</span> <span class="o">=</span> <span class="k">new</span> <span class="n">BufferedWriter</span><span class="o">(</span><span class="n">fileWriter</span><span class="o">);</span>
+
+        <span class="k">while</span> <span class="o">(</span><span class="n">data</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="n">chunk</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">data</span><span class="o">));</span>
+            <span class="n">bufferedWriter</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">chunk</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">data</span><span class="o">);</span>
+            <span class="cm">/* 写入数据 */</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">inputStreamReader</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">chunk</span><span class="o">);</span>
+
+        <span class="o">}</span>
+
+        <span class="cm">/* 关闭资源 */</span>
+        <span class="n">inputStreamReader</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+        <span class="n">bufferedWriter</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h5 id="51-装饰模式">5.1 装饰模式</h5>
+<p>在看<code class="highlighter-rouge">Java</code>的装饰模式之前， 首先来看<code class="highlighter-rouge">Python</code>中的装饰器：</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">wrapper_func</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">inner_func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">func</span><span class="p">()</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"function cost time: {}"</span><span class="o">.</span><span class="n">format</span><span class="p">((</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">inner_func</span>
+
+<span class="n">wrapper_func</span>
+<span class="k">def</span> <span class="nf">do_something</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="s">"""
+    do_something useful
+    """</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"This is main function"</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="n">do_something</span><span class="p">()</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">do_something</span><span class="o">.</span><span class="n">__doc__</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>没有什么很复杂的地方， <code class="highlighter-rouge">@</code>是一个语法糖， 本质上其实会调用：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">do_something</span> <span class="o">=</span> <span class="n">wrapper_func</span><span class="p">(</span><span class="n">do_something</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>在<code class="highlighter-rouge">Java</code>中的装饰模式调用方式也是这样的， 由于存在着强制类型声明， 所以在<code class="highlighter-rouge">Java</code>中实现装饰模式要稍微复杂一些。 <code class="highlighter-rouge">do_something</code>对象类型与<code class="highlighter-rouge">wrapper_func</code>函数所返回的对象类型应该一致， 那么将函数往上提一层， 就到了<code class="highlighter-rouge">类</code>这个层面， 所以说， <code class="highlighter-rouge">do_something</code>和<code class="highlighter-rouge">wrapper_func</code>必须是同一个对象。</p>
+
+<p>所以就有了统一的接口， 应用类和装饰类均实现该接口， 并且在装饰类中需要注入一个应用类的实例， 并通过类似代理的方式调用应用类对象的方法以及自己实现的方法。 下面就写一个最简单的装饰模式：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">interface</span> <span class="nc">Work</span> <span class="o">{</span>
+    <span class="kt">void</span> <span class="nf">work</span><span class="o">();</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">HomeWork</span> <span class="kd">implements</span> <span class="n">Work</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">work</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"做家庭作业"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="kd">class</span> <span class="nc">Decorator</span> <span class="kd">implements</span> <span class="n">Work</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Work</span> <span class="n">work</span><span class="o">;</span>
+
+    <span class="n">Decorator</span><span class="o">(</span><span class="n">Work</span> <span class="n">work</span><span class="o">)</span> <span class="o">{</span> <span class="k">this</span><span class="o">.</span><span class="na">work</span> <span class="o">=</span> <span class="n">work</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">work</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">work</span><span class="o">.</span><span class="na">work</span><span class="o">();</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"做其它的作业"</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">SimpleDecorator</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">HomeWork</span> <span class="n">homeWork</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HomeWork</span><span class="o">();</span>
+        <span class="n">Decorator</span> <span class="n">decorator</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Decorator</span><span class="o">(</span><span class="n">homeWork</span><span class="o">);</span>
+        <span class="n">decorator</span><span class="o">.</span><span class="na">work</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>在这里我将<code class="highlighter-rouge">Decorator</code>类直接做为了一个装饰类， 本来这里应该是一个抽象类， 让具体的装饰类实现继承该抽象类， 已达到更好的复用效果。 嘛， 测试嘛， 洒洒水啦～ I/O包里面所有的装饰模式都是以这样的结构来实现的， 具体的类图就不贴了。</p>
+
+<h4 id="6-nio">6. NIO</h4>
+<p>在文件操作上， 我更倾向于将NIO解释为New-IO， 即新的I/O方式； 在<code class="highlighter-rouge">Reactor</code>模型中， 更倾向于将其解释为<code class="highlighter-rouge">No-Blocking I/O</code>， 即同步非阻塞I/O。</p>
+
+<p>在NIO中， 不再面向”流”编程， 而是面向缓冲区编程。 NIO最重要的两个概念就是<code class="highlighter-rouge">channel</code>和<code class="highlighter-rouge">buffer</code>， 借鉴Thinking in Java中的举例， 可以将磁盘比作一个煤矿， 将通道(channel)包含煤层(数据)， 缓冲区(buffer)就是运煤的卡车。 卡车从煤矿中满载而归， 煤块加工处负责将煤块从车上取出， 在这个过程中我们没有和煤矿直接打交道， 而是和卡车打交道。 这也是NIO的基本原理， 我们只能向buffer中读取或者写入数据， 再由buffer向channel读取或者写入数据。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">FileInputStream</span> <span class="n">inputStream</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FileInputStream</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">);</span>
+<span class="cm">/* 获取Channel对象 */</span>
+<span class="n">FileChannel</span> <span class="n">channel</span> <span class="o">=</span> <span class="n">inputStream</span><span class="o">.</span><span class="na">getChannel</span><span class="o">();</span>
+<span class="cm">/* 声明Buffer对象 */</span>
+<span class="n">ByteBuffer</span> <span class="n">buffer</span> <span class="o">=</span> <span class="n">ByteBuffer</span><span class="o">.</span><span class="na">allocate</span><span class="o">(</span><span class="mi">4096</span><span class="o">);</span>
+<span class="cm">/* 将数据从channel写入至buffer中 */</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">buffer</span><span class="o">);</span>
+<span class="cm">/* 将buffer相关变量还原 */</span>
+<span class="n">buffer</span><span class="o">.</span><span class="na">flip</span><span class="o">();</span>
+
+<span class="k">while</span> <span class="o">(</span><span class="n">buffer</span><span class="o">.</span><span class="na">hasRemaining</span><span class="o">())</span> <span class="o">{</span>
+    <span class="kt">byte</span> <span class="n">b</span> <span class="o">=</span> <span class="n">buffer</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"character: "</span> <span class="o">+</span> <span class="o">(</span><span class="kt">char</span><span class="o">)</span><span class="n">b</span><span class="o">);</span>
+<span class="o">}</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+</code></pre></div></div>
+
+<p>这是一个不那么严谨的demo， 因为只能读取4096个字节的数据， 但是不妨碍我们对<code class="highlighter-rouge">channel</code>和<code class="highlighter-rouge">buffer</code>的理解。 首先获取<code class="highlighter-rouge">FileInputStream</code>对象的<code class="highlighter-rouge">FileChannel</code>对象， 之所以可以这样做是因为该文件输入流已经以使用NIO的方式进行重写了， 然后我们使用<code class="highlighter-rouge">ByteBuffer</code>的静态方法声明了一个有界的缓冲区， 将数据通过channel装填至buffer中， 并对buffer进行翻转， 以及数据的读取。</p>
+
+<h5 id="61-buffer原理">6.1 buffer原理</h5>
+<p>在上面我们简单的使用buffer的方式对文件进行了读取， 在本小节中对buffer进行更深入的理解。</p>
+
+<p>根据Javadoc， buffer是一个线性的有界序列， 保存着特定的基本数据类型， 除去保存的内容， 最核心的属性就是<code class="highlighter-rouge">capacity</code>, <code class="highlighter-rouge">limit</code>以及<code class="highlighter-rouge">position</code>。</p>
+
+<p><code class="highlighter-rouge">capacity</code>指定buffer的容量， 一经定义无法修改， 且该值不允许为负数； <code class="highlighter-rouge">limit</code>表示在一个buffer中， 不允许读取或写入的第一个元素的索引； <code class="highlighter-rouge">position</code>表示下一个将要读取或写入的元素的索引。 听起来非常的绕口， 以图示进行解释：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-10%2016-36-13%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>图示与上面的代码没有直接关联。</p>
+
+<p>初始化： position = 0, capacity与limit值相同， 值为数组大小， 可以认为其指向最后一个元素的下一个元素</p>
+
+<p>向buffer中写数据： 也就是调用<code class="highlighter-rouge">channel.read(buffer)</code>， 假设写了4个元素， 那么position向后移动4位， 其余值不变</p>
+
+<p>准备读取元素： 此时必须调用<code class="highlighter-rouge">flip</code>方式使得position置0， 而limit则指向原来position的位置</p>
+
+<p>读取元素： 在读取元素时， position的位置会不断的向后移动， 直至移动到与limit相同的位置。 此时元素已经读取完毕， position再向后移动就没有了意义。</p>
+
+<p>从上面的过程可以看出， 假设我们的buffer大小为4096， 但是文件只有20个字节的数据， 向buffer中写数据和读数据都不会造成空间和时间上的浪费， 基于此的设计使得NIO要比旧IO有更高的效率。</p>
+
+<p>在有了buffer之后， 我们进行文件内容的拷贝就变得非常简单了：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">NIOCopyFile</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+
+        <span class="n">FileChannel</span> <span class="n">inChannel</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FileInputStream</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">).</span><span class="na">getChannel</span><span class="o">();</span>
+
+        <span class="n">FileChannel</span> <span class="n">outChannel</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FileOutputStream</span><span class="o">(</span><span class="s">"hello1.txt"</span><span class="o">).</span><span class="na">getChannel</span><span class="o">();</span>
+
+        <span class="n">ByteBuffer</span> <span class="n">buffer</span> <span class="o">=</span> <span class="n">ByteBuffer</span><span class="o">.</span><span class="na">allocate</span><span class="o">(</span><span class="mi">4096</span><span class="o">);</span>
+
+        <span class="k">while</span> <span class="o">(</span><span class="n">inChannel</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">buffer</span><span class="o">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">buffer</span><span class="o">.</span><span class="na">flip</span><span class="o">();</span>  <span class="c1">// 翻转buffer, 准备进行buffer的读操作</span>
+            <span class="n">outChannel</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">buffer</span><span class="o">);</span>
+            <span class="n">buffer</span><span class="o">.</span><span class="na">clear</span><span class="o">();</span>  <span class="c1">// 将buffer的position, limit置为最初状态, 以便接收后续数据</span>
+        <span class="o">}</span>
+
+        <span class="n">inChannel</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+        <span class="n">outChannel</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h5 id="62-bytebuffer源码分析">6.2 ByteBuffer源码分析</h5>
+<p>在我们敲下：<code class="highlighter-rouge">ByteBuffer buffer = ByteBuffer.allocate(4096);</code>， 中间发生了什么？</p>
+
+<p><code class="highlighter-rouge">allocate</code>是一个静态方法， 返回一个<code class="highlighter-rouge">HeapByteBuffer</code>对象实例， 里面的方法倒是没什么好说的， 比较重要的一点就是该buffer中的数组是位于堆内存中的。 那么也就意味着数据需要从堆内存拷贝到 OS拷贝空间当中， 会有一定的性能损耗。</p>
+
+<p>所以， NIO还提供了一个直接缓冲区， 即<code class="highlighter-rouge">DirectByteBuffer</code>， 该buffer的行为与堆buffer基本类似， 只不过直接缓冲区将buffer的内存直接声明在了堆外， 并使用一个<code class="highlighter-rouge">long</code>变量来指向这块儿内存。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-12%2011-24-10%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>虽然看起来<code class="highlighter-rouge">DirectByteBuffer</code>能够加快数据的访问， 但是这与操作系统的类型直接相关， 所以在使用直接缓冲区时， 需要对其进行基本的性能测试， 保证确实要比堆缓冲区更快。</p>
+
+<h4 id="7-小结">7. 小结</h4>
+<p><code class="highlighter-rouge">Java</code>的I/O系统看起来设计的非常复杂， 但是对其抽丝剥茧， 一层一层的将其展开， 理解起来也并不会特别的复杂。 在本篇文章中对一些常用的类以及技术做了比较粗略的介绍和demo， 在工程实践中要比这更加的复杂， 但是万变不离其宗， 原理性的知识的确只有一少部分。 当我们理解了应用层序和操作系统之间的关系以及相关操作逻辑， 一些困扰我们的问题也就自然迎刃而解了。</p>
+
+
+	  ]]></description>
+	</item>
+
+
+</channel>
+</rss>

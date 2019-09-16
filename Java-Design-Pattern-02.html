@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Java基础编程(05)--常用的设计模式(02)</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Java-Design-Pattern-02" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java基础编程(05)--常用的设计模式(02)" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//Java-Design-Pattern-02" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Java基础编程(05)--常用的设计模式(02)" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Java-Design-Pattern-02" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Java基础编程(05)--常用的设计模式(02)",
+    "url": "https://smartkeyerror.com//Java-Design-Pattern-02",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Java基础编程(05)--常用的设计模式(02)</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-12-05">05 Dec 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/Java基础'>Java基础</a>
+                    
+                
+                    
+                       <a href='/tag/设计模式'>设计模式</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在前面的一篇文章中大致了描述了单例模式， 原型模式， 策略模式， 责任链模式， 代理模式以及观察者模式， 本文接上。</p>
+
+<!---more--->
+
+<h4 id="7-过滤器模式">7. 过滤器模式</h4>
+<p>过滤器模式有点儿类似于责任链模式， 只不过责任链模式是用于将请求和处理请求进行解耦， 而过滤器模式则更像一个滤网， 将符合我们要求的对象过滤出来。 为了更好的理解过滤器模式， 我们首先创建一个<code class="highlighter-rouge">Student</code>对象， 并赋予常见的属性：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">Student</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="n">String</span> <span class="n">name</span><span class="o">;</span>
+    <span class="kd">public</span> <span class="kt">int</span> <span class="n">age</span><span class="o">;</span>
+    <span class="kd">public</span> <span class="kt">boolean</span> <span class="n">gender</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">Student</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="kt">int</span> <span class="n">age</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">gender</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">;</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">age</span> <span class="o">=</span> <span class="n">age</span><span class="o">;</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">gender</span> <span class="o">=</span> <span class="n">gender</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>为了简化代码的书写， 这里的成员变量就直接使用<code class="highlighter-rouge">public</code>来进行修饰， 性别属性使用布尔值表示， <code class="highlighter-rouge">false</code>到底表示男还是女并不重要。 在另外一个地方保存了一组学生对象：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">List</span><span class="o">&lt;</span><span class="n">Student</span><span class="o">&gt;</span> <span class="n">students</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Student</span><span class="o">&gt;();</span>
+<span class="n">students</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">Student</span><span class="o">(</span><span class="s">"smart"</span><span class="o">,</span> <span class="mi">18</span><span class="o">,</span> <span class="kc">false</span><span class="o">));</span>
+<span class="n">students</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">Student</span><span class="o">(</span><span class="s">"foo"</span><span class="o">,</span> <span class="mi">20</span><span class="o">,</span> <span class="kc">true</span><span class="o">));</span>
+<span class="n">students</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">Student</span><span class="o">(</span><span class="s">"bar"</span><span class="o">,</span> <span class="mi">19</span><span class="o">,</span> <span class="kc">true</span><span class="o">));</span>
+</code></pre></div></div>
+
+<p>现在我们想要对这一组学生进行一个数据分析， 比如找出年龄小于18岁的， 名字以’s’开头的， 或者是性别为<code class="highlighter-rouge">false</code>的。 就有了第一版的代码：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span> <span class="o">(</span><span class="n">Student</span> <span class="n">student</span> <span class="o">:</span> <span class="n">students</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">student</span><span class="o">.</span><span class="na">name</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="s">"s"</span><span class="o">))</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">student</span><span class="o">.</span><span class="na">name</span><span class="o">);</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>其余的筛选和这个基本上是一样的， 只不过筛选条件不同而已。 根据需求我们又写了根据年龄和性别筛选的代码。 然后又有需求来了， 筛选年龄小于19岁， 并且性别为<code class="highlighter-rouge">false</code>的学生， 好嘛， 那再加一个：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span> <span class="o">(</span><span class="n">Student</span> <span class="n">student</span> <span class="o">:</span> <span class="n">students</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">((!</span><span class="n">student</span><span class="o">.</span><span class="na">gender</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">student</span><span class="o">.</span><span class="na">age</span> <span class="o">&lt;</span> <span class="mi">19</span><span class="o">))</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">student</span><span class="o">.</span><span class="na">name</span><span class="o">);</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>这个时候就会发现代码重复的非常严重， 没有任何的可复用性， 不同的筛选规则不能够组合起来， 造成了大量重复的代码和臃肿的代码结构。</p>
+
+<p>所以我们需要改变策略， 在每次筛选时直接创建一个新的容器对象， 筛选通过的对象添加至容器中， 并返回该容器。 这样一来我们就可以把多个筛选规则组合起来， 一个筛选器的结果是另一个筛选器的输入。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Student</span><span class="o">&gt;</span> <span class="nf">filterAge</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Student</span><span class="o">&gt;</span> <span class="n">students</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">List</span><span class="o">&lt;</span><span class="n">Student</span><span class="o">&gt;</span> <span class="n">filterList</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Student</span><span class="o">&gt;();</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">Student</span> <span class="n">student</span> <span class="o">:</span> <span class="n">students</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">student</span><span class="o">.</span><span class="na">age</span> <span class="o">&lt;</span> <span class="mi">19</span><span class="o">)</span>
+            <span class="n">filterList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">student</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="n">filterList</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-28%2010-41-09%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>该设计模式实在是没什么好说的， 比较简单， 所以就不再分<code class="highlighter-rouge">Java</code>实现和<code class="highlighter-rouge">Python</code>实现， 代码也比较简单， 就不贴了。</p>
+
+<p>比较值得一提的就是Java 8中<code class="highlighter-rouge">Stream</code>以及<code class="highlighter-rouge">Python</code>中的列表推导式， 这两个特性很轻量， 也很实用。</p>
+
+<h4 id="71-stream">7.1 Stream</h4>
+<p>函数式编程提出已久， <code class="highlighter-rouge">Java</code>语言在1.8这个版本中才正式的推出了基于函数式编程的种种特性， 我们不得不正视这些特性， 因为有极大的可能函数式编程就是未来的编程首选。</p>
+
+<p>Java 8 中的<code class="highlighter-rouge">Stream</code>是对集合对象功能的增强， 它专注于对集合对象进行各种非常便利， 高效的聚合操作， 或者是大批量的数据操作。 借助于新的<code class="highlighter-rouge">Lambda</code>表达式， 编程效率得到了非常大的提升。 另外， <code class="highlighter-rouge">Stream API</code>还提供了串行和并行两种模式进行汇聚操作， 我们可以使用<code class="highlighter-rouge">fork/join</code>来拆分任务并使用多线程的方法运行， 最终聚合形成结果， 提升系统性能。</p>
+
+<p>那么上面我们写的年龄筛选， 就可以变成这样：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">List</span><span class="o">&lt;</span><span class="n">Student</span><span class="o">&gt;</span> <span class="n">ageFilterList</span> <span class="o">=</span> <span class="n">students</span><span class="o">.</span><span class="na">parallelStream</span><span class="o">().</span>
+        <span class="n">filter</span><span class="o">(</span><span class="n">s</span> <span class="o">-&gt;</span> <span class="n">s</span><span class="o">.</span><span class="na">age</span> <span class="o">&lt;</span> <span class="mi">25</span><span class="o">).</span>
+        <span class="n">collect</span><span class="o">(</span><span class="n">Collectors</span><span class="o">.</span><span class="na">toList</span><span class="o">());</span>
+</code></pre></div></div>
+
+<h5 id="72-列表推导式">7.2 列表推导式</h5>
+<p><code class="highlighter-rouge">Python</code>中的列表推导式可谓是一大杀器， 威力极强， 代码逻辑非常清晰：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">age_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">student</span> <span class="k">for</span> <span class="n">student</span> <span class="ow">in</span> <span class="n">student_list</span> <span class="k">if</span> <span class="n">student</span><span class="o">.</span><span class="n">age</span> <span class="o">&lt;</span> <span class="mi">25</span><span class="p">]</span>
+</code></pre></div></div>
+
+<p>列表推导式还是很多花样可以玩儿， 在日常开发中使用的也比较多， 更多的内容如果读者感兴趣的话可以在<code class="highlighter-rouge">Google</code>中查阅相关资料(Ps: 不要用百度了)。</p>
+
+<h4 id="8-简单工厂模式">8. 简单工厂模式</h4>
+<p>工厂模式的应用可以说是众多设计模式中应用最为广泛的一种， 提供了一种创建对象的便捷方法， 调用方并不需要知道一个对象的具体创建过程， 不必关系其内部的细节。 工厂模式常常会被分为简单工厂模式， 工厂模式， 以及抽象工厂模式， 在这一小节介绍简单工厂模式。</p>
+
+<h5 id="81-java实现">8.1 Java实现</h5>
+<p>假设我们通过<code class="highlighter-rouge">socket</code>自己编写了一个<code class="highlighter-rouge">url</code>请求类， 层层封装， 使得客户端能够传入一个url参数， 并获得该url的HTML文本文档。 有时候用户会使用<code class="highlighter-rouge">https</code>开头的网址， 那么在此时我们就需要对SSL证书进行验证。 假设<code class="highlighter-rouge">http</code>与<code class="highlighter-rouge">https</code>这两种服务为两个不同的类实现， 但是它们有共同的接口：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-28%2012-02-02%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">interface</span> <span class="nc">BaseHttp</span> <span class="o">{</span>
+    <span class="cm">/* 这里的返回做简化处理, 直接返回字符串, 不再构建response对象了 */</span>
+    <span class="n">String</span> <span class="nf">get</span><span class="o">();</span>
+    <span class="n">Boolean</span> <span class="nf">IsCertificateValid</span><span class="o">();</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Http</span> <span class="kd">implements</span> <span class="n">BaseHttp</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="n">String</span> <span class="nf">get</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="s">"Http Response"</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="cm">/* http服务不需要验证证书， 所以直接返回true */</span>
+    <span class="kd">public</span> <span class="n">Boolean</span> <span class="nf">IsCertificateValid</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="kc">true</span><span class="o">;</span> <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="kd">class</span> <span class="nc">Https</span> <span class="kd">implements</span> <span class="n">BaseHttp</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="n">String</span> <span class="nf">get</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="s">"Https Response"</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="n">Boolean</span> <span class="nf">IsCertificateValid</span><span class="o">()</span> <span class="o">{</span>
+        <span class="cm">/*  这里再做一个简化处理, 返回false */</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">HttpFactory</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="n">BaseHttp</span> <span class="nf">create</span><span class="o">(</span><span class="n">String</span> <span class="n">url</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">url</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="s">"https"</span><span class="o">))</span>
+            <span class="k">return</span> <span class="k">new</span> <span class="nf">Https</span><span class="o">();</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">url</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="s">"http"</span><span class="o">))</span>
+            <span class="k">return</span> <span class="k">new</span> <span class="nf">Http</span><span class="o">();</span>
+        <span class="cm">/* 就算是以ip为url, 也需要添加协议类型, 所以这里直接抛出异常 */</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">"Invalid url"</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>那么客户端在使用<code class="highlighter-rouge">Http</code>和<code class="highlighter-rouge">Https</code>服务时， 不需要关心URL是什么类型， 传递URL之后由<code class="highlighter-rouge">HttpFactory</code>进行判断， 并返回不同的对象即可。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SimpleFactoryPattern</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="cm">/* 客户端调用 */</span>
+        <span class="n">BaseHttp</span> <span class="n">http</span> <span class="o">=</span> <span class="n">HttpFactory</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="s">"http://google.com"</span><span class="o">);</span>
+        <span class="n">BaseHttp</span> <span class="n">https</span> <span class="o">=</span> <span class="n">HttpFactory</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="s">"https://google.com"</span><span class="o">);</span>
+
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">http</span><span class="o">.</span><span class="na">IsCertificateValid</span><span class="o">());</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">https</span><span class="o">.</span><span class="na">IsCertificateValid</span><span class="o">());</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h4 id="9-工厂模式">9. 工厂模式</h4>
+
+<p>通常来讲简单工厂模式能够满足大部分的需求， 但是有一个问题， 那么就是假如又有一个<code class="highlighter-rouge">ftp</code>的服务， 通过传递<code class="highlighter-rouge">ftp://ip</code>来获取远程的文件， 这个时候我们就需要改动<code class="highlighter-rouge">HttpFactory</code>， 再增加一层判断。 这样一来就违反了开放-封闭原则。</p>
+
+<p>注: FTP协议和HTTP协议不是一个东西， FTP协议也不是基于HTTP协议的， 这里这么来写， 完全是出于理解工厂方法。 读者需要注意。</p>
+
+<p>实现开放-封闭原则的一个手段就是再往上抽象一层， 审视简单工厂的UML类图， <code class="highlighter-rouge">BaseHttp</code>已经是一个接口了， 无法再抽象； 而<code class="highlighter-rouge">HttpFactory</code>却是一个实体类， 可以继续进行抽象。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-28%2014-06-05%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>我们将<code class="highlighter-rouge">HttpFactory</code>抽象成为<code class="highlighter-rouge">BaseFactory</code>， 根据该接口(或者是抽象类)实现<code class="highlighter-rouge">HttpFactory</code>， 用于创建<code class="highlighter-rouge">Http</code>对象， <code class="highlighter-rouge">HttpsFactory</code>创建<code class="highlighter-rouge">Https</code>对象， <code class="highlighter-rouge">FtpFactory</code>创建<code class="highlighter-rouge">Ftp</code>对象。 这样一来如果我们再增加一个服务， 我们只需要再实现一个工厂， 然后创建该服务即可。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">interface</span> <span class="nc">BaseFactory</span> <span class="o">{</span>
+    <span class="cm">/* 将原有的工厂类抽象化 */</span>
+    <span class="n">BaseHttp</span> <span class="nf">create</span><span class="o">();</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">HttpFactory</span> <span class="kd">implements</span> <span class="n">BaseFactory</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="cm">/* 在具体的实现类直接创建出相对应的服务对象 */</span>
+    <span class="kd">public</span> <span class="n">BaseHttp</span> <span class="nf">create</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="k">new</span> <span class="n">Http</span><span class="o">();</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">FactoryPattern</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="cm">/* 客户端使用 */</span>
+        <span class="n">BaseFactory</span> <span class="n">httpFactory</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HttpFactory</span><span class="o">();</span>
+        <span class="n">BaseHttp</span> <span class="n">http</span> <span class="o">=</span> <span class="n">httpFactory</span><span class="o">.</span><span class="na">create</span><span class="o">();</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">http</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>工厂模式要比简单工厂模式稍微复杂一点点， 唯一的区别就是将工厂类进行了抽象化， 从而解决添加服务需要修改原有工厂类代码的问题。</p>
+
+<p>但是这样一来又有问题了， 假如我有10个服务类， 均通过每个具体的工厂类创建， 那么客户端的程序员就需要知道这10个工厂类， 并且还需要知道每一个工厂类是干什么的， 加重了客户端程序员的开发难度。 而对于简单工厂模式， 我们只需要知道这个工厂类可以产生我们想要的对象即可， 对客户端coder更加友好。</p>
+
+<p>当我们的服务对象改变并不会特别频繁时， 使用简单工厂模式； 当改动非常频繁， 且为必须的时候， 使用工厂模式， 此时文档的注释需要及时更新。</p>
+
+<h4 id="10-抽象工厂模式">10. 抽象工厂模式</h4>
+<p>简单工厂模式用于解决多个相同类型的对象的创建问题， 使得客户端传入一个简单的参数就可以得到想要的对象； 工厂模式在简单工厂模式之上进一步的抽象， 用于实现开放-封闭原则。 而抽象工厂模式是基于工厂模式， 对具体的产类进一步的划分。 看类图就明白了。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-28%2015-16-24%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>可以看到我们的产品类型增加了， 并且相应的工厂类也增加了一个创建对应产品的方法。 我们可以这样来理解：</p>
+
+<p>Apple生产iphone， Airpods以及ipad; 微软生产windowsPhone， Headphones以及Surface， 类图如下：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-28%2015-29-24%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>我们对工厂模式的代码进行一个简单的修改就可以得到抽象工厂模式的代码， 这里就不再写了， 没有太大的难度。</p>
+
+<p>抽象工厂主要解决的问题就是一个工厂可能会生产多种产品的问题， 将不同产品抽象， 再将不同的工厂进行抽象， 具体的工厂生产所对应的产品， 最终就形成了一个完整的生产链。</p>
+
+<h4 id="11-建造者模式">11. 建造者模式</h4>
+<p>建造者模式类似于我们在玩儿RPG游戏时创建角色的过程： 首先角色的攻击类型， 有魔法攻击和物理攻击； 角色的服饰以及颜色， 角色的脸型， 角色的发型以及颜色等等， 然后我们在每个属性中挑一个出来， 就组成了我们的一个角色， 例如物理攻击， 青色汉服， 瓜子脸， 黑色短发。</p>
+
+<p>建造者模式就是这样， 将一个复杂的对象拆开， 一步一步的创建单个对象， 最终再将这些对象组合在一起， 就形成了我们需要的对象。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-28%2016-44-42%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>这里以构建一个汽车为例， 从火花塞的绝缘体开始， 到火花塞， 到引擎， 类图如上所示。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/**
+ * 首先需要定义我们的产品类， 这里有绝缘体， 火花塞以及引擎
+ */</span>
+<span class="kd">class</span> <span class="nc">Product</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="n">String</span> <span class="n">insulator</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="n">String</span> <span class="n">sparkPlugs</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="n">String</span> <span class="n">engine</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setInsulator</span><span class="o">(</span><span class="n">String</span> <span class="n">insulator</span><span class="o">)</span> <span class="o">{</span> <span class="k">this</span><span class="o">.</span><span class="na">insulator</span> <span class="o">=</span> <span class="n">insulator</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setSparkPlugs</span><span class="o">(</span><span class="n">String</span> <span class="n">sparkPlugs</span><span class="o">)</span> <span class="o">{</span> <span class="k">this</span><span class="o">.</span><span class="na">sparkPlugs</span> <span class="o">=</span> <span class="n">sparkPlugs</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setEngine</span><span class="o">(</span><span class="n">String</span> <span class="n">engine</span><span class="o">)</span> <span class="o">{</span> <span class="k">this</span><span class="o">.</span><span class="na">engine</span> <span class="o">=</span> <span class="n">engine</span><span class="o">;</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="cm">/**
+ * 建造者接口, 定义一个产品如何被构建
+ */</span>
+<span class="kd">interface</span> <span class="nc">Builder</span> <span class="o">{</span>
+    <span class="kt">void</span> <span class="nf">buildInsulator</span><span class="o">();</span>
+
+    <span class="kt">void</span> <span class="nf">buildSparkPlugs</span><span class="o">();</span>
+
+    <span class="kt">void</span> <span class="nf">buildEngine</span><span class="o">();</span>
+
+    <span class="n">Product</span> <span class="nf">getProduct</span><span class="o">();</span>
+<span class="o">}</span>
+
+<span class="cm">/**
+ * 具体的构建者实现类, 因为构建过程由该类实现, 所以在此处实例化一个Product对象
+ */</span>
+<span class="kd">class</span> <span class="nc">ConcreteBuilder</span> <span class="kd">implements</span> <span class="n">Builder</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="n">Product</span> <span class="n">product</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Product</span><span class="o">();</span>
+
+    <span class="cm">/* 下面主要是调用Product所提供的setter方法来进行构建 */</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">buildInsulator</span><span class="o">()</span> <span class="o">{</span> <span class="n">product</span><span class="o">.</span><span class="na">setInsulator</span><span class="o">(</span><span class="s">"insulator"</span><span class="o">);</span> <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">buildSparkPlugs</span><span class="o">()</span> <span class="o">{</span> <span class="n">product</span><span class="o">.</span><span class="na">setSparkPlugs</span><span class="o">(</span><span class="s">"sparkPlugs"</span><span class="o">);</span> <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">buildEngine</span><span class="o">()</span> <span class="o">{</span> <span class="n">product</span><span class="o">.</span><span class="na">setEngine</span><span class="o">(</span><span class="s">"engine"</span><span class="o">);</span> <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="n">Product</span> <span class="nf">getProduct</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="n">product</span><span class="o">;</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="cm">/**
+ * Director决定构建顺序
+ */</span>
+<span class="kd">class</span> <span class="nc">Director</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">construct</span><span class="o">(</span><span class="n">Builder</span> <span class="n">builder</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">builder</span><span class="o">.</span><span class="na">buildInsulator</span><span class="o">();</span>
+        <span class="n">builder</span><span class="o">.</span><span class="na">buildSparkPlugs</span><span class="o">();</span>
+        <span class="n">builder</span><span class="o">.</span><span class="na">buildEngine</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">BuilderPattern</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">Builder</span> <span class="n">builder</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ConcreteBuilder</span><span class="o">();</span>
+        <span class="n">Director</span><span class="o">.</span><span class="na">construct</span><span class="o">(</span><span class="n">builder</span><span class="o">);</span>
+
+        <span class="n">Product</span> <span class="n">product</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="na">getProduct</span><span class="o">();</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">product</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>建造者模式不可避免的会造成编写的代码很长， 这是绕不过去的。 如果想要使用建造者模式的话， 就要做好代码很长的准备。</p>
+
+<h4 id="12-外观模式">12. 外观模式</h4>
+<p>外观模式有些类似于代理模式， 但是要比代理模式更进一步。 我觉得外观模式就是一个工具箱， 里面儿放着一堆乱七八糟的方法和对象， 在调用方法时实际上是调用了所持有对象的方法， 对外屏蔽了所有的细节。</p>
+
+<p>类图并不是很想画， 因为这个模式从代码层面上来看是非常简单的。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">interface</span> <span class="nc">Animal</span> <span class="o">{</span> <span class="kt">void</span> <span class="nf">eat</span><span class="o">();</span> <span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Human</span> <span class="kd">implements</span> <span class="n">Animal</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">eat</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Human eat"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Lion</span> <span class="kd">implements</span> <span class="n">Animal</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">eat</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Lion eat"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Cat</span> <span class="kd">implements</span> <span class="n">Animal</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">eat</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Cat eat"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="cm">/**
+ * 这里就是我们的百宝箱, 里面保存着各种各样的对象, 以及方法, 傻瓜式方法调用
+ */</span>
+<span class="kd">class</span> <span class="nc">Tools</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="n">Human</span> <span class="n">human</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="n">Lion</span> <span class="n">lion</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="n">Cat</span> <span class="n">cat</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">Tools</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">human</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Human</span><span class="o">();</span> <span class="k">this</span><span class="o">.</span><span class="na">lion</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Lion</span><span class="o">();</span> <span class="k">this</span><span class="o">.</span><span class="na">cat</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Cat</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">humanEat</span><span class="o">()</span> <span class="o">{</span> <span class="n">human</span><span class="o">.</span><span class="na">eat</span><span class="o">();</span> <span class="o">}</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">lionEat</span><span class="o">()</span> <span class="o">{</span> <span class="n">lion</span><span class="o">.</span><span class="na">eat</span><span class="o">();</span> <span class="o">}</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">catEat</span><span class="o">()</span> <span class="o">{</span> <span class="n">cat</span><span class="o">.</span><span class="na">eat</span><span class="o">();</span> <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>外观模式怎么说呢， 给人一种奇怪的感觉， 如同一个百宝箱一样， 持有着各种各样的对象， 各种各样的方法， 有一种父亲给儿子在上学前的晚上在书包里面放置各种文具和生活用品的感觉。</p>
+
+<h4 id="13-小结">13. 小结</h4>
+<p>在本篇文章中， 介绍了过滤器模式， 简单工厂模式， 工厂模式， 抽象工厂模式， 建造者模式以及最后的外观模式， 加上前一篇文章的6种设计模式， 以及<code class="highlighter-rouge">I/O系统</code>这篇文章中提到的装饰模式和适配器模式， 总计14个。</p>
+
+<p>本想将所有的设计模式一次性码完， 但是有些低估其数量以及编写的demo数量了。 一方面时间有限， 另一方面是剩下的设计模式并没有给我一种很足的”设计”感， 以及其应用并不会很广泛， 并且比较简单， 所以关于设计模式的梳理， 到这里就暂时告一段落， 下面的两篇文章将会着重的对代理模式和观察者模式进行进一步的梳理， 包括<code class="highlighter-rouge">Django</code>源码的重新阅读。</p>
+
+<p>私以为理解设计模式的两个要点为理解面向对象编程以及6大设计原则， 当然在<code class="highlighter-rouge">Python</code>这种支持函数式编程的语言中， 种种设计原则将会进一步的被简化， 甚至被弱化。</p>
+
+<p>在最开始笔者对设计模式可谓是一脸懵逼， 一眼看过去根本不知道在说些什么。 转机发生在我学习了UML类图以及设计原则之后， 如果有小伙伴儿想要开始学习设计模式， 但是不知道从哪儿入手的话， 可以从这两个方面着手。</p>
+
+<p>最后推荐一本关于设计原则的书籍， 作者为 Robert C·Martin：</p>
+
+<blockquote>
+  <p>Agile Software Development: Principles, Patterns, and Practices
+中文译本为: 敏捷软件开发–原则、模式与实践</p>
+</blockquote>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Java基础编程(05)--常用的设计模式(02)&amp;url=https://smartkeyerror.comJava-Design-Pattern-02"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comJava-Design-Pattern-02"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comJava-Design-Pattern-02"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Reflect">
+            <section class="post">
+                <h2>Java基础编程(06)--反射</h2>
+                <p>为了保持Java基础编程系列的完整性， 反射机制还是写一下， 没有什么太难的地方。 在文章的最后与Python进行了一个对比和演示， 用于加深对这两种语言设计本身的理解。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Java-Design-Pattern">
+            <section class="post">
+                <h2>Java基础编程(04)--常用的设计模式(01)</h2>
+                <p>在前面I/O系统中介绍了装饰模式， 在接口与抽象类中介绍了适配器模式， 以及设计模式的基础， 设计原则。 设计模式其实并没有那么神秘， 那么复杂， 本质上仍然是六大设计原则的体现。 既然要写， 就把所有的设计模式统统讲完， 才有快感。 另外这篇文章同样也会结合Python语言中的设计模式一起进行梳理， 这样做会进一步的加深我们对设计模式的理解， 至少在我这里是这样的。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

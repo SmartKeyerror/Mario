@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+   
+      <title>smartkeyerror.com/</title>
+   
+   <link>https://smartkeyerror.com</link>
+   <description></description>
+   <language>en-uk</language>
+   <managingEditor> </managingEditor>
+   <atom:link href="rss" rel="self" type="application/rss+xml" />
+   
+	<item>
+	  <title>Java基础编程(03)--容器</title>
+	  <link>//Java-Container</link>
+	  <author></author>
+	  <pubDate>2018-12-01T04:49:09+00:00</pubDate>
+	  <guid>//Java-Container</guid>
+	  <description><![CDATA[
+	     <p><code class="highlighter-rouge">Java</code>中的各种容器类是对基本数据结构， 如顺序表， 链表， 平衡二叉树， 红黑树等最直接的体现， 容器在使用时最重要的就是其在不同的应用场景下的时间复杂度。 例如， 需要一个有序的容器， 需要频繁的向其头部和尾部分别执行删除和插入操作， 此时选择数组所实现的容器就非常的不明智。 所以， 如果想要彻底理解<code class="highlighter-rouge">Java</code>中的容器， 首先要理解计算机世界中的基础数据结构。 另外需要说明的是， 本篇博文没有任何代码， 只对各种容器的原理进行说明。</p>
+
+<!---more--->
+
+<h4 id="1-数组">1. 数组</h4>
+<p>毫无疑问， 数组结构是所有软件设计中最为重要的基础数据结构， 具有高效查找的哈希表也从数组结构而来。</p>
+
+<p>数组在底层由顺序表实现， 占据内存的一片连续空间， 结构紧凑， 每一个存储单元的大小固定。 在绝大多数语言中， 数组的下标从0开始。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2014-32-39%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>由于存储单元的大小是固定的(如果存储不同类型的数据， 此时存储单元中可以存放指针)， 所以在顺序表中按照下标查找元素是非常快速的， 假如每个存储空间内存占用为L， 顺序表起始空间地址为C, 则下标为i的元素在内存地址即为：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>C<span class="o">(</span>i<span class="o">)</span> <span class="o">=</span> C + L <span class="k">*</span> i
+</code></pre></div></div>
+<p>这也就促成了使用<code class="highlighter-rouge">a[0], a[10]</code>这样的方式来查找元素拥有极高的效率。 当我们向顺序表头部或者中间删除元素时， 由于需要保持元素的有序性， 所以需要将元素挨个儿的向左移动：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2014-32-57%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如果是插入元素， 则该索引后面的元素都需要向右移动。 那么在这种情况下， 我们称为其平均时间复杂度为O(n)。 这里对平均时间复杂度做一个简单的计算。 顺序表中包含n个元素， 向索引为0的存储空间插入元素， 则需要移动n个元素， 向索引为1的存储空间插入元素， 需要移动n-1个元素…向索引为i(i&lt;=n)的存储空间插入元素， 需要移动n-i个元素， 那么平均时间复杂度即为：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">(</span>n + <span class="o">(</span>n-1<span class="o">)</span> + <span class="o">(</span>n-2<span class="o">)</span> + ... + 0 <span class="o">)</span> / n <span class="o">=</span> <span class="o">(</span>n + 1<span class="o">)</span> / 2
+</code></pre></div></div>
+<p>当n无限大的时候， 系数所带来的影响微乎其微， 更为关键的是其增长趋势， 所以我们说其平均时间复杂度为O(n)。 有平均复杂度， 就会有最好和最坏的复杂度： 最坏的情况当然是索引为0的元素进行插入/删除操作， 复杂度为O(n); 最好情况则是在尾部插入/删除， 时间复杂度为O(1)。</p>
+
+<p>当我们像上图中声明了5个元素的数组， 并且顺序表以满时， 顺序表就需要进行扩容。 通常来讲每一次扩容都是当前顺序表容量的2倍， 在每次扩容时都需要在内存中新开辟一段连续空间， 然后将原有的元素挨个的复制到新表中。 这个过程的时间复杂度为O(n), 很浪费时间， 能不能不要？这里需要注意的一点就是： 并不是每一个的插入操作都会触发扩容操作， 比如操作100次才会触发扩容， 此时也就是复制100次元素数据而已， 均摊到每一次的操作上， 时间复杂度即为O(1)， 这种复杂度的计算称为均摊复杂度。</p>
+
+<h4 id="2-链表">2. 链表</h4>
+<p>链表也是顺序表的一种实现方式， 是一种最基础的动态数据结构。 链表的每一个节点都会保存着指向下一个节点的引用(指针)， 最后一个节点的引用为<code class="highlighter-rouge">null</code>或者<code class="highlighter-rouge">None</code>。 这样的结构使得链表完全不需要连续的存储空间， 只要有空闲的内存， 都可以作为节点进行存储， 只需要让上一个节点的引用指向自己， 并且自己的引用指向下一个节点即可。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2014-33-20%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>所以链表的下标查找是非常缓慢的， 因为必须要通过一个节点一个节点的查找， 才能找到我们想要的那个节点。 在单向链表中， 如果想要在链表的最后插入一个节点， 那么需要遍历整个链表， 为了优化这一场景， 我们可以在链表的头部添加一个引用， 使其指向最后一个节点。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2014-33-47%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>为了优化单向链表的下标查找效率， 就有了双向链表， 每一个节点都包含对上一个和下一个节点的引用。 如果查找的下标大于链表容量的1/2， 则可以从后往前进行查找：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2014-34-09%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>链表这种数据结构最大的意义就在于它不需要占用连续的内存空间， 删除节点和添加节点的操作不需要进行元素的平移(但是定位节点花费的时间要比顺序表多)， 能够最大化的利用内存空间， 这一点是顺序表无法做到的。</p>
+
+<h4 id="3-二分搜索树">3. 二分搜索树</h4>
+<p>二分搜索树(Binary Tree)是平衡二分搜索树以及红黑树的基础， 是一种有序的树结构。 二分搜索树的每一个节点都包一个左子节点和一个右子节点， 其中左子节点的值均小于根节点， 右子节点的值均大于根节点。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2015-02-19%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>当我们要查找值为17的元素时， 首先与根节点8进行比较， 发现大于8， 则移动到其右子节点10， 比较后发现仍大于该节点， 再次移动至其右子节点， 找到元素17。</p>
+
+<p>我们可能会有一个疑问， 既然数组已经是有序的了， 我使用二分搜索算法也能够很快的找到元素17， 那为什么还需要构建一颗树呢， 不是自找麻烦？ <strong>二分搜索树其实是一种基础数据结构， 主要用于构建更为高层的数据结构， 如集合， 字典等。</strong></p>
+
+<p>集合是一种数学概念， 为一个或多个没有重复元素所组成的一组数值。 如果使用二分搜索树来实现集合， 我们可以将元素的值保存在节点中， 并依照二分搜索树的规则建立一颗树， 当有重复元素插入时， 我们可以在O(logn)的时间复杂度上知道这是一个重复元素， 并放弃插入。</p>
+
+<p>字典是一种Key-Value的映射结构， 我们将key用以节点比较， value则存储在节点中， 同样地， 我们可以在O(logn)的时间复杂度上通过key来查找value。</p>
+
+<p>普通的平衡二叉树会有平衡失调的问题， 即其中一个子树非常高， 造成元素的查找为线性查找， 即O(n)， 平衡二叉搜索树以及红黑树则是专门用于解决平衡问题所产生的数据结构， 其元素特性与二分搜索树相同。</p>
+
+<h4 id="4-字典与集合的哈希表实现">4. 字典与集合的哈希表实现</h4>
+<p>哈希表是一种以空间换时间的抽象数据类型， 用于实现集合以及字典等高级数据结构， 其本质上仍为数组。</p>
+
+<p>散列技术， 将无限的数值映射到有限的空间中， 使其均匀分布。 评价一个哈希策略的好坏， 就是审视其散列是否均匀。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2015-43-14%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如上图所示， 我们需要将17个数字均匀的散列到下面的8个存储空间中， 这样一来， 一个存储空间就至少需要保存2个数字， 这种情况我们称为哈希冲突。 为了尽可能的避免哈希冲突， 我们需要在一开始分配比较大的数组空间， 这就是以空间换时间的第一层含义。</p>
+
+<p>那么为什么是用空间来换时间， 而不是换其它的东西呢？ 在第一节的顺序表梳理中我们知道顺序表的下标查找是非常之快的， 那么假如我们的哈希函数较好， 映射比较均匀， 当我们对元素调用哈希函数之后的值， 就是元素的下标会发生什么？</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2015-55-44%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如上图所示， 我们开辟了拥有12个存储空间的数组， 并将5个数字使用散列的方式放置于数组中， 散列的函数我们可以不管， 只需要知道对一个数字调用散列函数之后， 结果就是数组的下标即可。 此时我们查找元素就只需要执行两个步骤： 计算该元素的哈希结果， 将结果作为数组下标查找元素。</p>
+
+<p>这个过程非常快， 理论上的平均时间复杂度为O(1)， 即不管有多少个元素， 都能够在相同的时间内找到该元素。 这就是以空间换时间的第二层含义。</p>
+
+<h4 id="5-java中的容器类">5. Java中的容器类</h4>
+<p>其实在了解了数组， 链表， 平衡二叉树这些基础数据结构之后， <code class="highlighter-rouge">Java</code>中的容器类不说能达到”化境”的水平， 但至少随便一个类能搞清楚它可以应用于什么场景， 读写效率是什么样的， 对内存会有什么影响。</p>
+
+<p>甚至其它语言的高级数据类型， 例如<code class="highlighter-rouge">Python</code>, <code class="highlighter-rouge">Go</code>， 在彻底搞清楚了基础数据结构之后， 也是信手拈来， 这就是那20%的核心知识， 用于解决80%的问题。 所以这些基础知识， 是非常值得花大力气去突破和提高的。</p>
+
+<h4 id="6-list">6. List</h4>
+<p>在<code class="highlighter-rouge">Java</code>中， <code class="highlighter-rouge">List</code>的实现有<code class="highlighter-rouge">ArrayList</code>， 以及<code class="highlighter-rouge">LinkedList</code>， 底层分别由数组和链表实现。 下面对其优缺点以及使用场景进行分析：</p>
+
+<p><code class="highlighter-rouge">ArrayList</code>适用于频繁使用下标查找元素， 以及在列表的尾部进行插入和删除操作， 基于此特性， 使用<code class="highlighter-rouge">ArrayList</code>来实现一个栈最为合适。 由于数组所占用的内存空间必须连续的特性， 不适合存储大量的数据， 在存储大量的数据之后会对系统的内存空间分配造成一定影响。</p>
+
+<p><code class="highlighter-rouge">LinkedList</code>适用于对列表的头部， 尾部执行插入和删除操作， 基于此特性， 可以用来实现队列或者是双端队列。 链表所实现的列表不适合频繁的使用下标来查找元素。 由于链表不需要连续的内存空间， 所以链表在存储大量数据时要比数组具有更高的系统性能。</p>
+
+<h4 id="7-set">7. Set</h4>
+<p><code class="highlighter-rouge">Set</code>的实现要比<code class="highlighter-rouge">List</code>更为丰富， 一共有3种<code class="highlighter-rouge">Set</code>类：</p>
+
+<p><code class="highlighter-rouge">HashSet</code>在无特殊需求的情况下为首选集合类， 底层由哈希表实现， 也就是数组。 基本上数组的优缺点就是<code class="highlighter-rouge">HashSet</code>的优缺点， 查找速度非常快， 平均时间复杂度为<code class="highlighter-rouge">O(1)</code>，  但是会占据比<code class="highlighter-rouge">ArrayList</code>更多的内存空间， 用来降低哈希冲突。 另外， <code class="highlighter-rouge">HashSet</code>在产生哈希冲突时， 首先采用”拉链法”来解决， 当某一个数组节点所挂载的冲突节点过多时， 将会把链表转为红黑树以提高查找速率。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2017-23-02%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p><code class="highlighter-rouge">TreeSet</code>由红黑树所实现， 特点是能够保证插入元素的顺序， 插入元素的平均时间复杂度为<code class="highlighter-rouge">O(logn)</code>， 最坏情况下也是<code class="highlighter-rouge">O(logn)</code>， 因为是由树结构实现的， 所以不依赖连续的存储空间， 能够存放更多的元素。</p>
+
+<p><code class="highlighter-rouge">LinkedHashSet</code>是基于<code class="highlighter-rouge">HashSet</code>所实现的， 使用了链表来维护元素插入的次序， 但是底层仍然由哈希数组实现， 所以查询效率与<code class="highlighter-rouge">HashSet</code>相同， 缺点也与<code class="highlighter-rouge">HashSet</code>相同， 不再赘述。</p>
+
+<h4 id="8-map">8. Map</h4>
+<p><code class="highlighter-rouge">HashMap</code>在无特殊需求的情况下为首选字典类， 底层由哈希数组实现， 优缺点与<code class="highlighter-rouge">HashSet</code>相同。</p>
+
+<p><code class="highlighter-rouge">TreeMap</code>由红黑树所实现， 与<code class="highlighter-rouge">TreeSet</code>特点相同。</p>
+
+<p><code class="highlighter-rouge">LinkedHashMap</code>基于<code class="highlighter-rouge">HashMap</code>所实现， 同样维护了一个链表来保存元素的插入次序， 特点与<code class="highlighter-rouge">LinkedHashSet</code>相同。</p>
+
+<p><code class="highlighter-rouge">ConcurrentHashMap</code>为并发安全Map， 内部采用哈希数组以及分段锁的方式来实现其线程安全性以及查找/插入的高效性， 具体实现见本站<code class="highlighter-rouge">Java并发编程</code>系列。</p>
+
+<p><code class="highlighter-rouge">WeakHashMap</code>同样由哈希数组实现， 主要目的在于解决对象的垃圾收回问题。 <code class="highlighter-rouge">WeakHashMap</code>中键为弱键， 当映射之外没有引用指向某个弱键时， 该键将会被回收。</p>
+
+<h4 id="9-小结">9. 小结</h4>
+<p>在这篇文章中没有任何数据结构的代码实现， 仅讲述了每种数据结构的基本特性， 以及基于此所实现的<code class="highlighter-rouge">Java</code>容器类。 从<code class="highlighter-rouge">Set</code>和<code class="highlighter-rouge">Map</code>这两个小节可以看出， 这两个容器类是非常相似的， 理解了其中一个， 另一个也就随之理解了。</p>
+
+<p>笔者想在这里借助上面的比较过程传达一个观点： 软件的世界中很多知识都是相通的， 虽然看起来有无数种技术需要学习， 无数种框架需要会使用。 但是最最核心的知识真的只有20%， 在理解了这些知识之后， 足以解决开发以及生产中80%的问题， 而剩下的， 只不过是一些经验以及最佳实践而已。</p>
+
+	  ]]></description>
+	</item>
+
+
+</channel>
+</rss>

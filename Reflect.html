@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Java基础编程(06)--反射</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Reflect" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java基础编程(06)--反射" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//Reflect" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Java基础编程(06)--反射" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Reflect" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Java基础编程(06)--反射",
+    "url": "https://smartkeyerror.com//Reflect",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Java基础编程(06)--反射</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-12-07">07 Dec 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/Java基础'>Java基础</a>
+                    
+                
+                    
+                       <a href='/tag/Python基础'>Python基础</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>为了保持<code class="highlighter-rouge">Java基础编程</code>系列的完整性， 反射机制还是写一下， 没有什么太难的地方。 在文章的最后与<code class="highlighter-rouge">Python</code>进行了一个对比和演示， 用于加深对这两种语言设计本身的理解。</p>
+
+<!---more--->
+
+<h4 id="1-什么是反射">1. 什么是反射</h4>
+<p>以我目前的理解来看， 反射就是一种在运行时借助<code class="highlighter-rouge">Class</code>对象获取一个类所有信息的机制， 包括变量， 构造器以及方法等。 简单的来说就是使用某个产品的说明书， 反向的构造出这个产品， 在构造这个产品的时候， 会发现一些产品所隐藏的信息。</p>
+
+<p>更具体地来讲， 反射能够<strong>在运行时</strong>判断任意一个对象所属的类， 构造任意一个类的对象， 判断任意一个类所具有的成员变量和方法， 以及调用任意一个对象的方法， 包括私有方法。</p>
+
+<p>那么为什么需要有反射机制？ 反射机制在<code class="highlighter-rouge">RPC</code>框架下有着非常重要的应用， 此外， 像<code class="highlighter-rouge">SpringBoot</code>等Web框架也是基于反射机制而构建的， 并且更功利的讲， <code class="highlighter-rouge">EventBus</code>就是用的反射机制来实现观察者模式的。</p>
+
+<h4 id="2-什么是class对象">2. 什么是Class对象</h4>
+<p>我们知道使用多态机制能够简化代码的复杂度， 使代码更加的灵活， 如下面的代码片段：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">interface</span> <span class="nc">Animal</span> <span class="o">{</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">();</span> <span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Cat</span> <span class="kd">implements</span> <span class="n">Animal</span><span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Cat running"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Dog</span> <span class="kd">implements</span> <span class="n">Animal</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Dog running"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Square</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">game</span><span class="o">(</span><span class="n">Animal</span> <span class="n">animal</span><span class="o">)</span> <span class="o">{</span> <span class="n">animal</span><span class="o">.</span><span class="na">run</span><span class="o">();</span> <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>在这里我们只对操作基类(<code class="highlighter-rouge">Animal</code>)的引用， 这样一来如果想要对代码进行扩展， 我们可以很轻松的做到， 而不必更改原有的代码结构。 客户端的程序员使用泛化的<code class="highlighter-rouge">Animal</code>来调用<code class="highlighter-rouge">run</code>方法， 尽管对象被泛化了， 但是依然能够产生正确的行为， 那么这个就是多态机制。</p>
+
+<p><code class="highlighter-rouge">Java</code>多态机制的实现是通过<code class="highlighter-rouge">Class</code>对象所实现的， 任何一个<code class="highlighter-rouge">Java</code>类都会有一个唯一的<code class="highlighter-rouge">Class</code>对象， 保存在与类同名的<code class="highlighter-rouge">.class</code>文件中。</p>
+
+<h4 id="3-获取class对象">3. 获取Class对象</h4>
+<p>有3种方式可以获取<code class="highlighter-rouge">Class</code>对象， 第一个是<code class="highlighter-rouge">Class</code>类所提供的<code class="highlighter-rouge">forName</code>静态方法， 二是类字面量， 最后一个是<code class="highlighter-rouge">Object</code>对象所提供的<code class="highlighter-rouge">getClass</code>方法。</p>
+
+<h5 id="31-classforname">3.1 Class.forName</h5>
+<p>该静态方法接受一个完整的类名， 即<code class="highlighter-rouge">包名.类名</code>， 返回一个该类所对应的<code class="highlighter-rouge">Class</code>对象， 该方法会抛出<code class="highlighter-rouge">ClassNotFoundException</code>， 在没有找到该类的情况下。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">clazz</span> <span class="o">=</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="s">"chapter21.Reflection.Student"</span><span class="o">);</span>
+</code></pre></div></div>
+
+<h5 id="32-类字面量">3.2 类字面量</h5>
+<p>有时候我们可以直接导入一个类， 例如<code class="highlighter-rouge">ArrayList</code>， 那么此时就可以直接使用<code class="highlighter-rouge">ArrayList.class</code>来获取<code class="highlighter-rouge">Class</code>对象：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">arrayListClass</span> <span class="o">=</span> <span class="n">ArrayList</span><span class="o">.</span><span class="na">class</span><span class="o">;</span>
+</code></pre></div></div>
+
+<h5 id="33-objectgetclass">3.3 Object.getClass</h5>
+<p>有时候我们可以拿到一个实例对象， 通过该实例对象也可以获取到<code class="highlighter-rouge">Class</code>对象。 该方法是由<code class="highlighter-rouge">Object</code>所提供的， 也就是说任意一个对象都可以使用：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">String</span> <span class="n">fullName</span> <span class="o">=</span> <span class="s">"SmartKeyerror"</span><span class="o">;</span>
+<span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">stringClass</span> <span class="o">=</span> <span class="n">fullName</span><span class="o">.</span><span class="na">getClass</span><span class="o">();</span>
+</code></pre></div></div>
+
+<h4 id="4-获取类结构信息">4. 获取类结构信息</h4>
+<p>一个类， 通常由成员变量， 构造函数， 成员方法， 静态方法等所组成， <code class="highlighter-rouge">Class</code>对象提供了一系的方法来获取这些信息。</p>
+
+<p>首先定义一个测试类：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">Student</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">ID</span> <span class="o">=</span> <span class="mi">10</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="n">String</span> <span class="n">name</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="n">String</span> <span class="nf">getName</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="n">name</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setName</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span> <span class="k">this</span><span class="o">.</span><span class="na">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="n">String</span> <span class="nf">toString</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="s">"Student: "</span> <span class="o">+</span> <span class="n">name</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">printHello</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"hello~"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>通过<code class="highlighter-rouge">getDeclaredMethods</code>可以获取所有的方法， 包括私有， 静态以及成员方法：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">clazz</span> <span class="o">=</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="s">"chapter21.Reflection.Student"</span><span class="o">);</span>
+<span class="cm">/* 方法返回Method对象所组成的数组 */</span>
+<span class="n">Method</span><span class="o">[]</span> <span class="n">methods</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getDeclaredMethods</span><span class="o">();</span>
+<span class="cm">/* 打印所有的方法名称 */</span>
+<span class="n">Arrays</span><span class="o">.</span><span class="na">stream</span><span class="o">(</span><span class="n">methods</span><span class="o">).</span><span class="na">forEach</span><span class="o">(</span><span class="n">t</span> <span class="o">-&gt;</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">t</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span> <span class="o">});</span>
+</code></pre></div></div>
+
+<p>通过<code class="highlighter-rouge">getDeclaredFields</code>可以获得所有的变量， 包括私有， 静态以及成员变量：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Field</span><span class="o">[]</span> <span class="n">fields</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getDeclaredFields</span><span class="o">();</span>
+<span class="n">Arrays</span><span class="o">.</span><span class="na">stream</span><span class="o">(</span><span class="n">fields</span><span class="o">).</span><span class="na">forEach</span><span class="o">(</span><span class="n">t</span> <span class="o">-&gt;</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">t</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span> <span class="o">});</span>
+</code></pre></div></div>
+
+<p>通过<code class="highlighter-rouge">getDeclaredConstructors</code>可以获取所有的构造方法， 包括私有的构造方法：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Constructor</span><span class="o">[]</span> <span class="n">constructors</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getDeclaredConstructors</span><span class="o">();</span>
+<span class="n">Arrays</span><span class="o">.</span><span class="na">stream</span><span class="o">(</span><span class="n">constructors</span><span class="o">).</span><span class="na">forEach</span><span class="o">(</span><span class="n">t</span> <span class="o">-&gt;</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">t</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span> <span class="o">});</span>
+</code></pre></div></div>
+
+<p>除了这三个方法以外， 对应的， 还有<code class="highlighter-rouge">getMethods</code>， <code class="highlighter-rouge">getFields</code>， <code class="highlighter-rouge">getConstructors</code>， 这三个方法作用与上面的相同， 只不过无法获取私有的方法， 变量或者是构造器而已。</p>
+
+<p>通过这些方法我们基本上已经能够较为完整的还原出一个类的结构了， 能够知道一个变量是否私有， 名称以及类型； 方法是否私有， 返回类型以及参数类型， 但是无法获取函数的方法体代码， 这个是无法做到的。 以及构造函数的数量和参数类型这些信息。</p>
+
+<h4 id="5-获取准确信息">5. 获取准确信息</h4>
+<p>从全局的角度来看， 我们能够通过<code class="highlighter-rouge">Class</code>对象获取各种方法和各种变量所组成的数组， 同样地， 可以根据一些条件来准确的获取单一的方法或者是变量。</p>
+
+<p>在一个类中， 区分一个函数的两个标志就是函数名称和参数类型(虽然参数类型的顺序也可以用来区分， 但是这属于极差的编码习惯)， 同样的， 可以使用这两个信息来准确的找出我们想要的方法：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* 获取setName方法, 参数为函数名称以及参数类型的Class对象 */</span>
+<span class="n">Method</span> <span class="n">setNameMethod</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getMethod</span><span class="o">(</span><span class="s">"setName"</span><span class="o">,</span> <span class="n">String</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+
+<span class="cm">/* 获取该类的一个实例， 相当于new Student()， 使用无参构造函数 */</span>
+<span class="n">Object</span> <span class="n">instance</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
+
+<span class="cm">/* 调用该方法， 由于是成员方法， 所以得有个实例 */</span>
+<span class="n">setNameMethod</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">instance</span><span class="o">,</span> <span class="s">"smart"</span><span class="o">);</span>
+
+<span class="cm">/* 检测方法调用是否成功 */</span>
+<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(((</span><span class="n">Student</span><span class="o">)</span><span class="n">instance</span><span class="o">).</span><span class="na">getName</span><span class="o">());</span>
+</code></pre></div></div>
+
+<p>获取字段的准确信息要简单一些， 因为字段名称本就是唯一的：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Field</span> <span class="n">nameField</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">"name"</span><span class="o">);</span>
+<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">nameField</span><span class="o">.</span><span class="na">getType</span><span class="o">().</span><span class="na">getName</span><span class="o">());</span>
+</code></pre></div></div>
+
+<p>基本上这些就是反射机制的核心内容了， 剩下的就是一些细节的处理， 这些内容可以通过查看javadoc来进行了解。</p>
+
+<h4 id="6-python中的反射机制">6. Python中的反射机制</h4>
+<p>没有对比就没有伤害， <code class="highlighter-rouge">Python</code>作为一个面向对象的语言， 与<code class="highlighter-rouge">Java</code>一样， 拥有反射机制， 只不过<code class="highlighter-rouge">Python</code>中， 大家更乐意称之为特殊方法， 并且获取信息更加的方便。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Student</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="s">"""
+    This is Student class
+    """</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__name</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__name</span>
+
+    <span class="k">def</span> <span class="nf">set_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__name</span> <span class="o">=</span> <span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">__private_method</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"This is private"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>我们可以通过以<code class="highlighter-rouge">__</code>开头的一些特殊方法来获取指定类的结构信息， 例如使用<code class="highlighter-rouge">Student.__dict__</code>来获取<code class="highlighter-rouge">Student</code>的所有方法和一些基本属性：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span>
+    <span class="s">'__module__'</span><span class="p">:</span> <span class="s">'__main__'</span><span class="p">,</span>
+    <span class="s">'__doc__'</span><span class="p">:</span> <span class="s">'</span><span class="se">\n</span><span class="s">    This is Student class</span><span class="se">\n</span><span class="s">    '</span><span class="p">,</span>
+    <span class="s">'__init__'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">function</span> <span class="n">Student</span><span class="o">.</span><span class="n">__init__</span> <span class="n">at</span> <span class="mh">0x7f2d7403b510</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="s">'get_name'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">function</span> <span class="n">Student</span><span class="o">.</span><span class="n">get_name</span> <span class="n">at</span> <span class="mh">0x7f2d722e49d8</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="s">'set_name'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">function</span> <span class="n">Student</span><span class="o">.</span><span class="n">set_name</span> <span class="n">at</span> <span class="mh">0x7f2d722e4950</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="s">'_Student__private_method'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">function</span> <span class="n">Student</span><span class="o">.</span><span class="n">__private_method</span> <span class="n">at</span> <span class="mh">0x7f2d722e4a60</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="s">'__dict__'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">attribute</span> <span class="s">'__dict__'</span> <span class="n">of</span> <span class="s">'Student'</span> <span class="n">objects</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="s">'__weakref__'</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">attribute</span> <span class="s">'__weakref__'</span> <span class="n">of</span> <span class="s">'Student'</span> <span class="n">objects</span><span class="o">&gt;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>可以看到<code class="highlighter-rouge">Python</code>中的私有方法其实最终会变成<code class="highlighter-rouge">_Student__private_method</code>， 我们是可以直接调用这个方法的。</p>
+
+<p>通过实例的<code class="highlighter-rouge">__class__</code>方法可以获取实例的类信息：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">print</span><span class="p">(</span><span class="n">Student</span><span class="p">()</span><span class="o">.</span><span class="n">__class__</span><span class="p">)</span>
+
+<span class="o">&lt;</span><span class="k">class</span> <span class="err">'</span><span class="nc">__main__</span><span class="o">.</span><span class="n">Student</span><span class="s">'&gt;</span><span class="err">
+</span></code></pre></div></div>
+
+<p>由于实例变量是可以动态添加和修改的， 所以获取这个信息没有什么太大意义， <code class="highlighter-rouge">Python</code>也没有提供。</p>
+
+<p>两种语言对同一个机制放在一起做对比， 很容易就能发现两者的不同， 以及进一步加深对语言本身的理解。 做对比的主要目的还是想传达自己的一个观点： 编程语言， 在很大程度上都是互通的。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Java基础编程(06)--反射&amp;url=https://smartkeyerror.comReflect"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comReflect"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comReflect"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Ansible">
+            <section class="post">
+                <h2>DevOps基础(2)--Ansible自动化运维工具</h2>
+                <p>Shell脚本能够为我们提供一部分的系统运维功能， 例如定时任务， 由Jenkins所管理的边缘触发任务等等， 但是如果想要对多台服务器进行管理和运维， 就需要Ansible来协助完成。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Java-Design-Pattern-02">
+            <section class="post">
+                <h2>Java基础编程(05)--常用的设计模式(02)</h2>
+                <p>在前面的一篇文章中大致了描述了单例模式， 原型模式， 策略模式， 责任链模式， 代理模式以及观察者模式， 本文接上。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

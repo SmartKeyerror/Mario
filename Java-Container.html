@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Java基础编程(03)--容器</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Java-Container" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java基础编程(03)--容器" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//Java-Container" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Java基础编程(03)--容器" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Java-Container" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Java基础编程(03)--容器",
+    "url": "https://smartkeyerror.com//Java-Container",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Java基础编程(03)--容器</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-12-01">01 Dec 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/Java基础'>Java基础</a>
+                    
+                
+                    
+                       <a href='/tag/数据结构'>数据结构</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p><code class="highlighter-rouge">Java</code>中的各种容器类是对基本数据结构， 如顺序表， 链表， 平衡二叉树， 红黑树等最直接的体现， 容器在使用时最重要的就是其在不同的应用场景下的时间复杂度。 例如， 需要一个有序的容器， 需要频繁的向其头部和尾部分别执行删除和插入操作， 此时选择数组所实现的容器就非常的不明智。 所以， 如果想要彻底理解<code class="highlighter-rouge">Java</code>中的容器， 首先要理解计算机世界中的基础数据结构。 另外需要说明的是， 本篇博文没有任何代码， 只对各种容器的原理进行说明。</p>
+
+<!---more--->
+
+<h4 id="1-数组">1. 数组</h4>
+<p>毫无疑问， 数组结构是所有软件设计中最为重要的基础数据结构， 具有高效查找的哈希表也从数组结构而来。</p>
+
+<p>数组在底层由顺序表实现， 占据内存的一片连续空间， 结构紧凑， 每一个存储单元的大小固定。 在绝大多数语言中， 数组的下标从0开始。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2014-32-39%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>由于存储单元的大小是固定的(如果存储不同类型的数据， 此时存储单元中可以存放指针)， 所以在顺序表中按照下标查找元素是非常快速的， 假如每个存储空间内存占用为L， 顺序表起始空间地址为C, 则下标为i的元素在内存地址即为：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>C<span class="o">(</span>i<span class="o">)</span> <span class="o">=</span> C + L <span class="k">*</span> i
+</code></pre></div></div>
+<p>这也就促成了使用<code class="highlighter-rouge">a[0], a[10]</code>这样的方式来查找元素拥有极高的效率。 当我们向顺序表头部或者中间删除元素时， 由于需要保持元素的有序性， 所以需要将元素挨个儿的向左移动：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2014-32-57%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如果是插入元素， 则该索引后面的元素都需要向右移动。 那么在这种情况下， 我们称为其平均时间复杂度为O(n)。 这里对平均时间复杂度做一个简单的计算。 顺序表中包含n个元素， 向索引为0的存储空间插入元素， 则需要移动n个元素， 向索引为1的存储空间插入元素， 需要移动n-1个元素…向索引为i(i&lt;=n)的存储空间插入元素， 需要移动n-i个元素， 那么平均时间复杂度即为：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">(</span>n + <span class="o">(</span>n-1<span class="o">)</span> + <span class="o">(</span>n-2<span class="o">)</span> + ... + 0 <span class="o">)</span> / n <span class="o">=</span> <span class="o">(</span>n + 1<span class="o">)</span> / 2
+</code></pre></div></div>
+<p>当n无限大的时候， 系数所带来的影响微乎其微， 更为关键的是其增长趋势， 所以我们说其平均时间复杂度为O(n)。 有平均复杂度， 就会有最好和最坏的复杂度： 最坏的情况当然是索引为0的元素进行插入/删除操作， 复杂度为O(n); 最好情况则是在尾部插入/删除， 时间复杂度为O(1)。</p>
+
+<p>当我们像上图中声明了5个元素的数组， 并且顺序表以满时， 顺序表就需要进行扩容。 通常来讲每一次扩容都是当前顺序表容量的2倍， 在每次扩容时都需要在内存中新开辟一段连续空间， 然后将原有的元素挨个的复制到新表中。 这个过程的时间复杂度为O(n), 很浪费时间， 能不能不要？这里需要注意的一点就是： 并不是每一个的插入操作都会触发扩容操作， 比如操作100次才会触发扩容， 此时也就是复制100次元素数据而已， 均摊到每一次的操作上， 时间复杂度即为O(1)， 这种复杂度的计算称为均摊复杂度。</p>
+
+<h4 id="2-链表">2. 链表</h4>
+<p>链表也是顺序表的一种实现方式， 是一种最基础的动态数据结构。 链表的每一个节点都会保存着指向下一个节点的引用(指针)， 最后一个节点的引用为<code class="highlighter-rouge">null</code>或者<code class="highlighter-rouge">None</code>。 这样的结构使得链表完全不需要连续的存储空间， 只要有空闲的内存， 都可以作为节点进行存储， 只需要让上一个节点的引用指向自己， 并且自己的引用指向下一个节点即可。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2014-33-20%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>所以链表的下标查找是非常缓慢的， 因为必须要通过一个节点一个节点的查找， 才能找到我们想要的那个节点。 在单向链表中， 如果想要在链表的最后插入一个节点， 那么需要遍历整个链表， 为了优化这一场景， 我们可以在链表的头部添加一个引用， 使其指向最后一个节点。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2014-33-47%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>为了优化单向链表的下标查找效率， 就有了双向链表， 每一个节点都包含对上一个和下一个节点的引用。 如果查找的下标大于链表容量的1/2， 则可以从后往前进行查找：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2014-34-09%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>链表这种数据结构最大的意义就在于它不需要占用连续的内存空间， 删除节点和添加节点的操作不需要进行元素的平移(但是定位节点花费的时间要比顺序表多)， 能够最大化的利用内存空间， 这一点是顺序表无法做到的。</p>
+
+<h4 id="3-二分搜索树">3. 二分搜索树</h4>
+<p>二分搜索树(Binary Tree)是平衡二分搜索树以及红黑树的基础， 是一种有序的树结构。 二分搜索树的每一个节点都包一个左子节点和一个右子节点， 其中左子节点的值均小于根节点， 右子节点的值均大于根节点。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2015-02-19%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>当我们要查找值为17的元素时， 首先与根节点8进行比较， 发现大于8， 则移动到其右子节点10， 比较后发现仍大于该节点， 再次移动至其右子节点， 找到元素17。</p>
+
+<p>我们可能会有一个疑问， 既然数组已经是有序的了， 我使用二分搜索算法也能够很快的找到元素17， 那为什么还需要构建一颗树呢， 不是自找麻烦？ <strong>二分搜索树其实是一种基础数据结构， 主要用于构建更为高层的数据结构， 如集合， 字典等。</strong></p>
+
+<p>集合是一种数学概念， 为一个或多个没有重复元素所组成的一组数值。 如果使用二分搜索树来实现集合， 我们可以将元素的值保存在节点中， 并依照二分搜索树的规则建立一颗树， 当有重复元素插入时， 我们可以在O(logn)的时间复杂度上知道这是一个重复元素， 并放弃插入。</p>
+
+<p>字典是一种Key-Value的映射结构， 我们将key用以节点比较， value则存储在节点中， 同样地， 我们可以在O(logn)的时间复杂度上通过key来查找value。</p>
+
+<p>普通的平衡二叉树会有平衡失调的问题， 即其中一个子树非常高， 造成元素的查找为线性查找， 即O(n)， 平衡二叉搜索树以及红黑树则是专门用于解决平衡问题所产生的数据结构， 其元素特性与二分搜索树相同。</p>
+
+<h4 id="4-字典与集合的哈希表实现">4. 字典与集合的哈希表实现</h4>
+<p>哈希表是一种以空间换时间的抽象数据类型， 用于实现集合以及字典等高级数据结构， 其本质上仍为数组。</p>
+
+<p>散列技术， 将无限的数值映射到有限的空间中， 使其均匀分布。 评价一个哈希策略的好坏， 就是审视其散列是否均匀。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2015-43-14%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如上图所示， 我们需要将17个数字均匀的散列到下面的8个存储空间中， 这样一来， 一个存储空间就至少需要保存2个数字， 这种情况我们称为哈希冲突。 为了尽可能的避免哈希冲突， 我们需要在一开始分配比较大的数组空间， 这就是以空间换时间的第一层含义。</p>
+
+<p>那么为什么是用空间来换时间， 而不是换其它的东西呢？ 在第一节的顺序表梳理中我们知道顺序表的下标查找是非常之快的， 那么假如我们的哈希函数较好， 映射比较均匀， 当我们对元素调用哈希函数之后的值， 就是元素的下标会发生什么？</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2015-55-44%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如上图所示， 我们开辟了拥有12个存储空间的数组， 并将5个数字使用散列的方式放置于数组中， 散列的函数我们可以不管， 只需要知道对一个数字调用散列函数之后， 结果就是数组的下标即可。 此时我们查找元素就只需要执行两个步骤： 计算该元素的哈希结果， 将结果作为数组下标查找元素。</p>
+
+<p>这个过程非常快， 理论上的平均时间复杂度为O(1)， 即不管有多少个元素， 都能够在相同的时间内找到该元素。 这就是以空间换时间的第二层含义。</p>
+
+<h4 id="5-java中的容器类">5. Java中的容器类</h4>
+<p>其实在了解了数组， 链表， 平衡二叉树这些基础数据结构之后， <code class="highlighter-rouge">Java</code>中的容器类不说能达到”化境”的水平， 但至少随便一个类能搞清楚它可以应用于什么场景， 读写效率是什么样的， 对内存会有什么影响。</p>
+
+<p>甚至其它语言的高级数据类型， 例如<code class="highlighter-rouge">Python</code>, <code class="highlighter-rouge">Go</code>， 在彻底搞清楚了基础数据结构之后， 也是信手拈来， 这就是那20%的核心知识， 用于解决80%的问题。 所以这些基础知识， 是非常值得花大力气去突破和提高的。</p>
+
+<h4 id="6-list">6. List</h4>
+<p>在<code class="highlighter-rouge">Java</code>中， <code class="highlighter-rouge">List</code>的实现有<code class="highlighter-rouge">ArrayList</code>， 以及<code class="highlighter-rouge">LinkedList</code>， 底层分别由数组和链表实现。 下面对其优缺点以及使用场景进行分析：</p>
+
+<p><code class="highlighter-rouge">ArrayList</code>适用于频繁使用下标查找元素， 以及在列表的尾部进行插入和删除操作， 基于此特性， 使用<code class="highlighter-rouge">ArrayList</code>来实现一个栈最为合适。 由于数组所占用的内存空间必须连续的特性， 不适合存储大量的数据， 在存储大量的数据之后会对系统的内存空间分配造成一定影响。</p>
+
+<p><code class="highlighter-rouge">LinkedList</code>适用于对列表的头部， 尾部执行插入和删除操作， 基于此特性， 可以用来实现队列或者是双端队列。 链表所实现的列表不适合频繁的使用下标来查找元素。 由于链表不需要连续的内存空间， 所以链表在存储大量数据时要比数组具有更高的系统性能。</p>
+
+<h4 id="7-set">7. Set</h4>
+<p><code class="highlighter-rouge">Set</code>的实现要比<code class="highlighter-rouge">List</code>更为丰富， 一共有3种<code class="highlighter-rouge">Set</code>类：</p>
+
+<p><code class="highlighter-rouge">HashSet</code>在无特殊需求的情况下为首选集合类， 底层由哈希表实现， 也就是数组。 基本上数组的优缺点就是<code class="highlighter-rouge">HashSet</code>的优缺点， 查找速度非常快， 平均时间复杂度为<code class="highlighter-rouge">O(1)</code>，  但是会占据比<code class="highlighter-rouge">ArrayList</code>更多的内存空间， 用来降低哈希冲突。 另外， <code class="highlighter-rouge">HashSet</code>在产生哈希冲突时， 首先采用”拉链法”来解决， 当某一个数组节点所挂载的冲突节点过多时， 将会把链表转为红黑树以提高查找速率。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-23%2017-23-02%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p><code class="highlighter-rouge">TreeSet</code>由红黑树所实现， 特点是能够保证插入元素的顺序， 插入元素的平均时间复杂度为<code class="highlighter-rouge">O(logn)</code>， 最坏情况下也是<code class="highlighter-rouge">O(logn)</code>， 因为是由树结构实现的， 所以不依赖连续的存储空间， 能够存放更多的元素。</p>
+
+<p><code class="highlighter-rouge">LinkedHashSet</code>是基于<code class="highlighter-rouge">HashSet</code>所实现的， 使用了链表来维护元素插入的次序， 但是底层仍然由哈希数组实现， 所以查询效率与<code class="highlighter-rouge">HashSet</code>相同， 缺点也与<code class="highlighter-rouge">HashSet</code>相同， 不再赘述。</p>
+
+<h4 id="8-map">8. Map</h4>
+<p><code class="highlighter-rouge">HashMap</code>在无特殊需求的情况下为首选字典类， 底层由哈希数组实现， 优缺点与<code class="highlighter-rouge">HashSet</code>相同。</p>
+
+<p><code class="highlighter-rouge">TreeMap</code>由红黑树所实现， 与<code class="highlighter-rouge">TreeSet</code>特点相同。</p>
+
+<p><code class="highlighter-rouge">LinkedHashMap</code>基于<code class="highlighter-rouge">HashMap</code>所实现， 同样维护了一个链表来保存元素的插入次序， 特点与<code class="highlighter-rouge">LinkedHashSet</code>相同。</p>
+
+<p><code class="highlighter-rouge">ConcurrentHashMap</code>为并发安全Map， 内部采用哈希数组以及分段锁的方式来实现其线程安全性以及查找/插入的高效性， 具体实现见本站<code class="highlighter-rouge">Java并发编程</code>系列。</p>
+
+<p><code class="highlighter-rouge">WeakHashMap</code>同样由哈希数组实现， 主要目的在于解决对象的垃圾收回问题。 <code class="highlighter-rouge">WeakHashMap</code>中键为弱键， 当映射之外没有引用指向某个弱键时， 该键将会被回收。</p>
+
+<h4 id="9-小结">9. 小结</h4>
+<p>在这篇文章中没有任何数据结构的代码实现， 仅讲述了每种数据结构的基本特性， 以及基于此所实现的<code class="highlighter-rouge">Java</code>容器类。 从<code class="highlighter-rouge">Set</code>和<code class="highlighter-rouge">Map</code>这两个小节可以看出， 这两个容器类是非常相似的， 理解了其中一个， 另一个也就随之理解了。</p>
+
+<p>笔者想在这里借助上面的比较过程传达一个观点： 软件的世界中很多知识都是相通的， 虽然看起来有无数种技术需要学习， 无数种框架需要会使用。 但是最最核心的知识真的只有20%， 在理解了这些知识之后， 足以解决开发以及生产中80%的问题， 而剩下的， 只不过是一些经验以及最佳实践而已。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Java基础编程(03)--容器&amp;url=https://smartkeyerror.comJava-Container"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comJava-Container"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comJava-Container"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Java-Design-Pattern">
+            <section class="post">
+                <h2>Java基础编程(04)--常用的设计模式(01)</h2>
+                <p>在前面I/O系统中介绍了装饰模式， 在接口与抽象类中介绍了适配器模式， 以及设计模式的基础， 设计原则。 设计模式其实并没有那么神秘， 那么复杂， 本质上仍然是六大设计原则的体现。 既然要写， 就把所有的设计模式统统讲完， 才有快感。 另外这篇文章同样也会结合Python语言中的设计模式一起进行梳理， 这样做会进一步的加深我们对设计模式的理解， 至少在我这里是这样的。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Java-Interface-and-abstract-class">
+            <section class="post">
+                <h2>Java基础编程(02)--接口与抽象类</h2>
+                <p>在Java中， 我认为接口和抽象类是能够让”匠人”充分发挥其想象力和创造力的地方， 这两个类结构使得软件大师们能够编写出精美， 优雅和巧妙的代码。 而在我这种低端程序员手中， 它仅仅只是一个结构而已， 离品尝到其设计精髓不知还隔着多少座大山。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

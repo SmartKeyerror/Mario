@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>binlog的正确打开方式</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//MySQL-binlog" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="binlog的正确打开方式" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//MySQL-binlog" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="binlog的正确打开方式" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//MySQL-binlog" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "binlog的正确打开方式",
+    "url": "https://smartkeyerror.com//MySQL-binlog",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">binlog的正确打开方式</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-10-23">23 Oct 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在前面的主从复制中我们提到了bin-log， 主从复制中bing-log主要作为一种增量复制的方法进行主库与从库的同步。 在日常生产中， bin-log常常也作为实时数据恢复的必要手段。</p>
+
+<!---more--->
+
+<h4 id="1-配置binlog">1. 配置binlog</h4>
+
+<p>binlog二进制日志的格式有<code class="highlighter-rouge">statement</code>, <code class="highlighter-rouge">row</code>以及<code class="highlighter-rouge">mixed</code>。 其中<code class="highlighter-rouge">statement</code>格式只会记录增删改以及对表结构变动的SQL语句， 即<code class="highlighter-rouge">update xx set xxx</code>， 不会保存数据改动前的信息， 磁盘占用空间少。 <code class="highlighter-rouge">row</code>格式将会记录完整的数据改动前后信息， 对数据的修改更加直观， 但占用磁盘空间更多。 <code class="highlighter-rouge">mixed</code>为<code class="highlighter-rouge">statement</code>模式和<code class="highlighter-rouge">row</code>模式的混合， 当出现了对表结构的修改(修改， 删除字段)， 为了避免日志中记录海量的信息， 此时MySQL会采用<code class="highlighter-rouge">statement</code>模式记录<code class="highlighter-rouge">alter table</code>， 对于对数据的增删改记录每一行的信息变动。
+具体的日志格式参考博文MySQL主从复制。
+通常来讲二进制日志的打开比较的简单， ubuntu 18.04下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vim /etc/mysql/mysql.conf.d/mysqld.cnf
+
+server-id <span class="o">=</span> 2                           <span class="c"># 保持server-id在MySQL集群中的唯一性</span>
+log_bin <span class="o">=</span> /var/log/mysql/mysql-bin.log  <span class="c"># 记录binlog的文件位置</span>
+expire_logs_days <span class="o">=</span> 10                   <span class="c"># binlog日志过期时间</span>
+max_binlog_size <span class="o">=</span> 100M                  <span class="c"># 单个binlog允许的最大文件值</span>
+</code></pre></div></div>
+
+<p>配置完成需要对MySQL进行重启。</p>
+
+<h4 id="2-选择哪一种日志格式">2. 选择哪一种日志格式</h4>
+
+<p>前面已经描述了3种日志格式， 在MySQL 5.7 版本中默认为<code class="highlighter-rouge">Row</code>格式。 <code class="highlighter-rouge">statement</code>格式在日志恢复以及主从复制中会出现较多的问题， 所以该格式不予考虑。 <code class="highlighter-rouge">Row</code>格式和<code class="highlighter-rouge">Mixed</code>格式基本能够满足我们的要求， 可以选择其中的一个。
+此外， 在<code class="highlighter-rouge">Row</code>模式下还有3个可选的日志格式： <code class="highlighter-rouge">FULL</code>, <code class="highlighter-rouge">MINIMAL</code>, <code class="highlighter-rouge">NOBLOB</code>。 其中<code class="highlighter-rouge">FULL</code>格式将会记录所有的数据上下文， <code class="highlighter-rouge">MINIMAL</code>只会记录被修改的字段， <code class="highlighter-rouge">NOBLOB</code>在<code class="highlighter-rouge">text</code>字段下记录部分上下文， 其余为完整上下文。
+当我们有足够的带宽以及磁盘空间， 并且能够保证主从复制之间的网络连接是稳定的情况下， 尽量使用<code class="highlighter-rouge">FULL</code>模式， 更多的信息会带来更好的恢复以及查看。 当主库的更新频率以及数量较大时， 选择<code class="highlighter-rouge">MINIMAL</code>以保证主从复制的低延迟性。</p>
+
+<h4 id="3-常用的查看相关配置的命令">3. 常用的查看相关配置的命令</h4>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- 给出完整的binlog配置信息， 但是没有日志记录的路径以及二进制日志是否开启的信息</span>
+<span class="k">show</span> <span class="n">variables</span> <span class="k">like</span> <span class="nv">"%binlog%"</span><span class="p">;</span>
+
+<span class="c1">-- 给出binlog是否开启以及binlog所在磁盘位置信息</span>
+<span class="k">show</span> <span class="n">variables</span> <span class="k">like</span> <span class="nv">"%log_bin%"</span><span class="p">;</span>
+
+<span class="c1">-- 给出当前binlog写入文件名以及当前binlog的偏移量</span>
+<span class="k">show</span> <span class="n">master</span> <span class="n">status</span><span class="p">;</span>
+
+<span class="c1">-- 给出所有的binlog所记录的偏移量</span>
+<span class="k">show</span> <span class="n">master</span> <span class="n">logs</span><span class="p">;</span>
+
+<span class="c1">-- 在shell中对binlog进行解析， -vv参数针对于Row格式的binlog</span>
+<span class="n">sudo</span> <span class="n">mysqlbinlog</span> <span class="o">-</span><span class="n">vv</span> <span class="n">mysql</span><span class="o">-</span><span class="n">bin</span><span class="p">.</span><span class="mi">000005</span>
+</code></pre></div></div>
+
+<h4 id="4-错误的binlog数据恢复">4. 错误的binlog数据恢复</h4>
+
+<p>binlog并没有我们想象中的那么复杂， 但是也没有那么容易。 如果在某个时间点数据遭到损坏， 然后使用：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>myslbinlog <span class="nt">-vv</span> <span class="nv">start_positon</span><span class="o">=</span>153 <span class="nv">end_position</span><span class="o">=</span>724 <span class="nt">--database</span><span class="o">=</span>temp | mysql <span class="nt">-uroot</span> <span class="nt">-p</span> temp
+</code></pre></div></div>
+
+<p>这种方式进行恢复的话， 99%的情况下都会失败。 binlog恢复的原理与主从复制完全相同， 将一定时间区间内的SQL语句重新执行(statement)或者直接进行数据库修改(row)， 假如我们的binlog如下方所示：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">###</span> <span class="k">INSERT</span> <span class="k">INTO</span> <span class="nv">`repl_test`</span><span class="p">.</span><span class="nv">`new_table`</span>
+<span class="o">###</span> <span class="k">SET</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">1</span><span class="o">=</span><span class="mi">6</span> <span class="cm">/* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">2</span><span class="o">=</span><span class="s1">'haha'</span> <span class="cm">/* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">3</span><span class="o">=</span><span class="s1">'29'</span> <span class="cm">/* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
+<span class="o">#</span> <span class="k">at</span> <span class="mi">2761</span>
+
+<span class="o">###</span> <span class="k">INSERT</span> <span class="k">INTO</span> <span class="nv">`repl_test`</span><span class="p">.</span><span class="nv">`student`</span>
+<span class="o">###</span> <span class="k">SET</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">1</span><span class="o">=</span><span class="mi">3</span> <span class="cm">/* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">2</span><span class="o">=</span><span class="s1">'Ray'</span> <span class="cm">/* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">3</span><span class="o">=</span><span class="s1">'women'</span> <span class="cm">/* VARSTRING(135) meta=135 nullable=1 is_null=0 */</span>
+<span class="o">#</span> <span class="k">at</span> <span class="mi">3036</span>
+
+<span class="o">###</span> <span class="k">UPDATE</span> <span class="nv">`repl_test`</span><span class="p">.</span><span class="nv">`new_table`</span>
+<span class="o">###</span> <span class="k">WHERE</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">1</span><span class="o">=</span><span class="mi">6</span> <span class="cm">/* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">2</span><span class="o">=</span><span class="s1">'haha'</span> <span class="cm">/* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">3</span><span class="o">=</span><span class="s1">'29'</span> <span class="cm">/* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
+<span class="o">###</span> <span class="k">SET</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">1</span><span class="o">=</span><span class="mi">6</span> <span class="cm">/* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">2</span><span class="o">=</span><span class="s1">'haha'</span> <span class="cm">/* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">3</span><span class="o">=</span><span class="s1">'27'</span> <span class="cm">/* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
+<span class="o">#</span> <span class="k">at</span> <span class="mi">3325</span>
+
+<span class="o">###</span> <span class="k">DELETE</span> <span class="k">FROM</span> <span class="nv">`repl_test`</span><span class="p">.</span><span class="nv">`new_table`</span>
+<span class="o">###</span> <span class="k">WHERE</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">1</span><span class="o">=</span><span class="mi">5</span> <span class="cm">/* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">2</span><span class="o">=</span><span class="s1">'biubiu'</span> <span class="cm">/* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">3</span><span class="o">=</span><span class="s1">'24'</span> <span class="cm">/* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
+<span class="o">#</span> <span class="k">at</span> <span class="mi">3602</span>
+
+<span class="o">###</span> <span class="k">INSERT</span> <span class="k">INTO</span> <span class="nv">`repl_test`</span><span class="p">.</span><span class="nv">`new_table`</span>
+<span class="o">###</span> <span class="k">SET</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">1</span><span class="o">=</span><span class="mi">7</span> <span class="cm">/* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">2</span><span class="o">=</span><span class="s1">'cherry'</span> <span class="cm">/* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">3</span><span class="o">=</span><span class="s1">'0'</span> <span class="cm">/* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
+<span class="o">#</span> <span class="k">at</span> <span class="mi">3878</span>
+</code></pre></div></div>
+
+<p>有一些长， 但是其实内部的结构是很简单的， 基本上就是：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>new_table表插入数据 -&gt; student表插入数据 -&gt; new_table更新数据 -&gt; new_table删除数据 -&gt; new_table插入数据
+</code></pre></div></div>
+
+<p>其中<code class="highlighter-rouge">new_table删除数据</code>就是一个误操作， 我们需要进行挽回。 然后我们在此基础上执行：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>mysqlbinlog <span class="nt">-vv</span> mysql-bin.000007 <span class="nt">--start-position</span><span class="o">=</span>2761 <span class="nt">--stop-position</span><span class="o">=</span>3325 | mysql <span class="nt">-uroot</span> <span class="nt">-pkeyerror</span> repl_test
+</code></pre></div></div>
+
+<p>因为<code class="highlighter-rouge">DELETE</code>操作的偏移量为3602， 所以我们恢复上一个偏移量的数据， 也就是3325, 那么这条语句无情的抛出了异常：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ERROR 1062 <span class="o">(</span>23000<span class="o">)</span> at line 64: Duplicate entry <span class="s1">'3'</span> <span class="k">for </span>key <span class="s1">'PRIMARY'</span>
+</code></pre></div></div>
+
+<p>因为在此时此刻， <code class="highlighter-rouge">new_table</code>中id为3的数据是存在的， 并没有被删除， 那么我再重新执行这条<code class="highlighter-rouge">insert</code>语句， 报错是必然的。 那么这个时候怎么恢复？
+非常遗憾， 这个时候这样的条件， 只能手动的一条数据一条数据的重新插入， 没有其它的办法。 那么到底该如何的使用binlog来进行自动的恢复呢？</p>
+
+<h4 id="5-正确的binlog数据恢复">5. 正确的binlog数据恢复</h4>
+
+<p>binlog其实是一种增量恢复的模式， 那么既然是增量， 就必然需要有基量以及增量。 基量从哪儿来？ 来自数据库的完整备份， 即<code class="highlighter-rouge">mysqldump</code>。 增量从哪儿来？ 来自于上次完整备份时的binlog到现在的binlog。
+可以看下面的示意图：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-10-13%2011-18-32%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="Alt text" /></p>
+
+<p>当我们为机器安装MySQL并且开启了binlog之后， 就有了mysql-bin文件的产生， 如果我们不去维护binlog的话， 那么当到达了最大容量限制或者MySQL重启时会进行自动切割。 当某一天数据出现了问题，需要使用binlog进行恢复时发现， mysql-bin因为过期时间的配置前面的binlog已经不见了， 并且数据库的备份是11天以前的， 完全无法进行恢复， 欢声笑语打出GG。
+通常的做法是在执行数据库备份计划的同时， <code class="highlighter-rouge">flush logs</code>将日志进行主动的切割， 并在本地保留所有binlog日志。 假设我们的备份是每天的凌晨3点进行整体的数据库备份， 然后切割binlog。 在当天的下午2点数据需要进行恢复， 流程如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. 停止MySQL服务， 并删除对应的database。
+2. 导入备份数据<span class="o">(</span>这时候是凌晨3点时的数据<span class="o">)</span>。
+3. 找到分割的binlog， 并找到误删数据的语句， 确定偏移量。
+4. 绕开误删除语句的偏移量， 进行数据恢复。
+</code></pre></div></div>
+
+<p>这里面就有了一些很重要的步骤： 必须要知道当前的备份所对应的binlog偏移量， 必须要知道误删除语句的binlog偏移量。 只有知道了这些信息才能够进行无损的数据恢复。</p>
+
+<h4 id="6-实践binlog数据恢复">6. 实践binlog数据恢复</h4>
+
+<p>首先我们需要一个更加复杂的数据库结构以应对生产环境的复杂情况， 这里的话就使用<code class="highlighter-rouge">Django</code>框架来自动的生成表结构以及填充数据。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 测试binlog数据恢复的本地数据模型</span>
+
+<span class="k">class</span> <span class="nc">BaseModel</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="n">created</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">auto_now_add</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">updated</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">auto_now</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">abstract</span> <span class="o">=</span> <span class="bp">True</span>
+
+
+<span class="k">class</span> <span class="nc">Chatroom</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">username</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="n">owner</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+    <span class="n">head_img</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">URLField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ChatroomMember</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">username</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+    <span class="n">head_img</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">URLField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+    <span class="n">city</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+    <span class="n">gender</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ChatroomRelation</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">chatroom</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">Chatroom</span><span class="p">,</span> <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">SET_NULL</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">member</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">ChatroomMember</span><span class="p">,</span> <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">SET_NULL</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">joined</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">auto_now_add</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">chatroom_nickname</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">unique_together</span> <span class="o">=</span> <span class="p">(</span><span class="s">"chatroom"</span><span class="p">,</span> <span class="s">"member"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>在填充数据之后进行<code class="highlighter-rouge">mysqldump</code>进行备份， 需要注意的是一定要记录当前dump的binlog偏移量， 即添加<code class="highlighter-rouge">--master-data</code>参数， 并且在备份时仍有数据进行插入</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mysqldump <span class="nt">--master-data</span> <span class="nt">--single-transaction</span> <span class="nt">-uroot</span> <span class="nt">-pkeyerror</span> myProjects <span class="o">&gt;</span> /home/smartkeyerror/mysql_dumps/test.sql
+</code></pre></div></div>
+
+<p>打开<code class="highlighter-rouge">test.sql</code>， 可以看到当前备份的偏移量：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>CHANGE MASTER TO <span class="nv">MASTER_LOG_FILE</span><span class="o">=</span><span class="s1">'mysql-bin.000007'</span>, <span class="nv">MASTER_LOG_POS</span><span class="o">=</span>99082<span class="p">;</span>
+
+<span class="c"># client-session查看</span>
+mysql&gt; show master logs<span class="p">;</span>
++------------------+-----------+
+| Log_name         | File_size |
++------------------+-----------+
+| mysql-bin.000001 |      3370 |
+| mysql-bin.000002 |     19108 |
+| mysql-bin.000003 |       177 |
+| mysql-bin.000004 |       201 |
+| mysql-bin.000005 |    115978 |
+| mysql-bin.000006 |       201 |
+| mysql-bin.000007 |    125900 |
+| mysql-bin.000008 |       154 |
++------------------+-----------+
+8 rows <span class="k">in </span><span class="nb">set</span> <span class="o">(</span>0.00 sec<span class="o">)</span>
+</code></pre></div></div>
+
+<p>因为在测试的过程中突然断电了(刚好遇到了一个特殊情况)， 所以binlog日志又被切割出去了， 一个很奇怪的现象， 起始位置不是0， 而是154， 我们再切割一个：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mysql&gt; flush logs<span class="p">;</span>
+Query OK, 0 rows affected <span class="o">(</span>0.07 sec<span class="o">)</span>
+
+mysql&gt; show master logs<span class="p">;</span>
++------------------+-----------+
+| Log_name         | File_size |
++------------------+-----------+
+| mysql-bin.000001 |      3370 |
+| mysql-bin.000002 |     19108 |
+| mysql-bin.000003 |       177 |
+| mysql-bin.000004 |       201 |
+| mysql-bin.000005 |    115978 |
+| mysql-bin.000006 |       201 |
+| mysql-bin.000007 |    125900 |
+| mysql-bin.000008 |       201 |
+| mysql-bin.000009 |       154 |
++------------------+-----------+
+9 rows <span class="k">in </span><span class="nb">set</span> <span class="o">(</span>0.00 sec<span class="o">)</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">mysql-bin.000008</code>多了47个偏移， 新切割的binlog起始偏移仍然是154。
+回到数据恢复， 在备份时我们知道了日志的偏移量为99082， 并且当时的binlog为<code class="highlighter-rouge">mysql-bin.000007</code>， 首先我们先删除一部分数据， 然后再写入一些数据。
+时序图：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-10-13%2016-13-53%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>那么我们只需要做两件事：找到删除数据的binlog文件位置以及偏移量， 删库(这回不用跑路)后恢复数据。
+那就找呗， 在0007 99082至009 38924之间查找<code class="highlighter-rouge">DELETE FROM</code>, 通过使用<code class="highlighter-rouge">grep</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># -C参数会在匹配的关键字前后各打印30行的数据</span>
+<span class="nb">sudo </span>mysqlbinlog mysql-bin.000007 <span class="nt">-vv</span> | <span class="nb">grep</span> <span class="nt">-C</span> 30 <span class="s2">"DELETE FROM"</span>
+<span class="nb">sudo </span>mysqlbinlog mysql-bin.000008 <span class="nt">-vv</span> | <span class="nb">grep</span> <span class="nt">-C</span> 30 <span class="s2">"DELETE FROM"</span>
+</code></pre></div></div>
+
+<p>最终在009 451至009 943发现了<code class="highlighter-rouge">DELETE FROM</code>语句， 那么我们就可以开始恢复数据了。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. DROP DATABASE myProjects
+
+2. 导入数据， 抛了异常
+ERROR 3021 <span class="o">(</span>HY000<span class="o">)</span> at line 22: This operation cannot be performed with a running slave io thread<span class="p">;</span> run STOP SLAVE IO_THREAD FOR CHANNEL <span class="s1">''</span> first.
+
+3. 运行 STOP SLAVE IO_THREAD FOR CHANNEL <span class="s2">""</span><span class="p">;</span>
+
+4. 重新导入数据
+
+5. 恢复0007 99082到尾部的数据
+<span class="nb">sudo </span>mysqlbinlog <span class="nt">--start-position</span><span class="o">=</span>99082 <span class="nt">-vv</span> mysql-bin.000007 | mysql <span class="nt">-uroot</span> <span class="nt">-pkeyerror</span> myProjects
+
+6. 恢复008以及009 451之前的数据
+这里有一个如何选择结束点的问题， 首先来看一下grep信息， 选择370报错， 选择287正常， 也不知道为什么
+
+BEGIN
+/<span class="k">*</span><span class="o">!</span><span class="k">*</span>/<span class="p">;</span>
+<span class="c"># at 287</span>
+<span class="c">#181013 15:41:44 server id 2  end_log_pos 370 CRC32 0x4d8bbd3e 	Table_map: `myProjects`.`devOps_chatroomrelation` mapped to number 109</span>
+<span class="c"># at 370</span>
+<span class="c">#181013 15:41:44 server id 2  end_log_pos 451 CRC32 0xf7657cfe 	Delete_rows: table id 109 flags: STMT_END_F</span>
+
+BINLOG <span class="s1">'
+uKHBWxMCAAAAUwAAAHIBAAAAAG0AAAAAAAEACm15UHJvamVjdHMAF2Rldk9wc19jaGF0cm9vbXJl
+bGF0aW9uAAcDEhISDwMDBQYGBsgAYD69i00=
+uKHBWyACAAAAUQAAAMMBAAAAAG0AAAAAAAEAAgAH/4BqAAAAmaEa7SEEkKWZoRrtIQSQ5pmhGu0h
+BJFGCGFva0pWcEdPJQAAABMAAAD+fGX3
+'</span>/<span class="k">*</span><span class="o">!</span><span class="k">*</span>/<span class="p">;</span>
+<span class="c">### DELETE FROM `myProjects`.`devOps_chatroomrelation`</span>
+.... <span class="c"># 中间被我干掉了</span>
+<span class="c"># at 451</span>
+<span class="c">#181013 15:41:44 server id 2  end_log_pos 534 CRC32 0xade8611d 	Table_map: `myProjects`.`devOps_chatroomrelation` mapped to number 109</span>
+<span class="c"># at 534</span>
+<span class="c">#181013 15:41:44 server id 2  end_log_pos 615 CRC32 0x55e89f5b 	Delete_rows: table id 109 flags: STMT_END_F</span>
+
+<span class="nb">sudo </span>mysqlbinlog <span class="nt">-vv</span> mysql-bin.000008 | mysql <span class="nt">-uroot</span> <span class="nt">-pkeyerror</span> myProjects
+
+<span class="nb">sudo </span>mysqlbinlog <span class="nt">-vv</span> mysql-bin.000009 <span class="nt">--stop-position</span><span class="o">=</span>287 | mysql <span class="nt">-uroot</span> <span class="nt">-pkeyerror</span> myProjects
+
+<span class="nb">sudo </span>mysqlbinlog <span class="nt">-vv</span> mysql-bin.000009 <span class="nt">--start-position</span><span class="o">=</span>1119 | mysql <span class="nt">-uroot</span> <span class="nt">-pkeyerror</span> myProjects
+
+7. 确认数据正常恢复， 并开启对外服务。
+</code></pre></div></div>
+
+<h4 id="7-总结">7. 总结</h4>
+
+<p>上面就是使用binlog进行数据恢复的整个过程， 没有什么特别复杂的地方， 只不过步骤比较繁琐， 偏移量必须准确才能够成功。 对一些比较重要的操作进行整理：</p>
+<ol>
+  <li>备份时必须添加<code class="highlighter-rouge">--master-data</code>参数； <code class="highlighter-rouge">-F</code>切割二进制日志可选， 添加之后会更加的方便</li>
+  <li>必须找到误删数据的偏移量， 备份时绕过这些数据修改。</li>
+  <li>因流程较为复杂， 确认无误后进行操作。</li>
+</ol>
+
+<p>另外使用<code class="highlighter-rouge">mysqlbinlog</code>对binlog进行解析的话查看起来并不是很方便， 可以在<code class="highlighter-rouge">client</code>中使用</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">show</span> <span class="n">binlog</span> <span class="n">events</span> <span class="p">[</span><span class="k">in</span> <span class="s1">'binlog-name'</span><span class="p">]</span> <span class="p">[</span><span class="k">from</span> <span class="k">position</span><span class="p">]</span> <span class="err">\</span><span class="k">G</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>来更加直观的查看相关内容以及偏移量， 不过这种方式查看的话没有具体数据信息， 可以结合<code class="highlighter-rouge">mysqlbinlog</code>命令共同使用。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=binlog的正确打开方式&amp;url=https://smartkeyerror.comMySQL-binlog"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comMySQL-binlog"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comMySQL-binlog"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Java-IO">
+            <section class="post">
+                <h2>Java基础编程(01)--I/O系统</h2>
+                <p>Java中的I/O系统相较于Python要复杂许多， 不管是从设计上还是实现上。 这一块儿的内容也是我在学习Java时遇到的最大的困难(并发包都比这个好理解)， 经过了持(san)之(tian)以(da)恒(yu)的学习之后， 算是对Java I/O系统有一个基本的认识和理解。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/django-concurrent-data-process">
+            <section class="post">
+                <h2>Django处理数据并发问题</h2>
+                <p>在Web开发中， 请求的并发处理通常会直接反映到数据库中数据的并发处理。 如果需要在并发的条件下保证数据的准确性， 则必须借助锁的力量来完成。 锁又分乐观锁和悲观锁， 表示了世界的两极。 本篇文章只是以Django作为载体， 来描述数据的并发处理。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

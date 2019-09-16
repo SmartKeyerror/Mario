@@ -8,63 +8,151 @@
     
       
       <item>
-        <title>test</title>
+        <title>DevOps基础(1)--Shell脚本编程</title>
         
-          <description>&lt;p&gt;安装Ruby&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;https://www.ruby-lang.org/en/documentation/installation/&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;apt-get install ruby-full
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;安装jekyll&lt;/p&gt;
-
-&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;gem install jekyll bundler
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;下载主题并进入主题目录， 安装相关依赖&lt;/p&gt;
-
-&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;vim Gemfile
-
-&lt;span class=&quot;nb&quot;&gt;source&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;http://gems.ruby-china.com&quot;&lt;/span&gt;
-
-bundle update
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;bundle exec jekyll serve&lt;/p&gt;
-
-&lt;p&gt;修改文章页面的宽度(代码能放得下)&lt;/p&gt;
-
-&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;assets/css/screen
-
-.post&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    width: 100%&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-    max-width: 810px&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;图片与文章等宽&lt;/p&gt;
-
-&lt;div class=&quot;language-css highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;.post-content&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;img&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;nl&quot;&gt;max-width&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;100%&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;设置摘要分隔符&lt;/p&gt;
-
-&lt;p&gt;在配置文件_config.yml文件中配置摘要分割符excerpt_separator，例如:&lt;/p&gt;
-
-&lt;p&gt;```yaml
-excerpt_separator: ‘&lt;/p&gt;
+          <description>&lt;p&gt;由于Docker容器以及Kubernetes容器编排服务的蓬勃发展， 服务器以及业务服务的运维不再是运维工程师的专属， 业务的开发工程师也必须加入到运维的领域之中， 与运维工程师合作， 形成一套完整、高效的自动化运维与部署的系统。 而在我看来， 传统的运维工程师将会逐渐被应用开发工程师所取代， 因为Kubernetes赋予了开发人员强大的负载均衡、自动横向拓展以及高效管理的相关功能。 而在这些宏大的系统建设之前， Shell编程是无论如何都离不开的话题。&lt;/p&gt;
 
 </description>
         
-        <pubDate>Thu, 19 Nov 1863 10:18:00 +0000</pubDate>
+        <pubDate>Mon, 17 Jun 2019 09:31:51 +0000</pubDate>
         <link>
-        https://smartkeyerror.com/test</link>
-        <guid isPermaLink="true">https://smartkeyerror.com/test</guid>
+        https://smartkeyerror.com/shell-programing</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/shell-programing</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>DevOps基础(2)--Ansible自动化运维工具</title>
+        
+          <description>&lt;p&gt;Shell脚本能够为我们提供一部分的系统运维功能， 例如定时任务， 由Jenkins所管理的边缘触发任务等等， 但是如果想要对多台服务器进行管理和运维， 就需要Ansible来协助完成。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Mon, 17 Jun 2019 08:33:42 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Ansible</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Ansible</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java基础编程(06)--反射</title>
+        
+          <description>&lt;p&gt;为了保持&lt;code class=&quot;highlighter-rouge&quot;&gt;Java基础编程&lt;/code&gt;系列的完整性， 反射机制还是写一下， 没有什么太难的地方。 在文章的最后与&lt;code class=&quot;highlighter-rouge&quot;&gt;Python&lt;/code&gt;进行了一个对比和演示， 用于加深对这两种语言设计本身的理解。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Fri, 07 Dec 2018 08:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Reflect</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Reflect</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java基础编程(05)--常用的设计模式(02)</title>
+        
+          <description>&lt;p&gt;在前面的一篇文章中大致了描述了单例模式， 原型模式， 策略模式， 责任链模式， 代理模式以及观察者模式， 本文接上。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Wed, 05 Dec 2018 11:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Java-Design-Pattern-02</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Java-Design-Pattern-02</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java基础编程(04)--常用的设计模式(01)</title>
+        
+          <description>&lt;p&gt;在前面&lt;code class=&quot;highlighter-rouge&quot;&gt;I/O&lt;/code&gt;系统中介绍了装饰模式， 在&lt;code class=&quot;highlighter-rouge&quot;&gt;接口与抽象类&lt;/code&gt;中介绍了适配器模式， 以及设计模式的基础， 设计原则。 设计模式其实并没有那么神秘， 那么复杂， 本质上仍然是六大设计原则的体现。 既然要写， 就把所有的设计模式统统讲完， 才有快感。 另外这篇文章同样也会结合&lt;code class=&quot;highlighter-rouge&quot;&gt;Python&lt;/code&gt;语言中的设计模式一起进行梳理， 这样做会进一步的加深我们对设计模式的理解， 至少在我这里是这样的。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Wed, 05 Dec 2018 10:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Java-Design-Pattern</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Java-Design-Pattern</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java基础编程(03)--容器</title>
+        
+          <description>&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;中的各种容器类是对基本数据结构， 如顺序表， 链表， 平衡二叉树， 红黑树等最直接的体现， 容器在使用时最重要的就是其在不同的应用场景下的时间复杂度。 例如， 需要一个有序的容器， 需要频繁的向其头部和尾部分别执行删除和插入操作， 此时选择数组所实现的容器就非常的不明智。 所以， 如果想要彻底理解&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;中的容器， 首先要理解计算机世界中的基础数据结构。 另外需要说明的是， 本篇博文没有任何代码， 只对各种容器的原理进行说明。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Sat, 01 Dec 2018 04:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Java-Container</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Java-Container</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java基础编程(02)--接口与抽象类</title>
+        
+          <description>&lt;p&gt;在&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;中， 我认为接口和抽象类是能够让”匠人”充分发挥其想象力和创造力的地方， 这两个类结构使得软件大师们能够编写出精美， 优雅和巧妙的代码。 而在我这种低端程序员手中， 它仅仅只是一个结构而已， 离品尝到其设计精髓不知还隔着多少座大山。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Fri, 30 Nov 2018 02:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Java-Interface-and-abstract-class</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Java-Interface-and-abstract-class</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java基础编程(01)--I/O系统</title>
+        
+          <description>&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;中的I/O系统相较于&lt;code class=&quot;highlighter-rouge&quot;&gt;Python&lt;/code&gt;要复杂许多， 不管是从设计上还是实现上。 这一块儿的内容也是我在学习&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;时遇到的最大的困难(并发包都比这个好理解)， 经过了持(san)之(tian)以(da)恒(yu)的学习之后， 算是对Java I/O系统有一个基本的认识和理解。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Thu, 29 Nov 2018 02:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Java-IO</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Java-IO</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>binlog的正确打开方式</title>
+        
+          <description>&lt;p&gt;在前面的主从复制中我们提到了bin-log， 主从复制中bing-log主要作为一种增量复制的方法进行主库与从库的同步。 在日常生产中， bin-log常常也作为实时数据恢复的必要手段。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 23 Oct 2018 10:18:00 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/MySQL-binlog</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/MySQL-binlog</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Django处理数据并发问题</title>
+        
+          <description>&lt;p&gt;在Web开发中， 请求的并发处理通常会直接反映到数据库中数据的并发处理。 如果需要在并发的条件下保证数据的准确性， 则必须借助锁的力量来完成。 锁又分乐观锁和悲观锁， 表示了世界的两极。 本篇文章只是以Django作为载体， 来描述数据的并发处理。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 18 Sep 2018 10:18:00 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/django-concurrent-data-process</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/django-concurrent-data-process</guid>
       </item>
       
     

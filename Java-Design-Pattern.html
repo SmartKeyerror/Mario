@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Java基础编程(04)--常用的设计模式(01)</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Java-Design-Pattern" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java基础编程(04)--常用的设计模式(01)" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//Java-Design-Pattern" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Java基础编程(04)--常用的设计模式(01)" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Java-Design-Pattern" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Java基础编程(04)--常用的设计模式(01)",
+    "url": "https://smartkeyerror.com//Java-Design-Pattern",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Java基础编程(04)--常用的设计模式(01)</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-12-05">05 Dec 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/Java基础'>Java基础</a>
+                    
+                
+                    
+                       <a href='/tag/设计模式'>设计模式</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在前面<code class="highlighter-rouge">I/O</code>系统中介绍了装饰模式， 在<code class="highlighter-rouge">接口与抽象类</code>中介绍了适配器模式， 以及设计模式的基础， 设计原则。 设计模式其实并没有那么神秘， 那么复杂， 本质上仍然是六大设计原则的体现。 既然要写， 就把所有的设计模式统统讲完， 才有快感。 另外这篇文章同样也会结合<code class="highlighter-rouge">Python</code>语言中的设计模式一起进行梳理， 这样做会进一步的加深我们对设计模式的理解， 至少在我这里是这样的。</p>
+
+<!---more--->
+
+<h4 id="1-单例模式">1. 单例模式</h4>
+<p>在众多的设计模式之中， 单例模式毫无疑问的是使用最为频繁的设计模式， 不管是在<code class="highlighter-rouge">Java</code>， 还是在<code class="highlighter-rouge">Python</code>中。 单例模式的含义是指在全局中仅有某一个对象的唯一实例， 例如日志记录对象。</p>
+
+<h5 id="11-java实现">1.1 Java实现</h5>
+<p>在<code class="highlighter-rouge">Java</code>中， 单例模式的实现有很多种， 不过基本上都需要依赖静态变量以及私有的构造方法。</p>
+
+<p>最简单的实现：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SingletonClass</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kd">volatile</span> <span class="kd">static</span> <span class="n">SingletonClass</span> <span class="n">singletonClass</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="nf">SingletonClass</span><span class="o">()</span> <span class="o">{}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="n">SingletonClass</span> <span class="nf">getSingletonClass</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">singletonClass</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">singletonClass</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SingletonClass</span><span class="o">();</span>
+        <span class="o">}</span>
+        <span class="k">return</span> <span class="n">singletonClass</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>在这种最简单的实现中， 使用了静态变量仅会被初始化一次的特性， 将对象的实例保存至静态变量中， 并通过静态方法将实例返回。 在静态方法中， 是一个<code class="highlighter-rouge">if-then</code>的结构， 很明显的是该方法是线程不安全的， 所以就有了线程安全版：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">static</span> <span class="kd">synchronized</span> <span class="n">SingletonClass</span> <span class="nf">getSingletonClass</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">singletonClass</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">singletonClass</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SingletonClass</span><span class="o">();</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="n">singletonClass</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>我们对整个方法进行同步， 这样一来既可以保证该方法的线程安全性。 但是<code class="highlighter-rouge">synchronized</code>最为一种重量级的锁， 在并发环境下所有的方法调用均为串行执行， 效率比较低， 所以我们需要尽可能的减少串行执行的线程数量， 采用双重校验锁的方式完成：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">static</span>  <span class="n">SingletonClass</span> <span class="nf">getSingletonClass</span><span class="o">()</span> <span class="o">{</span>
+    <span class="cm">/* 第一次校验是让实例已经被初始化之后直接返回 */</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">singletonClass</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="cm">/* 如果此时singletonClass == null, 那么就需要线程安全的实例化对象 */</span>
+        <span class="kd">synchronized</span> <span class="o">(</span><span class="n">SingletonClass</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
+            <span class="cm">/* 再次判断, 此时为加锁判断, 保证变量不会被其它线程所修改, 即保持单例*/</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">singletonClass</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+                <span class="n">singletonClass</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SingletonClass</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="n">singletonClass</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>双重校验锁的内容在<code class="highlighter-rouge">Java并发编程--锁</code>中有提到， 可能那篇文章中的描述更容易被理解。 这种方式通常来讲是我使用最多的方式， 既能够保证线程安全性， 同时也有较好的性能。</p>
+
+<p>除此之外， 还有2种较好的实现方式， 一种是使用静态内部类来实现：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">NewSingletonClass</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">SingletonContainer</span> <span class="o">{</span>
+        <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">NewSingletonClass</span> <span class="n">instance</span> <span class="o">=</span> <span class="k">new</span> <span class="n">NewSingletonClass</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="kd">private</span> <span class="nf">NewSingletonClass</span><span class="o">()</span> <span class="o">{}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="n">NewSingletonClass</span> <span class="nf">getInstance</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">SingletonContainer</span><span class="o">.</span><span class="na">instance</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>由于静态内部类的加载由JVM保证其线程安全性， 并且只有在调用内部类的静态变量时类才被加载， 所以这种写法也是线程安全性的， 并且代码比较简单。</p>
+
+<p>最后一种写法就需要对<code class="highlighter-rouge">Java</code>的枚举类有一个比较深入的理解了， 在这里我们只需要知道创建一个枚举类型是线程安全的即可。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">enum</span> <span class="n">Foo</span> <span class="o">{</span>
+    <span class="n">INSTANCE</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">otherMethod</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Other methods.."</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="cm">/* 测试 */</span>
+        <span class="n">Foo</span> <span class="n">foo</span> <span class="o">=</span> <span class="n">Foo</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">;</span>
+        <span class="n">foo</span><span class="o">.</span><span class="na">otherMethod</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>这种写法可能不是那么易懂， 但是的确要比上面所有的方式都简洁， 所以使用枚举类来实现单例已经称为了目前的主流。</p>
+
+<h5 id="12-python实现">1.2 Python实现</h5>
+<p>在<code class="highlighter-rouge">Python</code>中， 最简单， 最直接的方式就是使用<code class="highlighter-rouge">.pyc</code>文件的单一初始化来实现， 说白了就是模块儿导入。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Singleton</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+<span class="n">singleton_class</span> <span class="o">=</span> <span class="n">Singleton</span><span class="p">()</span>
+
+<span class="c"># other module</span>
+<span class="kn">from</span> <span class="nn">singleton</span> <span class="kn">import</span> <span class="n">singleton_class</span>
+</code></pre></div></div>
+
+<p>这种方式用的最多(因为真的很简单)， 不过前提是没有特别的定制化需求情况下。</p>
+
+<p>在有定制化的需求之下， 例如一个用于拥有某一个对象的单个实例， 模块的方式无法完成， 此时可以使用装饰器或者是<code class="highlighter-rouge">__new__</code>方法来实现。</p>
+
+<p><code class="highlighter-rouge">__new__</code>方法在<code class="highlighter-rouge">Python</code>中为一个类的构造方法， 默认返回一个类的实例。 而<code class="highlighter-rouge">__init__</code>方法则是在该实例上进行属性的添加。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">SimpleSingleton</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">instance_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">username</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">username</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">instance_dict</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">cls</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">username</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">instance_dict</span><span class="p">:</span>
+                    <span class="n">instance</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+                    <span class="n">cls</span><span class="o">.</span><span class="n">instance_dict</span><span class="p">[</span><span class="n">username</span><span class="p">]</span> <span class="o">=</span> <span class="n">instance</span>
+                    <span class="k">return</span> <span class="n">instance</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">instance_dict</span><span class="p">[</span><span class="n">username</span><span class="p">]</span>
+</code></pre></div></div>
+
+<p>这里仍然是使用双重校验锁的方式来创建单例， 只不过我们在这里额外的添加了一个<code class="highlighter-rouge">username</code>标志， 每个用户一个实例。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">singleton_decorator</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+    <span class="n">instances</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">get_instance</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">cls</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">instances</span><span class="p">:</span>
+            <span class="n">instances</span><span class="p">[</span><span class="n">cls</span><span class="p">]</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">instances</span><span class="p">[</span><span class="n">cls</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">get_instance</span>
+</code></pre></div></div>
+
+<p>这是一个比较典型的单例模式的装饰器， 很多博客都是这么写的， 装饰器本质上还是一个函数调用， 有函数调用的地方就需要保证线程安全性， 这上面的这一种写法并没有做到这一点， 所以我认为这种写法是错误的， 是非线程安全的。</p>
+
+<p>所以说还是需要加锁， 写法与<code class="highlighter-rouge">__new__</code>方法中的实现基本相同， 也是使用一个双重校验锁：</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">singleton_decorator</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+    <span class="n">instances</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">get_instance</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">cls</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">instances</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">lock</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">cls</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">instances</span><span class="p">:</span>
+                    <span class="n">instances</span><span class="p">[</span><span class="n">cls</span><span class="p">]</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">instances</span><span class="p">[</span><span class="n">cls</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">get_instance</span>
+</code></pre></div></div>
+
+<p>此外还可以使用<code class="highlighter-rouge">__metaclass__</code>元类的方式来实现， 该加锁还是需要加锁， 没什么区别。</p>
+
+<h4 id="2-原型模式">2. 原型模式</h4>
+<p>原型模式的目的在于在创建重复对象时提高性能， 本质上其实是一种内存的拷贝。 在<code class="highlighter-rouge">Java</code>中是通过实现<code class="highlighter-rouge">clonable</code>接口实现， 而在<code class="highlighter-rouge">Python</code>中则是通过标准库的函数所实现的。</p>
+
+<p>提高拷贝， 就不得不提到深拷贝与浅拷贝。 当一个对象包含了另一个对象的引用时， 浅拷贝仅拷贝引用， 深拷贝则拷贝所引用对象的内容。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-10-26%2015-16-16%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<h5 id="21-java实现">2.1 Java实现</h5>
+<p>只需要实现<code class="highlighter-rouge">clonable</code>接口即可， 默认实现的是浅拷贝， 如果想要实现深拷贝的话：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@Override</span>
+<span class="kd">protected</span> <span class="n">Object</span> <span class="nf">clone</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">CloneNotSupportedException</span> <span class="o">{</span>
+    <span class="n">MyClass</span> <span class="n">template</span> <span class="o">=</span> <span class="o">(</span><span class="n">MyClass</span><span class="o">)</span> <span class="kd">super</span><span class="o">.</span><span class="na">clone</span><span class="o">();</span>
+    <span class="cm">/* created即为对象所引用的对象, 深克隆必须对该对象也进行克隆 */</span>
+    <span class="n">template</span><span class="o">.</span><span class="na">created</span> <span class="o">=</span> <span class="o">(</span><span class="n">Date</span><span class="o">)</span> <span class="n">template</span><span class="o">.</span><span class="na">created</span><span class="o">.</span><span class="na">clone</span><span class="o">();</span>
+    <span class="k">return</span> <span class="n">template</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>通常来讲深拷贝不会使用原型模式来实现， 而是使用序列化的方式实现。</p>
+
+<h5 id="22-python实现">2.2 Python实现</h5>
+<p><code class="highlighter-rouge">Python</code>实现的话就简单多了， 直接调标准库的函数即可。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">deepcopy</span>
+
+<span class="n">information</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">"name"</span><span class="p">:</span> <span class="s">"smart"</span><span class="p">,</span>
+    <span class="s">"phones"</span><span class="p">:</span> <span class="p">[</span><span class="s">"136"</span><span class="p">,</span> <span class="s">"138"</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="n">new_information</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">information</span><span class="p">)</span>
+<span class="n">new_information</span><span class="p">[</span><span class="s">"phones"</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">"139"</span><span class="p">)</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">information</span><span class="p">[</span><span class="s">"phones"</span><span class="p">])</span>       <span class="c"># ['136', '138', '139']</span>
+<span class="k">print</span><span class="p">(</span><span class="n">new_information</span><span class="p">[</span><span class="s">"phones"</span><span class="p">])</span>   <span class="c"># ['136', '138', '139']</span>
+
+
+<span class="n">deep_information</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">information</span><span class="p">)</span>
+<span class="n">deep_information</span><span class="p">[</span><span class="s">"phones"</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">"137"</span><span class="p">)</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">information</span><span class="p">[</span><span class="s">"phones"</span><span class="p">])</span>       <span class="c"># ['136', '138', '139']</span>
+<span class="k">print</span><span class="p">(</span><span class="n">deep_information</span><span class="p">[</span><span class="s">"phones"</span><span class="p">])</span>  <span class="c"># ['136', '138', '139', '137']</span>
+</code></pre></div></div>
+
+<p>从上面的示例代码可以很清晰的看出浅拷贝与深拷贝之间的区别， 通常在工程实践中， 浅拷贝只有在我们明确的知道对象中仅包含基本数据类型时才会使用， 否则一律使用深拷贝的方式进行对象的复制。</p>
+
+<h4 id="3-策略模式">3. 策略模式</h4>
+<p>策略模式为我们提供了在运行时更改类的行为或者算法的功能， 例如<code class="highlighter-rouge">Python</code>中的<code class="highlighter-rouge">sort</code>， <code class="highlighter-rouge">json</code>函数， 通过传入一个匿名函数来改变排序方式或者是序列化方式。</p>
+
+<h5 id="31-java实现">3.1 Java实现</h5>
+<p>这里以JDK源码为例， 在搜索文件时我们可以传入一个<code class="highlighter-rouge">FilenameFilter</code>对象来完成文件的指定搜索：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">File</span> <span class="n">file</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="s">"."</span><span class="o">);</span>
+<span class="n">file</span><span class="o">.</span><span class="na">list</span><span class="o">(</span><span class="k">new</span> <span class="n">FilenameFilter</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">accept</span><span class="o">(</span><span class="n">File</span> <span class="n">dir</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">name</span><span class="o">.</span><span class="na">endsWith</span><span class="o">(</span><span class="s">".java"</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">});</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">list</code>方法所接收的<code class="highlighter-rouge">FilenameFilter</code>对象就是一种策略， 来看一下具体的实现：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="n">String</span><span class="o">[]</span> <span class="nf">list</span><span class="o">(</span><span class="n">FilenameFilter</span> <span class="n">filter</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">String</span> <span class="n">names</span><span class="o">[]</span> <span class="o">=</span> <span class="n">list</span><span class="o">();</span>
+    <span class="k">if</span> <span class="o">((</span><span class="n">names</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">||</span> <span class="o">(</span><span class="n">filter</span> <span class="o">==</span> <span class="kc">null</span><span class="o">))</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">names</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;();</span>
+    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span> <span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">names</span><span class="o">.</span><span class="na">length</span> <span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+        <span class="cm">/* 调用对象的accept方法， 若为true, 则添加至列表中 */</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">filter</span><span class="o">.</span><span class="na">accept</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">names</span><span class="o">[</span><span class="n">i</span><span class="o">]))</span> <span class="o">{</span>
+            <span class="n">v</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">names</span><span class="o">[</span><span class="n">i</span><span class="o">]);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="n">v</span><span class="o">.</span><span class="na">toArray</span><span class="o">(</span><span class="k">new</span> <span class="n">String</span><span class="o">[</span><span class="n">v</span><span class="o">.</span><span class="na">size</span><span class="o">()]);</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">FilenameFilter</code>接口也比较简单：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">FilenameFilter</span> <span class="o">{</span>
+    <span class="kt">boolean</span> <span class="nf">accept</span><span class="o">(</span><span class="n">File</span> <span class="n">dir</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">);</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>只要实现了该接口的类， 都可以作为一种策略传入至<code class="highlighter-rouge">list</code>方法， 为代码提供了更多的灵活性。</p>
+
+<h5 id="32-python实现">3.2 Python实现</h5>
+<p><code class="highlighter-rouge">Python</code>这里以<code class="highlighter-rouge">json</code>函数为例， 我们首先定义2个对象：</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">json</span>
+
+<span class="k">class</span> <span class="nc">Phone</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">brands</span><span class="p">,</span> <span class="n">price</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brands</span> <span class="o">=</span> <span class="n">brands</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">price</span> <span class="o">=</span> <span class="n">price</span>
+
+<span class="k">class</span> <span class="nc">Student</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">age</span><span class="p">,</span> <span class="n">phone</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">age</span> <span class="o">=</span> <span class="n">age</span>
+        <span class="c"># Student对象中持有Phone对象</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">phone</span> <span class="o">=</span> <span class="n">phone</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="n">phone</span> <span class="o">=</span> <span class="n">Phone</span><span class="p">(</span><span class="s">"iphone"</span><span class="p">,</span> <span class="mi">7999</span><span class="p">)</span>
+    <span class="c"># 完成Student对象的创建</span>
+    <span class="n">student</span> <span class="o">=</span> <span class="n">Student</span><span class="p">(</span><span class="s">"smart"</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="n">phone</span><span class="p">)</span>
+    <span class="c"># 尝试进行序列化</span>
+    <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">student</span><span class="o">.</span><span class="n">__dict__</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>在此时我们对<code class="highlighter-rouge">Student</code>对象直接调用<code class="highlighter-rouge">json.dumps</code>方法时会抛出一个<code class="highlighter-rouge">TypeError</code>， 告诉我们<code class="highlighter-rouge">Phone</code>类型不是可以被JSON序列化的， 所以在这个时候我们就需要传递一个策略进去：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">result</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">student</span><span class="o">.</span><span class="n">__dict__</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">__dict__</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">json.dumps</code>方法同样可以接受一个策略， 参数名为<code class="highlighter-rouge">default</code>， 这里我们传入了一个匿名函数， 函数返回传入对象的<code class="highlighter-rouge">__dict__</code>属性， 当json在序列化遇到了<code class="highlighter-rouge">TypeError</code>时， 就会使用我们传递的策略尝试重新进行序列化。</p>
+
+<p>策略模式在日常开发中使用的会比较多， 自己编写的机会并不是很多。 一般来说使用策略模式的情景还是比较明显的， 主要是满足客户端的多种定制化需求。</p>
+
+<h4 id="4-责任链模式">4. 责任链模式</h4>
+<p>责任链模式有些类似于工作审批， 员工向组长提交审批， 组长向部门经理提交， 部门经理向总经理提交， 总经理直接处理， 不再向下传递。 如果该审批(例如请假2小时)组长能够直接处理， 那么审批不再向下传递。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-27%2014-37-18%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<h5 id="41-java实现">4.1 Java实现</h5>
+
+<p>责任链模式常见的类图如下：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-27%2014-26-38%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>从这个模式的名称上我们可以大致的猜出应该会有类似于链表的结构存在系统中， 事实上也的确是这样。 通常来讲我们会用一个抽象类来定义一些基本的方法， 例如是否需要将请求提交至下一个处理器， 如何添加下一个处理器等方法。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">Handler</span> <span class="o">{</span>
+    <span class="cm">/* 持有下一个处理器对象 */</span>
+    <span class="kd">private</span> <span class="n">Handler</span> <span class="n">nextHandler</span><span class="o">;</span>
+    <span class="cm">/* level变量通常是用来判断是否需要继续往下执行处理器 */</span>
+    <span class="kd">protected</span> <span class="kt">int</span> <span class="n">level</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setNextHandler</span><span class="o">(</span><span class="n">Handler</span> <span class="n">nextHandler</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">nextHandler</span> <span class="o">=</span> <span class="n">nextHandler</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleMessage</span><span class="o">(</span><span class="kt">int</span> <span class="n">level</span><span class="o">,</span> <span class="n">String</span> <span class="n">message</span><span class="o">){</span>
+        <span class="k">if</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">level</span> <span class="o">==</span> <span class="n">level</span><span class="o">)</span>  <span class="c1">// 这里为了简便处理， 直接用的相等判断</span>
+            <span class="n">process</span><span class="o">(</span><span class="n">message</span><span class="o">);</span>
+            <span class="cm">/* 当一个处理器处理完成之后， 是继续向下处理， 还是直接结束 */</span>
+            <span class="c1">// return;</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">nextHandler</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span>
+            <span class="cm">/* 执行下一个处理器 */</span>
+            <span class="n">nextHandler</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">level</span><span class="o">,</span> <span class="n">message</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">abstract</span> <span class="kt">void</span> <span class="nf">process</span><span class="o">(</span><span class="n">String</span> <span class="n">message</span><span class="o">);</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>抽象的<code class="highlighter-rouge">Handler</code>类其实就是核心的设计思想了， 具体的处理器继承该抽象类， 实现抽象方法， 并添加一个接收<code class="highlighter-rouge">level</code>参数的构造器即可。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">Handler1</span> <span class="kd">extends</span> <span class="n">Handler</span> <span class="o">{</span>
+    <span class="n">Handler1</span><span class="o">(</span><span class="kt">int</span> <span class="n">level</span><span class="o">){</span> <span class="k">this</span><span class="o">.</span><span class="na">level</span> <span class="o">=</span> <span class="n">level</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">process</span><span class="o">(</span><span class="n">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Handler1"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>我们还需要为客户端提供一个设置好责任链的<code class="highlighter-rouge">Handler</code>对象， 隐藏细节：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="n">Handler</span> <span class="nf">getChainHandler</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">Handler</span> <span class="n">handler1</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler1</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+    <span class="n">Handler</span> <span class="n">handler2</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler2</span><span class="o">(</span><span class="mi">2</span><span class="o">);</span>
+    <span class="n">handler1</span><span class="o">.</span><span class="na">setNextHandler</span><span class="o">(</span><span class="n">handler2</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">handler1</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h5 id="42-python实现">4.2 Python实现</h5>
+<p>讲实话我在<code class="highlighter-rouge">Python</code>中还真的没见过很明显的责任链模式， 可能是我源码看的还不够多， 但是有一个地方很像责任链， 那就是<code class="highlighter-rouge">Django</code>中的中间件(Middleware)处理。</p>
+
+<p>在1.9.8这个版本中， 中间件还是继承<code class="highlighter-rouge">MiddlewareMixin</code>， 并实现<code class="highlighter-rouge">process_request</code>或者是<code class="highlighter-rouge">process_response</code>方法所实现的， 最新版本情况未知， 想必改动不会太大。</p>
+
+<p>在<code class="highlighter-rouge">Django</code>中， 请求被实例化成为一个请求对象之后， 首先调用配置的中间件的<code class="highlighter-rouge">process_request</code>方法， 做一些事情， 例如安全检测， 获取<code class="highlighter-rouge">Cookie</code>， 获取当前请求用户等等。 在响应时<code class="highlighter-rouge">response</code>对象将会以相反的方向执行<code class="highlighter-rouge">process_response</code>方法。</p>
+
+<p>源代码我就不贴了， 有点儿长。 基本上<code class="highlighter-rouge">Django</code>这种对请求的处理和责任链模式还是有相似之处的。</p>
+
+<h4 id="5-代理模式">5. 代理模式</h4>
+
+<p><code class="highlighter-rouge">Nginx</code>的其中一个作用就是隐藏真实的服务器地址， 向外暴露Nginx服务器的域名以及IP， 这样一来可以提高真实服务器的安全性。 请求首先进入Nginx服务器， 再由负载均衡器转发至对应的真实服务器中， 在这个过程中， Nginx服务器就是一个代理服务器。</p>
+
+<p>代理模式与上面的过程是一样的， 为用户提供一个<code class="highlighter-rouge">Proxy</code>对象， 用户直接与<code class="highlighter-rouge">Proxy</code>对象进行交互， <code class="highlighter-rouge">Proxy</code>对象再与真实对象进行交互。</p>
+
+<h5 id="51-java实现">5.1 Java实现</h5>
+<p>静态代理： 类图如下， 首先有一个公共接口， 约束真实对象与代理对象的行为， 然后在代理对象中可以持有一个真实对象的实例， 客户端在调用方法时， 由代理对象调用真实对象方法。 静态代理是在编译器就知道了所代理的对象类型。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-27%2015-47-55%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* 代理类和真实类的统一接口 */</span>
+<span class="kd">interface</span> <span class="nc">Action</span> <span class="o">{</span> <span class="kt">void</span> <span class="nf">move</span><span class="o">();</span> <span class="o">}</span>
+
+<span class="cm">/* 真实类的实现 */</span>
+<span class="kd">class</span> <span class="nc">RealAction</span> <span class="kd">implements</span> <span class="n">Action</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">move</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Action!"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Proxy</span> <span class="kd">implements</span> <span class="n">Action</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="n">RealAction</span> <span class="n">realAction</span><span class="o">;</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">move</span><span class="o">()</span> <span class="o">{</span>
+        <span class="cm">/* 这里做了一些简化处理, 测试的话不考虑实际使用 */</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">realAction</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+            <span class="n">realAction</span> <span class="o">=</span> <span class="k">new</span> <span class="n">RealAction</span><span class="o">();</span>
+        <span class="cm">/* 调用真实类的相关方法 */</span>
+        <span class="n">realAction</span><span class="o">.</span><span class="na">move</span><span class="o">();</span>
+        <span class="cm">/* 代理类自己也可以做一些额外的事情 */</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"代理类额外做的事情"</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>静态代理可以在不修改原有类对象的前提下， 对类进行功能的拓展。 但是由于公用同一个接口， 使得在修改接口时需要至少修改2个类。</p>
+
+<p>动态代理要比静态代理稍微复杂一些， 但是本质没有改变多少。</p>
+
+<p>首先来看由JDK所提供的基于反射的代理类， <code class="highlighter-rouge">java.lang.reflect.Proxy</code>， 其中有一个很重要的方法：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">static</span> <span class="n">Object</span> <span class="nf">newProxyInstance</span><span class="o">(</span><span class="n">ClassLoader</span> <span class="n">loader</span><span class="o">,</span>
+                                      <span class="n">Class</span><span class="o">&lt;?&gt;[]</span> <span class="n">interfaces</span><span class="o">,</span>
+                                      <span class="n">InvocationHandler</span> <span class="n">h</span><span class="o">)</span>
+</code></pre></div></div>
+
+<p>根据javadoc， <code class="highlighter-rouge">loader</code>为一个类加载器， <code class="highlighter-rouge">interfaces</code>为代理类将要实现的一组接口对象所组成的列表， <code class="highlighter-rouge">h</code>是一个<code class="highlighter-rouge">InvocationHandler</code>对象。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">InvocationHandler</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="n">Object</span> <span class="nf">invoke</span><span class="o">(</span><span class="n">Object</span> <span class="n">proxy</span><span class="o">,</span> <span class="n">Method</span> <span class="n">method</span><span class="o">,</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">args</span><span class="o">);</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>在解释这些对象之前首先运行一个demo：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">ProxyHolder</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="n">Object</span> <span class="n">target</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">ProxyHolder</span><span class="o">(</span><span class="n">Object</span> <span class="n">target</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">target</span> <span class="o">=</span> <span class="n">target</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="n">Object</span> <span class="nf">getProxyInstance</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">Proxy</span><span class="o">.</span><span class="na">newProxyInstance</span><span class="o">(</span>
+                <span class="n">target</span><span class="o">.</span><span class="na">getClass</span><span class="o">().</span><span class="na">getClassLoader</span><span class="o">(),</span>
+                <span class="n">target</span><span class="o">.</span><span class="na">getClass</span><span class="o">().</span><span class="na">getInterfaces</span><span class="o">(),</span>
+                <span class="k">new</span> <span class="nf">InvocationHandler</span><span class="o">()</span> <span class="o">{</span>
+                    <span class="nd">@Override</span>
+                    <span class="kd">public</span> <span class="n">Object</span> <span class="nf">invoke</span><span class="o">(</span><span class="n">Object</span> <span class="n">proxy</span><span class="o">,</span> <span class="n">Method</span> <span class="n">method</span><span class="o">,</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Throwable</span> <span class="o">{</span>
+                        <span class="n">Object</span> <span class="n">result</span> <span class="o">=</span> <span class="n">method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">target</span><span class="o">,</span> <span class="n">args</span><span class="o">);</span>
+                        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"代理类额外做的事情"</span><span class="o">);</span>
+                        <span class="k">return</span> <span class="n">result</span><span class="o">;</span>
+                    <span class="o">}</span>
+                <span class="o">}</span>
+        <span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">DynamicProxy</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">Action</span> <span class="n">realAction</span> <span class="o">=</span> <span class="k">new</span> <span class="n">RealAction</span><span class="o">();</span>
+        <span class="n">Action</span> <span class="n">proxyInstance</span> <span class="o">=</span> <span class="o">(</span><span class="n">Action</span><span class="o">)</span> <span class="k">new</span> <span class="n">ProxyHolder</span><span class="o">(</span><span class="n">realAction</span><span class="o">).</span><span class="na">getProxyInstance</span><span class="o">();</span>
+        <span class="n">proxyInstance</span><span class="o">.</span><span class="na">move</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>可以看到我们在创建代理类的时候完全使用的是反射的机制， 在此期间根本不知道要代理的对象是什么， 而是使用<code class="highlighter-rouge">Object</code>对象来表示的， 并且代理方法是在<code class="highlighter-rouge">invoke</code>方法中所实现的。 上面的代码就是JDK所提供的动态代理。</p>
+
+<p>如果接口中有多个方法需要进行代理的话， 也可以在<code class="highlighter-rouge">invoke</code>方法中集中进行处理。 其中， 传入的<code class="highlighter-rouge">Method</code>对象会包含正在被调用的接口方法。</p>
+
+<p>不管是JDK动态代理， 还是静态代理， 都需要一个类实现一个接口， 那么对于单独的类想要实现动态代理， 该如何去做？</p>
+
+<p><code class="highlighter-rouge">cglib</code>代理通过构建目标对象子类的方式实现动态代理， 从而实现对目标对象功能的拓展。 因为这种方式不属于JDK的设计模式， 所以说将会在<code class="highlighter-rouge">AOP的实现</code>文章中给出。</p>
+
+<h5 id="52-python实现">5.2 Python实现</h5>
+<p>由于<code class="highlighter-rouge">Python</code>是一种弱类型语言， 所以说其代理模式的实现就要比<code class="highlighter-rouge">Java</code>灵活的多。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">ProxyFactory</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="n">target</span>
+
+    <span class="k">def</span> <span class="nf">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">"target"</span><span class="p">)</span>
+        <span class="n">attr</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">__getattribute__</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">attr</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">"动态代理做点儿其它事情"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="n">wrapper</span>
+
+<span class="k">class</span> <span class="nc">Test</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">foo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"foo"</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="n">test</span> <span class="o">=</span> <span class="n">Test</span><span class="p">()</span>
+    <span class="n">proxy</span> <span class="o">=</span> <span class="n">ProxyFactory</span><span class="p">(</span><span class="n">test</span><span class="p">)</span>
+    <span class="n">proxy</span><span class="o">.</span><span class="n">foo</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>首先要说明一点， <code class="highlighter-rouge">__getattr__</code>与<code class="highlighter-rouge">__getattribute__</code>是两个不同的方法， 但是都用于获取类属性或者是方法。 当这两个方法同时被定义时， 仅会调用<code class="highlighter-rouge">__getattribute__</code>方法， 除非显示的使用<code class="highlighter-rouge">instance.__getattr__</code>方法。</p>
+
+<p>一般来说， <code class="highlighter-rouge">__getattr__</code>会在访问类中不存在的属性时调用， 而<code class="highlighter-rouge">__getattribute__</code>方法则属于无条件调用， 不管有没有， 都会调用。 函数， 也算是一种属性， 所以说在调用<code class="highlighter-rouge">proxy.foo</code>方法时， 首先调用<code class="highlighter-rouge">__getattribute__</code>获取函数对象。</p>
+
+<h4 id="6-观察者模式">6. 观察者模式</h4>
+<p>观察者模式有些类似于<code class="highlighter-rouge">Redis</code>的发布/订阅， 多个客户端订阅某一个频道， 当频道内的键发生变化时<code class="highlighter-rouge">Redis</code>通知订阅端相应的变化。 主不过观察者模式是在对象层面上的”发布/订阅”， 多个观察者同时监听某一个对象， 当对象发生变化时， 通知所有的观察者， 观察者根据相应的变化做出相应的反应。</p>
+
+<h5 id="61-java实现">6.1 Java实现</h5>
+
+<p>类图如下， 没有什么很复杂的地方， 只需要将<code class="highlighter-rouge">Observer</code>设置成为抽象类即可， 以便于复用。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-27%2018-44-01%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">Subject</span> <span class="o">{</span>
+    <span class="cm">/* 用于存储所有的观察者 */</span>
+    <span class="kd">protected</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Observer</span><span class="o">&gt;</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Observer</span><span class="o">&gt;();</span>
+
+    <span class="cm">/* 添加一个观察者 */</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">addObserver</span><span class="o">(</span><span class="n">Observer</span> <span class="n">observer</span><span class="o">)</span> <span class="o">{</span> <span class="n">list</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">observer</span><span class="o">);</span> <span class="o">}</span>
+
+    <span class="cm">/* 通知所有观察者, 在该方法中可以传递更多的参数 */</span>
+    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">notifyAllObservers</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">for</span> <span class="o">(</span><span class="n">Observer</span> <span class="n">observer</span> <span class="o">:</span> <span class="n">list</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">observer</span><span class="o">.</span><span class="na">receive</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">changeStatus</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"被观察对象发生了改变"</span><span class="o">);</span>
+        <span class="n">notifyAllObservers</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">Observer</span> <span class="o">{</span>
+    <span class="kd">protected</span> <span class="n">Subject</span> <span class="n">subject</span><span class="o">;</span>
+    <span class="kd">public</span> <span class="kd">abstract</span> <span class="kt">void</span> <span class="nf">receive</span><span class="o">();</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">Observer1</span> <span class="kd">extends</span> <span class="n">Observer</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="nf">Observer1</span><span class="o">(</span><span class="n">Subject</span> <span class="n">subject</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">subject</span> <span class="o">=</span> <span class="n">subject</span><span class="o">;</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">subject</span><span class="o">.</span><span class="na">addObserver</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">receive</span><span class="o">()</span> <span class="o">{</span> <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"观察者1接受到了反馈"</span><span class="o">);</span> <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="cm">/* 测试类 */</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">ObserverPattern</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">Subject</span> <span class="n">subject</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Subject</span><span class="o">();</span>
+        <span class="n">Observer1</span> <span class="n">observer1</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Observer1</span><span class="o">(</span><span class="n">subject</span><span class="o">);</span>
+        <span class="n">subject</span><span class="o">.</span><span class="na">changeStatus</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>这里给出了基于上面类图所实现的观察者模式demo， 整体来看比较简单。 但是实际生产中的观察者模式远比这复杂。 首先要考虑的就是线程安全性， 其次观察者模式分为推模式和拉模式， 两种模式的实现有较大的区别。 另外需要考虑的就是对象的引用问题， <code class="highlighter-rouge">GC</code>如何处理， 是否需要使用弱引用。</p>
+
+<p>工程实践中的观察者较为复杂， 代码也比较多， 所以更加完善的分析放于后续的博文中。</p>
+
+<h5 id="62-python实现">6.2 Python实现</h5>
+<p>观察者模式最直接的实现是在<code class="highlighter-rouge">Django</code>的信号量中， 具体的源码分析同样会单独写一篇出来。</p>
+
+<h4 id="7-小结">7. 小结</h4>
+<p>在最初的计划中是想要一篇文章将所有的设计模式一次性梳理完， 但是一篇写完的话实在是太长， 不方便阅读， 所以还是将其拆分成几篇文章， 每篇写几个。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Java基础编程(04)--常用的设计模式(01)&amp;url=https://smartkeyerror.comJava-Design-Pattern"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comJava-Design-Pattern"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comJava-Design-Pattern"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Java-Design-Pattern-02">
+            <section class="post">
+                <h2>Java基础编程(05)--常用的设计模式(02)</h2>
+                <p>在前面的一篇文章中大致了描述了单例模式， 原型模式， 策略模式， 责任链模式， 代理模式以及观察者模式， 本文接上。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Java-Container">
+            <section class="post">
+                <h2>Java基础编程(03)--容器</h2>
+                <p>Java中的各种容器类是对基本数据结构， 如顺序表， 链表， 平衡二叉树， 红黑树等最直接的体现， 容器在使用时最重要的就是其在不同的应用场景下的时间复杂度。 例如， 需要一个有序的容器， 需要频繁的向其头部和尾部分别执行删除和插入操作， 此时选择数组所实现的容器就非常的不明智。 所以， 如果想要彻底理解Java中的容器， 首先要理解计算机世界中的基础数据结构。 另外需要说明的是， 本篇博文没有任何代码，...</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>
