@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Java并发编程(06)--AbstractQueuedSynchronizer</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//AbstractQueuedSynchronizer" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java并发编程(06)--AbstractQueuedSynchronizer" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//AbstractQueuedSynchronizer" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Java并发编程(06)--AbstractQueuedSynchronizer" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//AbstractQueuedSynchronizer" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Java并发编程(06)--AbstractQueuedSynchronizer",
+    "url": "https://smartkeyerror.com//AbstractQueuedSynchronizer",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Java并发编程(06)--AbstractQueuedSynchronizer</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-12-26">26 Dec 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/并发编程'>并发编程</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在整理下一篇文章， 有关锁的知识之前， 有一个无论如何都绕不开的话题：<code class="highlighter-rouge">AbstractQueuedSynchronizer</code>， 队列同步器， 通常简称AQS。</p>
+
+<!---more--->
+
+<h4 id="1-产生由来">1. 产生由来</h4>
+<p>在<code class="highlighter-rouge">JDK 1.5</code>之前， <code class="highlighter-rouge">synchronized</code>几乎是使用最为广泛的线程同步机制， 然而该关键字的设计采用非常保守的策略， 灵活性较差。 所以必须有一种机制能够提供更加灵活， 效率更高的同步锁， AQS应运而生。</p>
+
+<h4 id="2-aqs简介">2. AQS简介</h4>
+<p>AQS解决了实现同步器时所涉及的大量细节问题，例如获取同步状态、FIFO同步队列。基于AQS来构建同步器可以带来很多好处。它不仅能够极大地减少实现工作，而且也不必处理在多个位置上发生的竞争问题。 在开发中大量使用的<code class="highlighter-rouge">ReentrantLock</code>, <code class="highlighter-rouge">Semaphore</code>等均由AQS所构建， 这样以来， AQS的地位就显得非常之重要了。</p>
+
+<p>更多的设计细节可以参考<strong>Doug Lea</strong>所写的论文， 也是理解AQS所必读的论文之一。</p>
+
+<blockquote>
+  <p>http://gee.cs.oswego.edu/dl/papers/aqs.pdf</p>
+</blockquote>
+
+<h4 id="3-aqs最基本原理">3. AQS最基本原理</h4>
+<p>参照上面的论文， 可以看出同步器的设计思想其实是非常简单的。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 加锁</span>
+<span class="k">while</span> <span class="o">(</span><span class="n">synchronization</span> <span class="n">state</span> <span class="n">does</span> <span class="n">not</span> <span class="n">allow</span> <span class="n">acquire</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">enqueue</span> <span class="n">current</span> <span class="n">thread</span> <span class="k">if</span> <span class="n">not</span> <span class="n">already</span> <span class="n">queued</span><span class="o">;</span>
+    <span class="n">possibly</span> <span class="n">block</span> <span class="n">current</span> <span class="n">thread</span><span class="o">;</span>
+<span class="o">}</span>
+<span class="n">dequeue</span> <span class="n">current</span> <span class="n">thread</span> <span class="k">if</span> <span class="n">it</span> <span class="n">was</span> <span class="n">queued</span><span class="o">;</span>
+
+<span class="c1">// 锁的释放</span>
+<span class="n">update</span> <span class="n">synchronization</span> <span class="n">state</span><span class="o">;</span>
+<span class="k">if</span> <span class="o">(</span><span class="n">state</span> <span class="n">may</span> <span class="n">permit</span> <span class="n">a</span> <span class="n">blocked</span> <span class="n">thread</span> <span class="n">to</span> <span class="n">acquire</span><span class="o">)</span>
+    <span class="n">unblock</span> <span class="n">one</span> <span class="n">or</span> <span class="n">more</span> <span class="n">queued</span> <span class="n">threads</span><span class="o">;</span>
+</code></pre></div></div>
+
+<p>1）加锁： 当同步状态不允许加锁时(此时锁被其它线程占有)， 将当前线程送入队列， 并可能使当前线程阻塞； 当可以进行加锁时从队列取出线程并给予相关的锁</p>
+
+<p>2）解锁：首先更新同步状态， 当同步状态允许一个阻塞的线程加锁时， 使队列中的一个或者多个线程解除阻塞。</p>
+
+<p>因此， 想要完成这样的一个同步器， 我们需要3个基本组件：</p>
+
+<ul>
+  <li>同步状态的原子性管理</li>
+  <li>线程的阻塞与解除阻塞</li>
+  <li>队列的管理</li>
+</ul>
+
+<p>那么下面就对这3个组件进行学习和整理。</p>
+
+<h5 id="31-同步状态">3.1 同步状态</h5>
+<p>AQS类使用单个int(32位)来保存同步状态，并暴露出<code class="highlighter-rouge">getState</code>、<code class="highlighter-rouge">setState</code>以及<code class="highlighter-rouge">compareAndSet</code>操作来读取和更新这个状态。 这些方法都依赖于j.u.c.atomic包的支持， 即这些操作均为原子性的。 另外在JDK 1.8中， 该标志位也可以使用64位的长整形来表示。</p>
+
+<p>基于AQS的具体实现类必须根据暴露出的状态相关的方法定义<code class="highlighter-rouge">tryAcquire</code>和<code class="highlighter-rouge">tryRelease</code>方法， 以控制加锁和释放锁的操作。 当同步状态满足时， <code class="highlighter-rouge">tryAcquire</code>方法必须返回true， 而当新的同步状态允许后续加锁时， <code class="highlighter-rouge">tryRelease</code>方法也必须返回true。 这些方法都接受一个int类型的参数用于传递想要的状态。 例如：可重入锁中， 当某个线程从条件等待中返回， 然后重新获取锁时， 为了重新建立循环计数的场景。 很多同步器并不需要这样一个参数， 因此忽略它即可。</p>
+
+<h5 id="32-线程的阻塞">3.2 线程的阻塞</h5>
+<p>在java.util.concurrent.locks包中提供了<code class="highlighter-rouge">LockSupport</code>类来对线程进行阻塞和阻塞的解除</p>
+
+<h5 id="33-队列">3.3 队列</h5>
+<p>可以认为同步器最为核心且关键的组件就是管理阻塞的线程队列。 该队列是一个非常严格的FIFO队列， 所以框架不支持基于优先级的同步。</p>
+
+<p>同步队列的最佳选择是自身没有使用底层锁来构造的非阻塞数据结构。 而其中主要有两个选择：一个是Mellor-Crummey和Scott锁(MCS锁)的变体， 另一个是Craig， Landin和Hagersten锁(CLH锁)的变体。 一直以来，CLH锁仅被用于自旋锁。 但是， 在这个框架中， CLH锁显然比MCS锁更合适。 因为CLH锁可以更容易地去实现取消和超时功能，  因此我们选择了CLH锁作为实现的基础。 但是最终的设计已经与原来的CLH锁有较大的出入， 因此下文将对此做出解释。</p>
+
+<p>在继续阅读论文之前， 先来看下<strong>什么是自旋锁。</strong> 等待获取锁的方式有被动和主动两种。 被动模式指的是互相竞争的线程不关心锁是否已经被释放， 而是让自身进入阻塞状态， 等待某种调度机制在锁释放时唤醒其中某个线程； 主动模式通常使用自旋的方式实现：线程进入某种循环主动判断锁的状态并尝试获得锁， 一旦获得了锁会立即退出循环。</p>
+
+<p>尽管自旋锁类似于一种死循环， 会消耗一些计算资源， 但是在<strong>锁资源很快被释放的情境</strong>下， 其开销要小于唤醒一个线程所带来的开销。 另外一点就是自旋锁通常是在用户空间层面的， 而<code class="highlighter-rouge">synchronized</code>属于重量级锁， 由内核进行托管， 那么内核空间与用户空间的切换也会造成开销。</p>
+
+<p>一个最简单的自旋锁的实现是通过原子变量类进行实现：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SpinLock</span> <span class="o">{</span>
+	<span class="kd">private</span> <span class="n">AtomicReference</span><span class="o">&lt;</span><span class="n">Thread</span><span class="o">&gt;</span> <span class="n">owner</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AtomicReference</span><span class="o">&lt;&gt;();</span>
+	<span class="kd">public</span> <span class="kt">void</span> <span class="nf">lock</span><span class="o">(){</span>
+		<span class="n">Thread</span> <span class="n">current</span> <span class="o">=</span> <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">();</span>
+		<span class="k">while</span><span class="o">(!</span><span class="n">owner</span><span class="o">.</span><span class="na">compareAndSet</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="n">current</span><span class="o">))</span> <span class="o">{</span>
+		    <span class="c1">// 空转</span>
+		<span class="o">}</span>
+	<span class="o">}</span>
+	<span class="kd">public</span> <span class="kt">void</span> <span class="nf">unlock</span> <span class="o">()</span> <span class="o">{</span>
+		<span class="n">Thread</span> <span class="n">current</span> <span class="o">=</span> <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">();</span>
+		<span class="n">owner</span><span class="o">.</span><span class="na">compareAndSet</span><span class="o">(</span><span class="n">current</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+	<span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>这种实现方式首先需要借助于原子类， 而原子类的CAS操作需要硬件的支持， 并且这里的公平性是无法进行保证的。 所以也就有了<code class="highlighter-rouge">MCS锁</code>和<code class="highlighter-rouge">CLH锁</code>。</p>
+
+<p>这里就使用图示简单的描述一下CLH锁的原理： 这个锁本质上是一个双向链表， 并具有头结点和尾节点的引用， 每一个节点可以认为是一个线程。</p>
+
+<p>1）初始化：head节点和tail节点均指向一个虚拟头结点(dummy节点)</p>
+
+<p>2）第一个线程加锁：第一个线程进入并尝试加锁， 此时链表刚初始化完毕， 加锁操作能够直接成功。 创建一个节点， 保存当前获得锁的线程信息。</p>
+
+<p>3）加锁：创建一个新节点， 挂到链表最后， 等待前驱节点的线程释放， 这里使用自旋的方式等待， 而非休眠。</p>
+
+<p>4）释放锁：前驱节点线程释放锁资源， 那么此时该节点的后驱节点停止自旋， 获取资源锁， 并将head节点指向当前节点。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-14%2015-45-02%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>这里只是一个非常浅显的原理分析， 更详细的操作以及一些细节请参考<code class="highlighter-rouge">java-doc</code>。</p>
+
+<h4 id="4-使用aqs">4. 使用AQS</h4>
+<p><code class="highlighter-rouge">AbstractQueuedSynchronizer</code>的具体实现其实是很复杂且精妙的， 但是暴露给我们使用的核心API其实只有几个， 我们继承该类， 并重写其相关方法即可。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">AbstractQueuedSynchronizer</span>
+    <span class="kd">extends</span> <span class="n">AbstractOwnableSynchronizer</span>
+    <span class="kd">implements</span> <span class="n">java</span><span class="o">.</span><span class="na">io</span><span class="o">.</span><span class="na">Serializable</span> <span class="o">{</span>
+
+    <span class="kd">protected</span> <span class="nf">AbstractQueuedSynchronizer</span><span class="o">()</span> <span class="o">{</span> <span class="o">}</span>
+
+    <span class="c1">// 尝试获取锁， 成功返回true, 失败返回false</span>
+    <span class="kd">protected</span> <span class="kt">boolean</span> <span class="nf">tryAcquire</span><span class="o">(</span><span class="kt">int</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">UnsupportedOperationException</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="c1">// 尝试释放锁， 成功返回true, 失败返回false</span>
+    <span class="kd">protected</span> <span class="kt">boolean</span> <span class="nf">tryRelease</span><span class="o">(</span><span class="kt">int</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">UnsupportedOperationException</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="c1">// 因为共享锁的加锁和排它锁的加锁有一些差别， 所以这里的返回值有所区别。</span>
+    <span class="c1">// 返回负值表示加锁失败， 正值表示成功</span>
+    <span class="kd">protected</span> <span class="kt">int</span> <span class="nf">tryAcquireShared</span><span class="o">(</span><span class="kt">int</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">UnsupportedOperationException</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="kd">protected</span> <span class="kt">boolean</span> <span class="nf">tryReleaseShared</span><span class="o">(</span><span class="kt">int</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">UnsupportedOperationException</span><span class="o">();</span>
+    <span class="o">}</span>
+</code></pre></div></div>
+
+<p>具体的实现可以查看<code class="highlighter-rouge">ReentrantLock</code>中<code class="highlighter-rouge">Sync</code>这个静态内部类， 以及<code class="highlighter-rouge">NonfairSync</code>， <code class="highlighter-rouge">FairSync</code>这两个继承自<code class="highlighter-rouge">Sync</code>类的静态内部类。</p>
+
+<h4 id="5-小结">5. 小结</h4>
+<p>本篇文章没有对<code class="highlighter-rouge">AbstractQueuedSynchronizer</code>做特别深入的分析， 仅从其原理以及设计思想进行了相应的阐述。 在开发中如果能有更深层次的理解当然最好， 但是日常使用我认为到这里就足够了， 遇到更深入的问题再回来深入的分析。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Java并发编程(06)--AbstractQueuedSynchronizer&amp;url=https://smartkeyerror.comAbstractQueuedSynchronizer"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comAbstractQueuedSynchronizer"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comAbstractQueuedSynchronizer"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Lock">
+            <section class="post">
+                <h2>Java并发编程(07)--锁</h2>
+                <p>锁在并发编程中可以说是必须使用的一种资源保护技术， 而且是一种及其庞大且复杂的技术， 随着计算机学科的发展， 锁技术同样的在不断的发展和优化。 作为一个开发者， 当然无法直接深入到CPU的最底层去理解锁的原理， 但是通过一些其它的手段可以间接的理解锁的原理以及运行机制。
+本篇文章进行一个现阶段的总结， 整理一下所学的全部关于锁的知识， 涉及的编程语言包括Python和Java， 应用包括MySQL以及Redis， 如有错误， 还请指正。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Python-ThreadingPool">
+            <section class="post">
+                <h2>Java并发编程(05)--Python线程池源码剖析</h2>
+                <p>本来是一个对Java并发编程的一个学习和总结专题， 虽然Python有GIL的存在， 但不能否认其线程池的实现非常的简洁而优雅， 此外温故而知新， 通过理解其它语言的线程池也能够加深我们对Java线程池的理解。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

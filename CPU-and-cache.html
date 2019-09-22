@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Java并发编程(02)--CPU和缓存一致性</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//CPU-and-cache" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java并发编程(02)--CPU和缓存一致性" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//CPU-and-cache" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Java并发编程(02)--CPU和缓存一致性" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//CPU-and-cache" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Java并发编程(02)--CPU和缓存一致性",
+    "url": "https://smartkeyerror.com//CPU-and-cache",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Java并发编程(02)--CPU和缓存一致性</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-12-11">11 Dec 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/并发编程'>并发编程</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在继续学习<code class="highlighter-rouge">Java</code>并发编程之前， CPU的执行过程以及CPU缓存一致性问题是必须要了解的， 这一部分的内容是<code class="highlighter-rouge">Java</code>并发设计的基石， 对后续内容的了解也有非常大的帮助。</p>
+
+<!---more--->
+
+<h4 id="1-cpu缓存结构">1. CPU缓存结构</h4>
+<p>在比较古老的CPU中， CPU直接和主存进行数据交互。 CPU将主存中的数据取到自己的寄存器中， 计算完毕后再写回主存。 寄存器可以认为是数据的临时存放点， 将所要处理的数据放到自己的手边上， 这样处理起来会更加的快速。</p>
+
+<p>但是随着CPU技术的快速发展， 内存数据的读取和写入速度远远跟不上CPU的处理速度， 这样一来就导致CPU操作内存需要花费很长的时间。 这个过程在生活中其实很常见， 比如两个水泥工， 一个和水泥， 一个用和好的水泥砌墙。 砌墙的这个人操作速度很快， 每次都得等和水泥的把水泥和好才能继续干活儿， 这样一来就会有瓶颈问题。</p>
+
+<p>所以为了解决CPU和内存间的数据处理速度差的这个瓶颈， CPU引入了多级缓存， 目前在市面儿上刨去买不起的intel Core i9， 绝大多数intel第八代CPU均有3级缓存， i7-8700k的第三级缓存更是达到了12M。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-15%2010-40-01%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>速度读写速度：L1 &gt; L2 &gt; L3； 缓存容量：L1 &lt; L2 &lt; L3； 造价成本： L1 &gt; L2 &gt; L3。 可以简单的认为上一级缓存是下一级缓存的一个子集。 图中的实例可能与实际有些偏差， 例如L2 cache可能在两个核之间共享， 也可能是一个核独享， 但是L1 cache必定是核独享， L3 cache为所有核共享。</p>
+
+<p>在有了多级缓存之后， CPU与主存之间的数据交互就变成了： 当程序运行过程中， 会将运算所需要的数据从主存中复制一份放入到CPU的高速缓存中， 至于是放置到哪一个高速缓存， 视数据处理的紧急程度而定。 当CPU要进行运算时， 首先从L1 cache取数据， 没有的话从L2 cache取数据， 如果还是没有的话就从L3 share cache或者主存中取数据。</p>
+
+<p>这样一来， 高速缓存充当一个缓冲区的角色， 协调CPU与内存之间的数据处理， 从而加快整体的数据处理与计算能力。</p>
+
+<h4 id="2-cpu多级高速缓存带来的问题">2. CPU多级高速缓存带来的问题</h4>
+<p>虽然CPU多级高速缓存能够解决CPU和内存之间的处理速度差问题， 但是又带来了新的问题。 现在CPU架构均设计称为多核多线程模型， 那么当一个进程中存在多个线程运行， 并运行在不同的核心上时， 就会出现这样的问题：每个核心都会在各自的caehe中保留一份共享内存的缓冲。 由于多核是可以并行的， 可能会出现多个线程同时写各自的缓存的情况，而各自的cache之间的数据就有可能不同。</p>
+
+<p>所以， 在CPU和主存之间增加缓存，在多线程场景下就可能存在缓存一致性问题， 即每个核的高速缓存中， 对于主存中的同一个数据的缓存内容可能会不一致。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-15%2011-11-34%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<h4 id="3-缓存一致性协议">3. 缓存一致性协议</h4>
+<p>为了解决缓存一致性问题， CPU服务商提供较多的解决方案， 使用最广泛的为Intel MESI协议。</p>
+
+<p>MESI协议核心思想为： 当CPU写数据时， 如果发现该数据为共享变量(其它核心也有该数据的副本)， 那么将会发出信号使其它核心关于该数据的缓存失效。 当其它核心想要读取该数据时， 由于缓存已失效， 将会从主存中重新读取。</p>
+
+<p>非常像<code class="highlighter-rouge">Cache Aside</code>缓存失效模型： 当数据库发生数据更新时， 将该数据所在的缓存(redis, memcache)删除， 那么下一次读数据时发现没有缓存， 重新从数据库中取出数据并重新设置缓存。</p>
+
+<p>MESI其实是四种状态的首字母组合：</p>
+
+<p>M：Modified， 数据已经被修改， 且缓存与主存数据不一致， 将来会写回主存中
+E：Exclusive， 缓存独占该数据， 且缓存数据与主存数据一致。 并且可能会被设置为共享状态(Shared)以及被修改(Modified)
+S：Shared， 数据在多个缓存中共享， 且与主存数据一致。 并且可能会被置位失效(Invalid)状态
+I：Invalid， 该缓存数据已失效， 不会被使用</p>
+
+<p>MESI之间状态会不断的发生迁移， 包括Local Read(核心读取自己的缓存数据), Local Write, Remote Read以及Remote Write， 设计较为精妙。 事实上， 现在的MESI协议已经更新为MESIF协议， 增加了Forward状态。</p>
+
+<p>MESI之间的状态具体怎么转换， 这些细节不再描述， 这部分内容已经过于底层了， 只需要了解<strong>MESI能够解决缓存一致性问题， 但是无法保证数据的实时性</strong>即可。</p>
+
+<h4 id="4-java内存模型">4. Java内存模型</h4>
+<p>MESI协议解决了多线程下的缓存一致性， 但是并没有为我们解决多线程下变量操作的<strong>原子性， 可见性以及有序性</strong>， 这3个在并发编程中至关重要的特性是由Java内存模型来实现的。</p>
+
+<p>本文并没有对Java内存模型有深入理解的想法， 相反， 这一部分的内容我认为可以流于表面， 因为内存模型与CPU相关， 与缓存相关， 与编译器相关， 与并发也相关， 整体实现复杂且精妙。 作为一个开发Low Bee， 实在有心无力。</p>
+
+<p>我们只需要知道： Java内存模型是一种规范，目的是<strong>解决由于多线程通过共享内存进行通信时，存在的本地内存数据不一致、编译器会对代码指令重排序、处理器会对代码乱序执行等带来的问题</strong>。</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center ](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-15%2014-26-59%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>大致模型如上， 每一个线程都会有其本地内存， 或者称为工作内存。 当线程对变量进行修改时，首先写入本地内存， 而后将其写回主存时才对线程2可见。</p>
+
+<p><code class="highlighter-rouge">volatile</code>关键字所修饰的变量之所以拥有并发可见性， 就是因为被其修饰的变量在修改之后立即同步到主存当中， 在每次使用之前也只从主存中读取。</p>
+
+<h4 id="5-小结">5. 小结</h4>
+<p>本篇文章很多内容都只是流于表面， 对更加深层次的原理并没有进行梳理。 这一部分的细节内容实在太多， 我认为掌握了80%的表面， 并且在使用<code class="highlighter-rouge">synchronized</code>以及<code class="highlighter-rouge">volatile</code>这些关键字时能够理解其基本原理即可。 毕竟我们写的还是业务代码， 并不会与硬件直接接触。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Java并发编程(02)--CPU和缓存一致性&amp;url=https://smartkeyerror.comCPU-and-cache"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comCPU-and-cache"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comCPU-and-cache"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/task-cancel-and-exception">
+            <section class="post">
+                <h2>Java并发编程(03)--任务的取消与异常处理</h2>
+                <p>在前面的一章整理并发编程的一些基础内容， 包括任务的创建， 任务的执行， 线程池的简单使用， 加入一个线程以及守护线程和线程同步。 基本上涵盖了绝大多数的基础内容， 在本章中学习任务的取消与异常处理。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Java-Concurrent-Base">
+            <section class="post">
+                <h2>JJava并发编程(01)--基础学习</h2>
+                <p>打了2年多的Python代码， 大大小小的项目也做了一些， 代码规范和并发效率一直以来是比较头疼的问题。 因为GIL全局解释器锁的存在使得Python程序员永远只能使用单核， 并且在锁的保护下许多的效率问题都被掩盖。 在学习了Java之后， 对其并发模块的设计深感惊艳， 比如ConcurrentHashMap的分段锁实现， volatile关键字保证变量的可见性， 所以在这里对其进行整理并进一步加深理解。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

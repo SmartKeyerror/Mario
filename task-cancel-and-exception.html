@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Java并发编程(03)--任务的取消与异常处理</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//task-cancel-and-exception" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java并发编程(03)--任务的取消与异常处理" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//task-cancel-and-exception" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Java并发编程(03)--任务的取消与异常处理" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//task-cancel-and-exception" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Java并发编程(03)--任务的取消与异常处理",
+    "url": "https://smartkeyerror.com//task-cancel-and-exception",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Java并发编程(03)--任务的取消与异常处理</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-12-14">14 Dec 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/并发编程'>并发编程</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在前面的一章整理并发编程的一些基础内容， 包括任务的创建， 任务的执行， 线程池的简单使用， 加入一个线程以及守护线程和线程同步。 基本上涵盖了绝大多数的基础内容， 在本章中学习任务的取消与异常处理。</p>
+
+<!---more--->
+
+<h4 id="1-任务取消">1. 任务取消</h4>
+<p>如果外部代码能在某个操作正常完成之前将其置于”完成”状态， 那么这个操作就可以称为可取消的， 取消某个操作的原因有很多：</p>
+
+<p>1）<strong>用户请求取消</strong>： 这个任务用户不想做了，点击请求按钮， 或者发送取消的http请求。
+2）<strong>有时间限制的操作</strong>： 当一个任务的执行时间超过了我们规定的时间， 我们需要把它干掉。
+3）<strong>应用程序时间</strong>： 比如一个多线程的搜索程序， 当一个线程找到了想要的东西， 那么其余的线程也就没有存在的必要了， 将其干掉以释放资源。
+4）<strong>错误</strong>： 比如一个爬虫在爬取数据并保存于数据库时， 发生了错误， 如网络终端， 磁盘空间已满等， 这个时候所有的爬取任务都应取消，并且记录当前状态， 以便稍后启动。
+5）<strong>关闭</strong>： 当一个程序或服务关闭时， 必须对正在处理和等待处理的工作执行某种操作。 在平缓的关闭过程中， 当前正在执行的任务将继续执行到完成为止， 而在立即关闭过程中， 当前的任务可能取消。</p>
+
+<p>可以看到上面的5个原因在我们的应用中完全有可能出现， 并且出现的几率还很大， 所以想要构建出行为良好的应用， 那么任务和线程的取消与关闭是必须掌握的。</p>
+
+<p><code class="highlighter-rouge">Java</code>中并没有一种安全的抢占方式方法来停止线程， 只有一些协作式的机制来终止任务的执行。 比如我们对一个任务添加一个标志， 当标志为真时执行， 为假时停止， 这样就达到了外部控制的效果。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">PrimeGenerator</span> <span class="kd">implements</span> <span class="n">Runnable</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">BigInteger</span><span class="o">&gt;</span> <span class="n">results</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">BigInteger</span><span class="o">&gt;();</span>
+
+    <span class="kd">private</span> <span class="kd">volatile</span> <span class="n">Boolean</span> <span class="n">isCanceled</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">BigInteger</span> <span class="n">p</span> <span class="o">=</span> <span class="n">BigInteger</span><span class="o">.</span><span class="na">ONE</span><span class="o">;</span>
+        <span class="k">while</span> <span class="o">(!</span> <span class="n">isCanceled</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="na">nextProbablePrime</span><span class="o">();</span>
+            <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">results</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">cancel</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">isCanceled</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">synchronized</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">BigInteger</span><span class="o">&gt;</span> <span class="nf">getResults</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">BigInteger</span><span class="o">&gt;(</span><span class="n">results</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>这个例子我直接从<code class="highlighter-rouge">Java并发编程实战</code>的7-2程序清单粘过来， 例子很有代表性。 首先这个标志位必须是<code class="highlighter-rouge">volatile</code>类型， 使得我们能够在任何时刻都能获取标志位的最新状态。  此外我们还需要对写操作和读操作加锁， 写操作加锁通常很好理解， 读操作加锁是为了能够实时的获取最新数据， 也就是每一次的方法调用一定是当前的最新状态。</p>
+
+<p>这样一来在任务运行之后， 在想要停止的地方调用相同实例的<code class="highlighter-rouge">cancel</code>方法即可终止任务。</p>
+
+<h4 id="2-中断">2. 中断</h4>
+<p>通过标志位的方式能够解决一部分的问题， 但是如果一个任务调用了某个阻塞方法， 比如像<code class="highlighter-rouge">BlockingQueue.put</code>， 建立一个阻塞式的<code class="highlighter-rouge">socket</code>， 那么此时任务会被阻塞， 根本无法查看标志位的变量变化， 这个时候就需要使用其它的方式来取消一个任务。</p>
+
+<p><code class="highlighter-rouge">Thread</code>类为我们提供了<code class="highlighter-rouge">interrupt</code>方法来中断一个线程， 并且提供了<code class="highlighter-rouge">isInterrupted</code>方法来返回目标线程的中断状况。</p>
+
+<p>像阻塞库的方法， <code class="highlighter-rouge">Thread.sleep</code>和<code class="highlighter-rouge">Object.wait</code>等， 都会检查线程何时中断， 并且在发现中断时提前返回。 整体流程： 清除中断状态， 抛出<code class="highlighter-rouge">InterruptedException</code>， 表示阻塞操作由于中断而提前结束。 <code class="highlighter-rouge">JVM</code>并不能保证阻塞方法检测到中断的速度， 但在实际情况中还是很快的。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">PrimeProducer</span> <span class="kd">extends</span> <span class="n">Thread</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">BlockingQueue</span><span class="o">&lt;</span><span class="n">BigInteger</span><span class="o">&gt;</span> <span class="n">blockingQueue</span><span class="o">;</span>
+
+    <span class="n">PrimeProducer</span><span class="o">(</span><span class="n">BlockingQueue</span><span class="o">&lt;</span><span class="n">BigInteger</span><span class="o">&gt;</span> <span class="n">blockingQueue</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">blockingQueue</span> <span class="o">=</span> <span class="n">blockingQueue</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="n">BigInteger</span> <span class="n">p</span> <span class="o">=</span> <span class="n">BigInteger</span><span class="o">.</span><span class="na">ONE</span><span class="o">;</span>
+            <span class="k">while</span> <span class="o">(!</span><span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">isInterrupted</span><span class="o">())</span> <span class="o">{</span>
+                <span class="n">blockingQueue</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="na">nextProbablePrime</span><span class="o">());</span>
+            <span class="o">}</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">InterruptedException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="c1">// 这里线程退出即可， 并执行一些资源清理的工作</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">cancel</span><span class="o">()</span> <span class="o">{</span><span class="n">interrupt</span><span class="o">();}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>之所以在<code class="highlighter-rouge">while</code>中进行一次中断检测是为了更快的响应中断， 如果可中断的阻塞方法<code class="highlighter-rouge">put</code>调用的频率不是很高的话， 那么该线程就对中断的处理就会很迟钝， 所以我们再加一个主动的判断， 以更快的响应。</p>
+
+<p>通常来讲， 使用中断是比较好的停止线程工作的策略。</p>
+
+<h4 id="3-运行时异常抛出">3. 运行时异常抛出</h4>
+<p>任何代码都可能会抛出<code class="highlighter-rouge">RuntimeException</code>， 然而对于<code class="highlighter-rouge">Runnable</code>而言， 我们没有办法去捕捉这类异常， 约定俗成的是<code class="highlighter-rouge">Runnable</code>任务自行处理所有的异常。 当线程有异常抛出时， 线程就是终止运行， 并将异常信息输出至控制台， 这种方式其实不是很友好， 因为没人会看控制台， 只会检查日志。 所以这个时候我们需要一种手段来获取运行时抛出的异常。</p>
+
+<p><code class="highlighter-rouge">Thread.UncaughtExceptionHandler</code>是javaSE5中的新接口， 它允许我们在每一个Thread对象上添加一个异常处理器(<code class="highlighter-rouge">UncaughtExceptionHandler</code>)。 我们可以这样来定义：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">TestDemo</span> <span class="kd">implements</span> <span class="n">Runnable</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">"运行时异常抛出"</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">class</span> <span class="nc">ThreadExceptionHandler</span> <span class="kd">implements</span> <span class="n">Thread</span><span class="o">.</span><span class="na">UncaughtExceptionHandler</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">uncaughtException</span><span class="o">(</span><span class="n">Thread</span> <span class="n">t</span><span class="o">,</span> <span class="n">Throwable</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"处理器接收异常信息为: "</span> <span class="o">+</span> <span class="n">e</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">ExceptionThread</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="n">Thread</span> <span class="n">t</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Thread</span><span class="o">(</span><span class="k">new</span> <span class="n">TestDemo</span><span class="o">());</span>
+            <span class="n">t</span><span class="o">.</span><span class="na">setUncaughtExceptionHandler</span><span class="o">(</span><span class="k">new</span> <span class="n">ThreadExceptionHandler</span><span class="o">());</span>
+            <span class="n">t</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>那么这个时候我们就可以将一些意料之外的异常记录到日志当中了， 当然了， 这是一种比较绕的解决方案。 如果能够在线程内解决该异常就在线程内进行捕捉处理。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">TestDemo</span> <span class="kd">implements</span> <span class="n">Runnable</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">"运行时异常抛出"</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"我捕捉到了异常"</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+            <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"清理工作"</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>这是一种更为彻底的解决方案， 但是这样的方式如果是有多个线程同时抛出异常， 日志记录会有很多的重复， 使用<code class="highlighter-rouge">UncaughtExceptionHandler</code>则可以避免这个问题。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Java并发编程(03)--任务的取消与异常处理&amp;url=https://smartkeyerror.comtask-cancel-and-exception"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comtask-cancel-and-exception"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comtask-cancel-and-exception"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Java-ThreadingPool">
+            <section class="post">
+                <h2>Java并发编程(04)--线程池</h2>
+                <p>抛开Java自己封装的newFixedThreadPool, newCachedThreadPool等工厂线程池方法， 最核心的就是ThreadPoolExecutor的配置， 包括线程池的大小， 工作队列， 空闲线程存活时间以及饱和策略。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/CPU-and-cache">
+            <section class="post">
+                <h2>Java并发编程(02)--CPU和缓存一致性</h2>
+                <p>在继续学习Java并发编程之前， CPU的执行过程以及CPU缓存一致性问题是必须要了解的， 这一部分的内容是Java并发设计的基石， 对后续内容的了解也有非常大的帮助。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

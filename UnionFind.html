@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>那些有趣的数据结构与算法(03)--并查集</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//UnionFind" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="那些有趣的数据结构与算法(03)--并查集" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//UnionFind" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="那些有趣的数据结构与算法(03)--并查集" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//UnionFind" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "那些有趣的数据结构与算法(03)--并查集",
+    "url": "https://smartkeyerror.com//UnionFind",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">那些有趣的数据结构与算法(03)--并查集</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-03-25">25 Mar 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/数据结构'>数据结构</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在《算法》(第四版)的第一章最后一小节中， 也就是”案例研究: union-find算法”这一小节， 我看到了并查集。 在我完整的阅读了所有的算法内容之后， 脑子里只剩下两个字: 优美。</p>
+
+<!---more--->
+
+<h4 id="1-为什么需要union-find算法">1. 为什么需要union-find算法</h4>
+<p>小A的人际关系非常之广， 拥有非常多的朋友， 同时， 他的朋友也有很多朋友。 如果两个人是朋友关系的话就记为a-b。</p>
+
+<p>小A的人际关系可以表示为： A-C A-E A-F A-P A-M A-O A-K…而他的一些朋友的人际关系可以表示为 S-W M-I M-O M-T O-Y O-C E-G…小A朋友的朋友的人际关系可以表示为 K-P K-B X-U Z-O…</p>
+
+<p>通过这样的方式整理出了小A的所有人际关系连接， 以及小A的朋友的人际关系连接。 现在我想要知道， 某一位同学能不能推荐给小A。 例如A-C C-F， 小C是A, F的共同好友， 尽管A, F两人不是朋友关系， 但是由于小C这层枢纽的存在， 很有可能使得他们成为朋友。 也就是说， 需要判断A， F两者之间的连通性， 从而生成推荐朋友的功能。</p>
+
+<p>在一个大型网络系统中， 如果节点A与节点C连接， 记为A-C。 如果节点A既与节点C由于节点B连接的话， 我们可以说节点B和节点C是连接的。 给定相当数量节点连接情况， 判断出系统中任意两个节点是否连接。</p>
+
+<p>很明显的， union-find算法就是解决这一类问题的: 动态连接问题。 连接问题在上面已经描述过了， 那么动态是什么意思？ 人和人之间的人际关系不是一成不变的， 系统中节点的连接状态也不是一成不变的。 在某些情况下， 两个完全不相关的人成为了朋友， 此时我们就需要处理这些连接， 并重新判断连接性， 这就是动态性。</p>
+
+<h4 id="2-设计union-find算法">2. 设计union-find算法</h4>
+<p>既然是解决系统中的连接性， 那么最基本的API就是判断两个元素是否处于连接状态， 如果两个元素的标识位是相同的， 我们就可以判断它们是连通的， 所以需要额外的一个查找API。 此外， 还要提供将两个元素连接的API。</p>
+
+<p>那么整体的API设计就是这样:</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">UnionFind</span><span class="o">:</span>
+    <span class="n">UnionFind</span><span class="o">(</span><span class="kt">int</span> <span class="n">N</span><span class="o">)</span>                  <span class="c1">// 初始化节点</span>
+    <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span>          <span class="c1">// 连接p, q</span>
+    <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span>                   <span class="c1">// 查找p的标志位</span>
+    <span class="kt">boolean</span> <span class="nf">connected</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span>   <span class="c1">// 判断p, q是否连接</span>
+</code></pre></div></div>
+
+<p>整体的算法基于什么样的基本数据结构呢？ 数组， 链表还是树？ 数组的下标以及数组中所存储的元素会有一种对应。 例如<code class="highlighter-rouge">data[0] = 1</code>， 我们可以认为0这个节点的标识是1。 如果又有<code class="highlighter-rouge">data[12] = 1</code>， 节点12的标识位也是1， 此时可以判断节点0和节点12是连接的。</p>
+
+<p>如果采用数组实现， 连接p, q两个节点又该如何操作？ 一个非常简单的做法就是将节点p的标志位设置为节点q的标志位， 使两者的标识位同步即可。</p>
+
+<p>在数组初始化的时候就有:
+<img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2009-37-46.png" alt="" /></p>
+
+<p>那么<code class="highlighter-rouge">UnionFind</code>类的初始化过程就非常简单了， 申请容量为N的数组， 逐一赋值即可:</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">UnionFind</span><span class="o">:</span>
+    <span class="kd">private</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">data</span><span class="o">;</span>
+    <span class="n">UnionFind</span><span class="o">(</span><span class="kt">int</span> <span class="n">N</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="n">N</span><span class="o">];</span>
+        <span class="k">for</span><span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">N</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">i</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre></div></div>
+
+<h5 id="21-quick-find算法">2.1 quick-find算法</h5>
+<p>quick-find算法的思路是这样的: 使用数组的索引作为节点， 数组索引所对应的值作为节点标识。 在连接p, q两个节点时， 首先查找p, q两个节点的标识位， 将所有与p连接的节点的标识位改为q的标识位。 图示过程如下:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/quick-find.png" alt="" /></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">];</span>  <span class="c1">// 返回节点p的标志位</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kt">int</span> <span class="n">pID</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
+    <span class="kt">int</span> <span class="n">qID</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">q</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">pID</span> <span class="o">==</span> <span class="n">qID</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
+
+    <span class="c1">// 遍历所有与节点q标识位相同的节点, 并将其标识位改为q的标识位</span>
+    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">data</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">==</span> <span class="n">pID</span><span class="o">)</span>
+            <span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">qID</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>为什么这个算法称为quick-find呢？ 因为在查找过程中， 采用的是直接取数组下标的方式， 时间复杂度为O(1)， 而union操作则需要遍历整个数组， 其时间复杂度为O(n)。</p>
+
+<h5 id="22-quick-union算法实现">2.2 quick-union算法实现</h5>
+<p>虽然quick-find算法拥有较高的查找效率， 但是其union操作效率较低， 所以通常会使用quick-union算法来实现并查集。</p>
+
+<p>quick-union算法的思路是将每一个元素看成是一个节点， 将数组整理成为一个树结构， 并由孩子节点指向父亲节点。</p>
+
+<p>在初始化数组的时候， 我们说数组的索引代表了节点本身， 而数组的索引值代表了节点的标识位。 而现在， 数组的索引值不再代表节点的标识位了， 而是代表其父节点。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-10-29.png" alt="" /></p>
+
+<p>如上图所示， 首先我们将节点3与节点2连接， 按照孩子指向父亲的原则， <code class="highlighter-rouge">data[3] = 2</code>。 再将节点1与节点3进行连接， 此时节点3不直接与节点1进行连接， 而是与节点1的父亲节点进行连接， 也就是节点2， 所以就有<code class="highlighter-rouge">data[1] = 2</code>。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-14-17.png" alt="" /></p>
+
+<p>在上图中， 我们让节点8和节点2进行连接， 它们不会直接连接， 因为节点8还有父节点5， 让节点5和节点2进行连接。 由于节点5和节点2都是父节点， 所以节点5可以直接指向节点2。 此时数组内的数据情况为:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-20-51.png" alt="" /></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// 循环查找父节点</span>
+    <span class="k">while</span> <span class="o">(</span><span class="n">p</span> <span class="o">!=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">])</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">];</span>
+    <span class="k">return</span> <span class="n">p</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// 此时find操作得到的结果是两个节点的根节点</span>
+    <span class="kt">int</span> <span class="n">pRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
+    <span class="kt">int</span> <span class="n">qRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">q</span><span class="o">);</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">pRoot</span> <span class="o">==</span> <span class="n">qRoot</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
+
+    <span class="n">data</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">qRoot</span><span class="o">;</span>  <span class="c1">// 使p的父节点指向q的父节点</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h4 id="3-quick-union算法的优化">3. quick-union算法的优化</h4>
+<h5 id="31-基于树高的优化">3.1 基于树高的优化</h5>
+<p>B-Tree之所以非常高效的原因， 是因为其树高最多只有4层(树叶因子如果是500的话， 此时可容纳250T的数据)， 那么对于我们的数组树结构来说， 虽然没有指针， 但是逻辑上仍然是一颗树， 所以对树高的优化非常有必要。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-43-00.png" alt="" /></p>
+
+<p>如上图所示， 如果是左侧根节点指向右侧根节点的话， 整体树高为4。 而如果是右侧根节点指向左侧根节点的话， 整体树高为3。 所以我们需要额外的增加一些数据， 来记录每棵树的树高。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">UnionFind</span><span class="o">:</span>
+    <span class="kd">private</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">data</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">rank</span><span class="o">;</span>
+
+    <span class="n">UnionFind</span><span class="o">(</span><span class="kt">int</span> <span class="n">N</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="n">N</span><span class="o">];</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="n">N</span><span class="o">]</span>
+        <span class="nf">for</span><span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">N</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">i</span><span class="o">;</span>
+            <span class="n">rank</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>  <span class="c1">// 初始化时每棵树的高度均为1</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre></div></div>
+
+<p>那么在<code class="highlighter-rouge">union</code>方法中， 就需要进行一些比较。 将树高低的指向树高高的即可。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kt">int</span> <span class="n">pRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
+    <span class="kt">int</span> <span class="n">qRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">q</span><span class="o">);</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">pRoot</span> <span class="o">==</span> <span class="n">qRoot</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">rank</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">&lt;</span> <span class="n">rank</span><span class="o">[</span><span class="n">qRoot</span><span class="o">])</span>
+        <span class="n">data</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">qRoot</span><span class="o">;</span>
+    <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">rank</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">&gt;</span> <span class="n">rank</span><span class="o">[</span><span class="n">qRoot</span><span class="o">])</span>
+        <span class="n">data</span><span class="o">[</span><span class="n">qRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">pRoot</span><span class="o">;</span>
+    <span class="k">else</span> <span class="o">{</span>  <span class="c1">// 当两棵树的树高相同时， 谁指向谁都一样， 树高必定会增加</span>
+        <span class="n">data</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">qRoot</span><span class="o">;</span>
+        <span class="n">rank</span><span class="o">[</span><span class="n">qRoot</span><span class="o">]</span> <span class="o">++;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h5 id="32-路径压缩">3.2 路径压缩</h5>
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-56-03.png" alt="" /></p>
+
+<p>图中3种树结构都表达了同一个意思， 节点5， 7， 10， 8互相连接， 且根节点都为5。 虽然表达的意思相同， 但是它们在union和find操作上的效率却不尽相同。 很明显的， 最右侧的树有着最高的操作效率， 这也是路径压缩需要做的事情。</p>
+
+<p>这个过程其实很简单， 只需要执行<code class="highlighter-rouge">data[p] = data[data[p]]</code>即可。 也就是说， 让某一个节点指向父节点的父节点， 这样一来树高就能减少一层。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">while</span> <span class="o">(</span><span class="n">p</span> <span class="o">!=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">])</span> <span class="o">{</span>
+        <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">[</span><span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">]];</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">];</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="n">p</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h4 id="4-小结">4. 小结</h4>
+<p>union-find算法主要是为了解决连通问题， 从实际角度上来讲， 使用频率并不是很高。 但是其利用数组所构建的树结构却是整个算法最为精妙的部分， 同时也体现出了数组这个基本数据结构的强大威力。</p>
+
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=那些有趣的数据结构与算法(03)--并查集&amp;url=https://smartkeyerror.comUnionFind"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comUnionFind"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comUnionFind"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Flask-Web">
+            <section class="post">
+                <h2>一文理解Flask Web开发</h2>
+                <p>Flask作为Python语言中最为轻量的Web框架， 由于其核心内容的简洁以及良好的可拓展性， 一直受到广泛的开发者所喜爱。 对比于Django， Flask并没有”我给你的就是最好的， 别管那么多， 拿着用就好”的思想， 而是让开发者自己做出选择， 自己设计开发一个组件， 或者挑选一个你喜欢的第三方库。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Bitmap">
+            <section class="post">
+                <h2>那些有趣的数据结构与算法(02)--Bitmap</h2>
+                <p>在我刚接触Python这门开发语言时， 并没有想用它做Web后端开发， 而是拿来写爬虫。 第一个接触的爬虫框架就是Scrapy。 网络爬虫绕不开的一个话题就是URL去重问题。 在Scrapy原生框架下， 使用的是集合来对URL进行去重的。 集合本身采用哈希表实现， 是一种典型的以空间换时间的数据结构， 当URL数量极为庞大时， 使用这种策略的去重很有可能导致内存溢出而造成服务器宕机的问题。 此时， Bitmap走进了我的视线。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

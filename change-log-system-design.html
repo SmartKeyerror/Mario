@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>数据变更操作日志设计</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//change-log-system-design" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="数据变更操作日志设计" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//change-log-system-design" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="数据变更操作日志设计" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//change-log-system-design" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "数据变更操作日志设计",
+    "url": "https://smartkeyerror.com//change-log-system-design",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">数据变更操作日志设计</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-08-10">10 Aug 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/系统设计'>系统设计</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>当系统的某些行为涉及到资金与资产的数据变更时，常常会为其增加操作日志， 便于后续的问题排查。 例如红包的使用明细， 银行转账的详细记录等等。 操作日志记录这个需求看起来很简单， 但是深挖下去， 依然能找到很有趣的东西。</p>
+
+<!---more--->
+
+<h4 id="1-需求">1. 需求</h4>
+<p>既然是操作日志， 势必要记录<strong>谁对什么进行了怎样的操作</strong>， 抽象出来的字段就有<code class="highlighter-rouge">operator</code>(操作人)， <code class="highlighter-rouge">action</code>(创建、修改等行为)， <code class="highlighter-rouge">entry</code>(实体, 通常会用实体id来代替)。</p>
+
+<p>MySQL-binlog的日志格式有<code class="highlighter-rouge">FULL</code>和<code class="highlighter-rouge">MINIMAL</code>两种， 前者记录了所有的字段， 后者只记录了更新的部分字段。 那么对于操作日志而言， 同样需要考虑是记录更新前后的所有数据字段， 还是只记录更新的字段。 操作日志的数据当然是越详细越好， 既然都要做这个需求了， 那就一步到位。</p>
+
+<p>所以说， 本篇文章的日志格式即为数据库数据的增量版， 并且在原有数据字段上进行稍许拓展， 进行更加详细的记录。 也可以认为这就是记录了所有的数据版本库， 此时添加一个版本号即可。</p>
+
+<h4 id="2-实现">2. 实现</h4>
+<p>理论上来讲实现有两种， 一种是业务层面实现， 一种是使用日志解析工具来解析二进制日志， 但是该实现方式非常依赖具体的存储实现， 像MySQL和Oracle的解析策略是不一样的， 如果使用了MongoDB作为主库存储， 数据文件解析起来就更费劲了。</p>
+
+<p>从项目维护的角度来看， 业务层实现在编码完成之后， 几乎不需要花太多的精力维护。 但是日志解析或者是数据文件解析工具， 却需要花大量的人力和时间来维护(看看<code class="highlighter-rouge">canal</code>)。</p>
+
+<p>从易拓展的角度来看， 业务层的实现只需要稍加抽象， 就可以随意的更换或者添加数据存储源。 而日志分析的实现如果需要更换数据源的话， 迁移的工作量可能相当庞大。</p>
+
+<p>从效率的角度来看， 业务层的实现效率确实会低于日志解析的实现。</p>
+
+<p>综上考虑， 业务层实现是最佳的方式， 方便维护， 方便拓展， 在效率上虽然会对原有系统造成影响， 但是可以通过其它的方式进行补偿。</p>
+
+<h4 id="3-实现细节">3. 实现细节</h4>
+
+<p>在具体的实现之前， 首先来看一下常见Web请求的基本流程， 当然， 这里只针对创建、修改和删除操作:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/operation-log/data-stream.png" alt="" /></p>
+
+<p>当对创建请求进行操作日志记录时， 完全可以将经过表单验证以及逻辑处理后的数据直接写入到日志记录库， 并添加一些附属信息， 如操作人， 操作的动作(create)， 来源IP等等。</p>
+
+<p>但是对于更新操作呢? 通常只会进行部分字段的更新， 而后直接使用</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">update</span> <span class="p">...</span> <span class="k">set</span> <span class="n">field</span> <span class="o">=</span> <span class="n">value</span> <span class="k">where</span> <span class="p">...;</span>
+</code></pre></div></div>
+
+<p>进行部分字段或者是批量更新。 但是为了记录更新后的完整数据， 那么就需要在更新后再将数据取出， 添加附属信息， 并插入日志记录库。 如此一来相比原来，多了一次查询操作。</p>
+
+<p>如果不使用<code class="highlighter-rouge">update</code>语句， 使用<code class="highlighter-rouge">instance.save</code>方式呢? 即先将数据取出， 而后更新数据， 将更新的数据写回DB并插入操作日志。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/operation-log/get-and-update.png" alt="" /></p>
+
+<p>在使用ORM的应用中， 这样的代码其实很常见， 一个最大的问题就是并发时的数据问题， 先更新的语句可能会覆盖掉另外一条后更新的语句， 导致数据混乱。</p>
+
+<p>原因就在于取出数据-更新数据不是一个原子性的操作， 底层的数据库因为并发执行导致多条语句的执行顺序并不受程序控制。 所以我们要么寻找一种能够原子性执行的方式， 要么对数据添加行锁。 首先来看行锁的方式:</p>
+
+<p>使用<code class="highlighter-rouge">select for update</code>对数据添加行锁， 在一个事务内， 只能由当前事务对其进行更新，  这样一来就不会有并发问题了。 但是这种方式相比于第一种方式， 额外的增加了行锁的持有时间， 在大量的并发更新时， 很有可能产生雪崩效应。</p>
+
+<p>如果使用版本控制的乐观锁实现， 虽然也可以达到目的， 但是在大量并发的情况下可能会导致许多的更新都会失败， 而后全部进行重试流程， 导致恶性循环。</p>
+
+<h4 id="4-事务隔离">4. 事务隔离</h4>
+
+<p>在上面的讨论中， 不管是先更新， 还是先取出数据再更新， 都面临着同一个问题: 并发。 并发导致了SQL语句并不会向我们预期的那样执行， 前脚取出的数据可能后脚就被更新了。 所以我们需要一个机制来协助我们对抗并发， 事务。</p>
+
+<p>单纯的事务仅具有原子性， 即要么全部成功， 要么全部失败的特性。 想要满足我们的需求还需要一定的事务隔离级别。</p>
+
+<p><code class="highlighter-rouge">REPEATABLE READ</code>该事务隔离级别保证了在同一个事务内， 所读取到的数据不受其它事务语句的影响，  同样也是MySQL默认的事务隔离级别。</p>
+
+<p>所以不管是先更新还是先取数据， 只要在同一个事务内执行， 就不会存在数据污染问题， 保证了数据的准确与完整性。</p>
+
+<h4 id="5-aop的实现">5. AOP的实现</h4>
+<p>面向切面编程更进一步地理解其实就是函数式编程， 纵观Spring Boot AOP以及Python中的装饰器， 都是函数的注册与调用， 只是语言间的具体实现不同而已。 Python存在<code class="highlighter-rouge">@</code>语法糖， 更加的灵活和方便。 而对于Golang和Java而言， 就需要自己进一步的进行函数封装和调用了。</p>
+
+<p>包括像<code class="highlighter-rouge">hook</code>(钩子)一类的技术实现， 最终也是函数的注册与调用。 比如Django中的<code class="highlighter-rouge">singal</code>(信号量)， 虽然说是发布-订阅模式， 但是本质仍是函数的调用。 只不过没有把具体的逻辑写在一个地方， 而是使用某种其它方式进行解耦了而已。</p>
+
+<p>所以， 写一个简单的AOP是一件非常easy的事情， 处理好异常和重试机制就好。</p>
+
+<h4 id="6-日志存储源">6. 日志存储源</h4>
+
+<p>一个系统中对数据处理优先程度是不同的， 类似于转账记录、红包使用记录等数据， 必须进行完备的数据持久化， 并且能够在灾难时进行迅速恢复。 此时可使用可靠性较强的关系型数据库， 如MySQL， PG等。</p>
+
+<p>当数据的要求较低， 并且数量比较庞大时， 可采用Elasticsearch进行存储和查询。</p>
+
+<p>那么业务层在具体实现时， 就需要能够支持多种日志存储源， 此时面向接口编程又是最佳的选择。</p>
+
+<h4 id="7-持续优化">7. 持续优化</h4>
+
+<p>前面提到了由于需要记录数据操作日志的原因， 需要在更新、删除等操作后多一次额外的数据查询， 并且需要将完整的日志数据持久化至日志存储源， 相当于多了两次网络传输。</p>
+
+<p>如何将这两次网络传输所花费的时间降至最低， 是本小结要讨论的内容。</p>
+
+<p>数据库数据组织形式分为聚集索引和非聚集索引， 聚集索引的组织方式使得B+Tree的叶子节点即数据， 而非聚集索引的叶子节点仍然是索引节点， 需要多一个I/O操作找到该索引节点的数据节点。 所以说， 使用主键查询是非常快的。</p>
+
+<p>对于常见的更新操作， 通常不会使用主键来作为查找条件， 这是由业务系统所决定的。 所以说如果使用<code class="highlighter-rouge">更新-查询</code>的方式， 无法使用主键进行查询来提高系统效率。 相反， 使用<code class="highlighter-rouge">查询-更新</code>的方式却可以。 查询时使用非聚集索引进行查询， 而后使用主键来进行数据定位和更新。</p>
+
+<p>日志持久化可使用消息队列完成， 重试机制可使用消息队列本身携带的重试实现， 或者是对其进行封装， 自行实现。</p>
+
+<h4 id="8-批量更新问题">8. 批量更新问题</h4>
+<p>如果需要更新的行数不止一条， 而是有很多条时又该如何处理? 取出数据后遍历更新并生成操作日志吗?</p>
+
+<p>在业务端写SQL一个比较忌讳的事情就是在for循环中对数据库进行操作， 如此一来必定会有N次网络传输， 跑起来的效率令人发指。</p>
+
+<p>可以采用<code class="highlighter-rouge">查询-业务端组装操作日志-更新</code>的方式完成， 伪代码如下:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 开启事务</span>
+<span class="n">begin</span>
+
+<span class="n">result_list</span> <span class="o">=</span> <span class="n">Model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<span class="c"># 生成批量日志</span>
+<span class="n">log_list</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">instance</span> <span class="ow">in</span> <span class="n">result_list</span><span class="p">:</span>
+    <span class="n">ins_dict</span> <span class="o">=</span> <span class="n">Serialize</span><span class="p">(</span><span class="n">instance</span><span class="p">)</span>
+    <span class="c"># 填充ip, 操作人等信息</span>
+    <span class="n">log_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ins_dict</span><span class="p">)</span>
+
+<span class="c"># 对多条数据进行更新</span>
+<span class="n">Model</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<span class="n">commit</span> <span class="ow">or</span> <span class="n">rollback</span>
+
+<span class="c"># 事务成功提交后将日志提交至存储层</span>
+</code></pre></div></div>
+
+<h4 id="9-小结">9. 小结</h4>
+
+<p>记录操作日志这个需求看起来很小， 但是仔细的审视每一个操作内的细节， 会发现这真是一个有趣的需求。 涉及了数据库事务， 事务隔离， 索引， NoSQL与搜索引擎， 消息队列， 等等技术细节。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=数据变更操作日志设计&amp;url=https://smartkeyerror.comchange-log-system-design"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comchange-log-system-design"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comchange-log-system-design"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/limits">
+            <section class="post">
+                <h2>那些有趣的数据结构与算法(05)--限流</h2>
+                <p>有时候限流也可以称为防刷， 这两者的界定并不是很明显， 常用的限流算法包括固定窗口， 滑动窗口， 漏桶以及令牌桶算法， 它们都有各自的优势与最适合的使用场景， 算法不分好坏， 之分场景。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

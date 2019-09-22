@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>MySQL之主从复制</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//MySQL-master-slave" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="MySQL之主从复制" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//MySQL-master-slave" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MySQL之主从复制" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//MySQL-master-slave" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "MySQL之主从复制",
+    "url": "https://smartkeyerror.com//MySQL-master-slave",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">MySQL之主从复制</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-10-23">23 Oct 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>MySQL的主从复制是建立读写分离以及MySQL集群的根本， 为了能够保证复制的正常运行， 那么就必然需要对其原理以及核心的配置项有足够的了解， 才能够在复杂的生产环境中对错误进行排查。</p>
+
+<!---more--->
+
+<h4 id="1-mysql主从复制原理">1. MySQL主从复制原理</h4>
+
+<p>MySQL之间数据复制的基础是<code class="highlighter-rouge">二进制日志</code>文件(binary log file)。 一台MySQL数据库一旦启用二进制日志后， 其作为master， 它的数据库中所有操作都会以“事件”的方式记录在二进制日志中， 其他数据库作为slave通过一个<code class="highlighter-rouge">I/O线程</code>与主服务器保持通信， 并监控master的二进制日志文件的变化， 如果发现master二进制日志文件发生变化， 则会把变化复制到自己的<code class="highlighter-rouge">中继日志中</code>， 然后slave的一个<code class="highlighter-rouge">SQL线程</code>会把相关的“事件”执行到自己的数据库中， 以此实现从数据库和主数据库的一致性，也就实现了主从复制。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.png" alt="Alt text" /></p>
+
+<h4 id="1-实现mysql主从复制需要进行的配置">1. 实现MySQL主从复制需要进行的配置</h4>
+<ol>
+  <li>主服务器：
+    <ul>
+      <li>开启二进制日志</li>
+      <li>配置唯一的server-id</li>
+      <li>获得master二进制日志文件名及位置</li>
+      <li>创建一个用于slave和master通信的用户账号</li>
+    </ul>
+  </li>
+  <li>从服务器：
+    <ul>
+      <li>配置唯一的server-id</li>
+      <li>使用master分配的用户账号读取master二进制日志</li>
+      <li>启用slave服务</li>
+    </ul>
+  </li>
+</ol>
+
+<h4 id="2-binlog相关配置以及参数说明">2. binlog相关配置以及参数说明</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mysql&gt; show variables like <span class="s2">"%binlog%"</span><span class="p">;</span>
++--------------------------------------------+----------------------+
+| Variable_name                              | Value                |
++--------------------------------------------+----------------------+
+| binlog_cache_size                          | 32768                |
+| binlog_checksum                            | CRC32                |
+| binlog_direct_non_transactional_updates    | OFF                  |
+| binlog_error_action                        | ABORT_SERVER         |
+| binlog_format                              | ROW                  |
+| binlog_group_commit_sync_delay             | 0                    |
+| binlog_group_commit_sync_no_delay_count    | 0                    |
+| binlog_gtid_simple_recovery                | ON                   |
+| binlog_max_flush_queue_time                | 0                    |
+| binlog_order_commits                       | ON                   |
+| binlog_row_image                           | FULL                 |
+| binlog_rows_query_log_events               | OFF                  |
+| binlog_stmt_cache_size                     | 32768                |
+| binlog_transaction_dependency_history_size | 25000                |
+| binlog_transaction_dependency_tracking     | COMMIT_ORDER         |
+| innodb_api_enable_binlog                   | OFF                  |
+| innodb_locks_unsafe_for_binlog             | OFF                  |
+| log_statements_unsafe_for_binlog           | ON                   |
+| max_binlog_cache_size                      | 18446744073709547520 |
+| max_binlog_size                            | 104857600            |
+| max_binlog_stmt_cache_size                 | 18446744073709547520 |
+| sync_binlog                                | 1                    |
++--------------------------------------------+----------------------+
+22 rows <span class="k">in </span><span class="nb">set</span> <span class="o">(</span>0.00 sec<span class="o">)</span>
+</code></pre></div></div>
+<p>通过在mysql客户端执行<code class="highlighter-rouge">show variables</code>命令， 可以看到关于<code class="highlighter-rouge">binlog</code>的配置一共有20几项之多。 但是大部分的配置项我们可以直接使用默认值， 有几个配置需要额外的进行关注：</p>
+
+<h5 id="21-binlog_format">2.1 binlog_format</h5>
+<p>二进制日志格式有3种格式可选： Statement, Row以及Mixed。 其中Statement格式基于语句进行日志记录， Row格式基于数据修改进行记录。
+首先准备一下测试的数据库：</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">create</span> <span class="k">database</span> <span class="n">repl_test</span><span class="p">;</span>
+
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="nv">`repl_test`</span><span class="p">.</span><span class="nv">`new_table`</span> <span class="p">(</span>
+  <span class="nv">`id`</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`name`</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">45</span><span class="p">)</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`age`</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">45</span><span class="p">)</span> <span class="n">CHARACTER</span> <span class="k">SET</span> <span class="s1">'utf8mb4'</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="nv">`id`</span><span class="p">));</span>
+</code></pre></div></div>
+<h6 id="211-statement">2.1.1 Statement</h6>
+
+<p>简单的来说Statement格式就是记录了数据修改所执行的SQL语句， 那么在做主从复制时从库读取SQL语句并重新进行执行。
+我们创建一个database以及一个table， 并在table中插入一些数据来观察一下：</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">set</span> <span class="k">session</span> <span class="n">binlog_format</span><span class="o">=</span><span class="k">statement</span><span class="p">;</span>
+
+<span class="k">insert</span> <span class="k">into</span> <span class="n">new_table</span> <span class="k">values</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nv">"smart"</span><span class="p">,</span> <span class="mi">18</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nv">"keyerror"</span><span class="p">,</span> <span class="mi">25</span><span class="p">);</span>
+<span class="k">delete</span> <span class="k">from</span> <span class="n">new_table</span> <span class="k">where</span> <span class="n">id</span><span class="o">=</span><span class="mi">2</span><span class="p">;</span>
+</code></pre></div></div>
+<p>在二进制日志保存的文件夹中查看二进制日志：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>mysqlbinlog mysql-bin.000001  <span class="c"># Statement格式日志</span>
+<span class="nb">sudo </span>mysqlbinlog <span class="nt">-vv</span> mysql-bin.000001  <span class="c"># Row格式日志</span>
+</code></pre></div></div>
+<p>那么Statement格式的日志就会是这个样子：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>insert into new_table values <span class="o">(</span>1, <span class="s2">"smart"</span>, 18<span class="o">)</span>, <span class="o">(</span>2, <span class="s2">"keyerror"</span>, 25<span class="o">)</span>
+....  <span class="c"># 中间一些其它内容</span>
+BEGIN
+/<span class="k">*</span><span class="o">!</span><span class="k">*</span>/<span class="p">;</span>
+<span class="c"># at 2297</span>
+<span class="c">#181011 10:16:38 server id 1  end_log_pos 2413 CRC32 0xccb8b51b         Query   thread_id=2     exec_time=0     error_code=0</span>
+SET <span class="nv">TIMESTAMP</span><span class="o">=</span>1539224198/<span class="k">*</span><span class="o">!</span><span class="k">*</span>/<span class="p">;</span>
+delete from new_table where <span class="nv">id</span><span class="o">=</span>2
+/<span class="k">*</span><span class="o">!</span><span class="k">*</span>/<span class="p">;</span>
+<span class="c"># at 2413</span>
+...
+</code></pre></div></div>
+<p>可以看到在日志中完整了记录了每一条SQL语句的内容， 从库拿到这些语句重新执行就可以获得与主库相同的数据了。
+因为记录的是SQL语句， 那么会极大的降低二进制日志文件的大小， 并且在复制的有着更快的网络传输效率。
+缺点也显而易见：像Uuid()这样的函数每次执行返回不同的结果， 那么这样一来在主库和从库中数据就会有不一致的情况。 并且如果某一条SQL语句执行时间过长， 从库同样的也要执行很长时间， 这样一来复制的过程就可能会被阻塞， 主从之间的数据一致性在这段时间就会遭到破坏。 所以一般在生产环境中并不会使用这样的日志格式， 除非有特殊的需求需要进行临时的修改。</p>
+
+<h6 id="212-row">2.1.2 Row</h6>
+
+<p>Row格式在MySQL5.7版本中为默认的二进制日志格式， 日志中会记录每一行数据的修改， 然后在从库中应用这些修改。</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">set</span> <span class="k">session</span> <span class="n">binlog_format</span><span class="o">=</span><span class="k">row</span><span class="p">;</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">new_table</span> <span class="k">values</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="nv">"zhangsan"</span><span class="p">,</span> <span class="mi">18</span><span class="p">);</span>
+<span class="k">update</span> <span class="n">new_table</span> <span class="k">set</span> <span class="n">age</span><span class="o">=</span><span class="mi">19</span> <span class="k">where</span> <span class="n">age</span><span class="o">=</span><span class="mi">18</span><span class="p">;</span>
+</code></pre></div></div>
+<p>那么此时日志所记录的内容为：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">### INSERT INTO `repl_test`.`new_table`</span>
+<span class="c">### SET</span>
+<span class="c">###   @1=3 /* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="c">###   @2='zhangsan' /* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
+<span class="c">###   @3='18' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
+
+<span class="c">### UPDATE `repl_test`.`new_table`</span>
+<span class="c">### WHERE</span>
+<span class="c">###   @1=1 /* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="c">###   @2='smart' /* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
+<span class="c">###   @3='18' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
+<span class="c">### SET</span>
+<span class="c">###   @1=1 /* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="c">###   @2='smart' /* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
+<span class="c">###   @3='19' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
+<span class="c">### UPDATE `repl_test`.`new_table`</span>
+<span class="c">### WHERE</span>
+<span class="c">###   @1=3 /* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="c">###   @2='zhangsan' /* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
+<span class="c">###   @3='18' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
+<span class="c">### SET</span>
+<span class="c">###   @1=3 /* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="c">###   @2='zhangsan' /* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
+<span class="c">###   @3='19' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
+</code></pre></div></div>
+<p>可以看到每一行的修改都被记录了， 并且记录了修改行的前后的数据内容， 那么这样一来主库与从库就能够达到完全的数据一致性。
+缺点也同样的显而易见， 数据记录的太多太啰嗦， 会占用大量的磁盘空间以及更长时间的网络传输。 但是， 是有办法优化的， 要不然MySQL官方也不会推荐我们使用Row格式。</p>
+
+<h6 id="211-mixed">2.1.1 Mixed</h6>
+
+<p>实际上就是上面两种模式的混合。</p>
+
+<h5 id="21-binlog_row_image">2.1 binlog_row_image</h5>
+<p>前面提到了<code class="highlighter-rouge">binlog_format=ROW</code>会带来很大的磁盘以及网络传输开销， 那么<code class="highlighter-rouge">binlog_row_image</code>参数就是为了优化<code class="highlighter-rouge">ROW</code>模式而存在的。
+可选值有3个： FULL， MINIMAL, NOBLOB。其中FULL选项将会记录所有内容； MINIMAL仅会记录被修改了列， 无关列不会记录； NOBLOB记录了blog和text之外的所有字段。FULL模式所生成的日志格式就是上面我们看到的。
+MINIMAL选项所生成的日志格式：</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">set</span> <span class="k">session</span> <span class="n">binlog_row_image</span><span class="o">=</span><span class="n">MINIMAL</span><span class="p">;</span>
+<span class="k">update</span> <span class="n">new_table</span> <span class="k">set</span> <span class="n">age</span><span class="o">=</span><span class="mi">25</span> <span class="k">where</span> <span class="n">id</span><span class="o">=</span><span class="mi">1</span><span class="p">;</span>
+</code></pre></div></div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">### UPDATE `repl_test`.`new_table`</span>
+<span class="c">### WHERE</span>
+<span class="c">###   @1=1 /* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="c">### SET</span>
+<span class="c">###   @3='25' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
+</code></pre></div></div>
+<p>其中<code class="highlighter-rouge">@1, @3</code>表示第几列， 也就是字段名称。这里的日志表示”将id(@1)为1的数据的年龄(@3)修改为25”， 其余未改动的字段(列)并没有记录在二进制日志中， 减少了日志的记录。</p>
+
+<p>需要特别注意的是： 虽然MINIMAL能够减少日志的数量， 但是由于记录会选择的缺失， 那么通过这种格式的二进制日志对数据库进行恢复的难度就会提高， 排错也会有一些困难。 需要根据实际情况来正确的选择是使用<code class="highlighter-rouge">FULL</code>模式还是<code class="highlighter-rouge">MINIMAL</code>模式。</p>
+
+<h4 id="3-基于日志点的复制和基于gtid的复制">3. 基于日志点的复制和基于GTID的复制</h4>
+<h5 id="31-基于日志点的复制">3.1 基于日志点的复制</h5>
+<p>基于日志点的复制MySQL会记录当前日志的数据偏移量并且将该值传递给从库， 从库根据该偏移量进行复制。
+通常来讲我们启用主从复制是在已经有了主库的情况下而添加从库的， 那么此时就需要将数据导入到从库中：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 只允许读操作不允许写入</span>
+flush tables with <span class="nb">read </span>lock<span class="p">;</span>
+<span class="c"># 记录日志的偏移量</span>
+mysqldump <span class="nt">--master-data</span> <span class="o">[</span>databses | <span class="nt">--all-databases</span><span class="o">]</span> <span class="o">&gt;</span> all.sql
+or
+xtrbackup <span class="nt">--slave-info</span>  <span class="c"># 第三方工具， 仅用于InnoDB， 属于热备工具</span>
+</code></pre></div></div>
+<p>那么此时从库就可以开启复制链路了， 其中的<code class="highlighter-rouge">master_log_file</code>以及<code class="highlighter-rouge">master_log_pos</code>可以在刚才的数据库备份中找到：</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">将数据进行导入</span>
+<span class="n">change</span> <span class="n">master</span> <span class="k">to</span> <span class="n">master_host</span><span class="o">=</span><span class="nv">"192.168.0.5"</span><span class="p">,</span>
+                 <span class="n">master_user</span><span class="o">=</span><span class="nv">""</span><span class="p">,</span>
+                 <span class="n">master_password</span><span class="o">=</span><span class="nv">""</span><span class="p">,</span>
+                 <span class="n">master_log_file</span><span class="o">=</span><span class="nv">"二进制日志文件名"</span><span class="p">,</span>
+                 <span class="n">master_log_pos</span><span class="o">=</span><span class="err">偏移量</span>
+<span class="k">start</span> <span class="n">slave</span><span class="p">;</span>
+
+<span class="err">主库执行：</span> <span class="n">unlock</span> <span class="n">tables</span><span class="err">；</span>
+</code></pre></div></div>
+
+<p>优点： 基于日志点的复制是MySQL最早支持的复制技术， 相对而言BUG比较少， 并且对SQL没有任何的限制， 故障处理较为容易。
+缺点： 故障转移时重新获取新主的日志点信息比较困难。</p>
+
+<h5 id="32-基于gtid的复制">3.2 基于GTID的复制</h5>
+<p>基于GTID的复制原理上其实是执行每一个事务， 主库中每一个事务都有一个唯一的自增标志。</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GTID <span class="o">=</span> server_uuid:transaction_id
+</code></pre></div></div>
+<p>借助GTID， 在发生主备切换的情况下， MySQL的其它Slave可以自动在新主上找到正确的复制位置， 不再需要像基于日志点复制一样人工的添加日志记录的偏移量， 简化了复杂复制拓扑下集群的维护。 另外，基于GTID的复制可以忽略已经执行过的事务，减少了数据发生不一致的风险。
+但是这种模式同样具有缺点： 其故障处理较为复杂， 并且对执行的SQL有一定的限制。</p>
+
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=MySQL之主从复制&amp;url=https://smartkeyerror.comMySQL-master-slave"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comMySQL-master-slave"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comMySQL-master-slave"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/MySQL-binlog">
+            <section class="post">
+                <h2>binlog的正确打开方式</h2>
+                <p>在前面的主从复制中我们提到了bin-log， 主从复制中bing-log主要作为一种增量复制的方法进行主库与从库的同步。 在日常生产中， bin-log常常也作为实时数据恢复的必要手段。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/django-concurrent-data-process">
+            <section class="post">
+                <h2>Django处理数据并发问题</h2>
+                <p>在Web开发中， 请求的并发处理通常会直接反映到数据库中数据的并发处理。 如果需要在并发的条件下保证数据的准确性， 则必须借助锁的力量来完成。 锁又分乐观锁和悲观锁， 表示了世界的两极。 本篇文章只是以Django作为载体， 来描述数据的并发处理。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

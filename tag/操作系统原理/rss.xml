@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+   
+      <title>smartkeyerror.com/</title>
+   
+   <link>https://smartkeyerror.com</link>
+   <description></description>
+   <language>en-uk</language>
+   <managingEditor> </managingEditor>
+   <atom:link href="rss" rel="self" type="application/rss+xml" />
+   
+	<item>
+	  <title>操作系统原理(01)-I/O</title>
+	  <link>//operation-system-with-IO</link>
+	  <author></author>
+	  <pubDate>2019-04-15T10:17:46+00:00</pubDate>
+	  <guid>//operation-system-with-IO</guid>
+	  <description><![CDATA[
+	     <p>在写了许多代码， 搭建了一些分布式服务之后， 越发觉得一个大型的高并发系统就是一个操作系统。 在分布式系统中， 我们会讲数据一致性， 如何做到缓存和DB的一致性， 这也是操作系统需要解决的问题: 内核高速页缓存如何与磁盘文件数据一致。 又比如对于一些耗时且非必需的任务， 在分布式系统中很有可能采用消息队列来进行异步处理， 例如邮件的发送， 而在操作系统中， I/O也是一个非常耗时的任务， 同样采用了异步处理的方式来最大化的利用系统资源， 只不过并不是采用消息队列而已。</p>
+
+<!---more--->
+
+<h4 id="1-uninx操作系统架构方式">1. Uninx操作系统架构方式</h4>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/IO/Uninx%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84%E6%96%B9%E5%BC%8F.png" alt="" /></p>
+
+<p>如上图所示， 由于本篇文章只关心I/O， 所以只对I/O相关的内容进行了高亮处理。 操作系统的作用之一就是帮助用户管理硬件设备， 给程序员提供良好， 清晰， 优雅和一致的抽象接口。 所以， 在User Space和Hardware之间， 是由操作系统(即Kernel)进行协调的。</p>
+
+<h4 id="2-io硬件原理">2. I/O硬件原理</h4>
+
+<h5 id="21-io设备">2.1 I/O设备</h5>
+
+<p>对于I/O设备而言， 通常可以分为两类: 块设备(block device)和字符设备(character device)。 块设备将信息存储在固定大小的块中， 每个块有自己的地址， 例如硬盘， U盘。 字符设备以字符为单位发送或者接收一个字符流， 不考虑任何块结构。 字符设备是不可寻址的， 也没有任何的寻道操作， 例如网卡。</p>
+
+<h5 id="22-io设备硬件组成">2.2 I/O设备硬件组成</h5>
+<p>I/O设备通常会由机械部件和电子部件组成。 机械部件为数据存储或者是数据暂存的物理介质。 电子部件我们更喜欢称之为设备控制器或者是适配器。</p>
+
+<p>设备控制器的任务是把串行的位流转换为字符串， 并进行必要的错误校正工作。 字节块通常首先在控制器内部的一个缓冲区中按位进行组装， 然后在对校验和进行校验并证明字节快没有错误后， 再将其复制到主存中。</p>
+
+<p>在TCP/UDP协议中， 都会有校验和来对网络传输过来的数据进行校验， 这是最低级别的校验， 通常就会在网卡， 或者说网络适配器中进行校验。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/IO/%E7%A1%AC%E4%BB%B6%E7%BB%84%E6%88%90%E5%8E%9F%E7%90%86.png" alt="" /></p>
+
+<h5 id="23-直接存储器存取">2.3 直接存储器存取</h5>
+<p>当CPU采用内存映射I/O的方式找到了与之交换数据的控制器之后， 剩下的就是数据的存取了。</p>
+
+<p>如果不借助任何外部硬件设备， 那么整个读取数据的过程为: CPU发出指令， 将磁盘中的某一块数据读入内存中。 磁盘的设备控制器接收到指令之后， 对磁盘进行磁臂调度， 并读取数据至设备缓冲区中进行校验， 校验通过后通过总线将数据传输至内存中。 由于CPU， 内存和磁盘之间的处理速度存在着巨大差异， 从发出指令开始， 到数据写入内存， 对于CPU而言可能觉得过了几年之久。</p>
+
+<p>也就是说， 在CPU眼中， 处理指令只需要泡杯咖啡的时间， 而硬盘却花了几年的时间去完成。 这是CPU无法忍受的， 并且计算机系统也无法忍受， 因为在这个过程中， CPU就干等着， 什么事都做不了。</p>
+
+<p>如果对CPU和磁盘之间的速度差仍然没有直观的感受的话， 不妨做一个数学题。 就博主电脑而言， CPU为I5 9400f， 一般运行时的频率为3.8GHZ， 也就是说在一秒的时间内能够处理<code class="highlighter-rouge">3.8*10^9</code>个指令， 每个指令平均耗时0.26纳秒。 SSD使用三星970 evo， 读取速度大概在2500M/S， 所以读取10M的数据需要0.004s,  <code class="highlighter-rouge">4*10^6</code>纳秒。 一个是0.26纳秒， 一个是4000000纳秒。 即使是三星970 evo， 读取速度达到2500M/S， 和CPU之间的差距依然是巨大的， 更不要提传统的机械硬盘了。</p>
+
+<p>因此， 为了提高CPU的使用率， 硬件开发者为CPU找了一个帮手: 直接存储器(Direct Memory Access, DMA)。 DMA能够独立于CPU工作， 在有了DMA之后， I/O操作真正的实现了异步处理。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/IO/DMA.png" alt="" /></p>
+
+<ol>
+  <li>当CPU要读取文件时， 对DMA控制器中的寄存器进行编程， 将要读的文件地址， 字节数等数据传入DMA控制器寄存器中。 此时CPU进行进程或者是线程切换， 调度其它任务的执行。</li>
+  <li>DMA控制器接收指令后向磁盘设备控制器请求数据， 并要求磁盘将数据写入到内存的一块区域内。</li>
+  <li>磁盘设备控制器调用磁盘驱动程序进行数据读取， 在磁盘缓冲区组装并检验完成后， 通过总线将数据写入内存中。</li>
+  <li>写入完成后磁盘设备控制器通过总线向DMA发送信号， 告之以完成相关操作。</li>
+  <li>DMA控制器发起硬件中断， 如果CPU此时能够处理中断， 则处理该中断， 并完成文件读操作。</li>
+</ol>
+
+<p>通常来讲DMA控制器会直接集成至主板中， 不需要额外的热拔插。 在有了DMA协助之后， CPU无需等待整个I/O过程的结束， 而是发出一条指令后去做其它的事情， 实现了真正的并行处理。</p>
+
+<h5 id="24-中断异常机制">2.4 中断/异常机制</h5>
+<p>在上面使用了DMA的I/O中， DMA控制器是通过中断来通知CPU事件的， 而中断机制， 正是操作系统的一个非常非常重要的组成部分。</p>
+
+<p>正是因为有了中断/异常机制， 才能够使得CPU与设备之前的并行操作。 并且， 用户在使用计算机操作系统时， 许多行为都是不可预测的， 操作系统不知道什么时候会读写文件， 什么时候会有网络数据的到来， 什么时候用户会从键盘中进行输入。 所以， 操作系统从某些方面而言， 是由中断或者是驱动的。</p>
+
+<p>当设备(磁盘， 网卡， 键盘等)发起中断后， 如果CPU能够处理中断， 那么它就会暂停正在执行的程序， 保留现场后自动转去执行相应事件的处理程序， 处理完成后返回断点继续执行被打断的程序。</p>
+
+<p>中断通常是由外部事件所触发， 例如DMA控制器的中断， 时钟中断或者是硬件故障产生的中断。 而异常往往是由正在执行的指令触发， 例如系统调用(用户态转为内核态, 0x80指令)， 缺页故障， 断点指令(例如程序员的断点调试)等。</p>
+
+<h4 id="3-io软件原理">3. I/O软件原理</h4>
+<p>在硬件上， 有DMA协助CPU完成并行处理， 那么软件层面的I/O又是如何实现的?</p>
+
+<h5 id="31-c标准io库">3.1 C标准I/O库</h5>
+<p>在第一小节”Uninx操作系统架构方式”一图中可以看到， 用户想要调用系统函数有两种方式， 第一种就是调用C标准库函数， 第二种就是直接进行系统调用。 简单的来讲， 在所有支持C语言的平台上， 都可以调用C标准库函数， 也就是调用方式是完全相同的， 并不区分是Unix系统还是Windows系统。 而直接进行系统调用时， 由于操作系统实现的区别， 在Uninx操作系统中使用<code class="highlighter-rouge">read/write</code>函数， 而在Windows操作系统中， 则是使用<code class="highlighter-rouge">ReadFile/WriteFile</code>函数。 所以说， 直接进行系统调用会有平台移植的问题。</p>
+
+<p>由于本篇文章着重于原理的解释， 所以对于与I/O相关的C标准库函数不会做过多介绍。 感兴趣的读者可以参阅《Uninx环境高级编程》。</p>
+
+<p><code class="highlighter-rouge">fgets</code>函数从制定的文件中读一行字符到调用者提供的缓冲区中:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp"># include&lt;stdio.h&gt;
+</span>
+<span class="kt">char</span> <span class="o">*</span><span class="n">fgets</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">s</span><span class="p">,</span> <span class="kt">int</span> <span class="n">size</span><span class="p">,</span> <span class="kt">FILE</span> <span class="o">*</span><span class="n">stream</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>参数s是缓冲区的首地址， 就是一个数组指针， size是缓冲区的长度， 该函数从stream所指的文件中读取以<code class="highlighter-rouge">\n</code>结尾的一行(包括<code class="highlighter-rouge">\n</code>)到缓冲区s内， 并且在该行末尾添加一个<code class="highlighter-rouge">\0</code>组成的完整字符串。</p>
+
+<h5 id="32-c标准io库的缓冲区">3.2 C标准I/O库的缓冲区</h5>
+<p>再来说说C标准库的I/O缓冲区， 当用户程序调用C标准I/O库函数读写文件或者是设备， 这些库函数要通过系统调用把读写请求传送给内核， 最终由内核驱动磁盘或者是设备完成I/O操作。</p>
+
+<p>以<code class="highlighter-rouge">fgets</code>函数为例， 当用户程序第一次调用<code class="highlighter-rouge">fgets</code>函数读取一行数据时， <code class="highlighter-rouge">fgets</code>函数可能通过系统调用进入内核读取1k字节到I/O缓冲区中， 然后返回I/O缓冲区的第一行给用户， 把读写位置指向I/O缓冲区的第二行， 以后用户再调用<code class="highlighter-rouge">fgets</code>， 就直接从I/O缓冲区中读取， 而不需要再陷入内核进行读取。 当用户把这1K字节全部读完之后， 再次调用<code class="highlighter-rouge">fgets</code>时才会进入内核读取。</p>
+
+<p>C标准库的I/O缓冲区也在用户空间， 直接从用户空间读取数据要比进入内核读取数据快得多。 另外， 如果用户调用<code class="highlighter-rouge">fputs</code>函数进行数据写入的话， 数据也只需要写到I/O缓冲区， <code class="highlighter-rouge">fputs</code>函数可以很快返回。 如果I/O缓冲区已经满了的话， <code class="highlighter-rouge">fputs</code>通过系统调用将缓冲区中的数据传入内核缓冲区中， 由内核决定何时将数据持久化至磁盘中。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/IO/C%E6%A0%87%E5%87%86%E5%BA%93%E7%BC%93%E5%86%B2%E5%8C%BA.png" alt="" /></p>
+
+<h5 id="33-unbuffered-io函数">3.3 Unbuffered I/O函数</h5>
+<p>需要注意的是， Unbuffered I/O函数是由操作系统所提供的， 位于C标准库的I/O缓冲区的底层， 也就是说， C标准I/O库函数是调用操作系统所提供的无缓冲I/O工作的。 在Uninx中， 常见的无缓冲I/O函数为<code class="highlighter-rouge">open</code>, <code class="highlighter-rouge">read</code>, <code class="highlighter-rouge">write</code>, <code class="highlighter-rouge">close</code>等。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/IO/UnbufferedIO .png" alt="" /></p>
+
+<p>另外需要注意的是， 这里的无缓冲I/O函数指的是没有在用户空间开辟I/O缓冲区， 并不代表不使用缓冲区。 因为不管使用带缓冲的I/O函数， 还是Unbuffered I/O函数， 在内核空间中都会有I/O缓冲区。</p>
+
+<p>现在问题来了， 用户什么时候应该选用C标准I/O库函数， 什么时候又该使用Unbuffered I/O函数呢?</p>
+
+<ol>
+  <li>使用Unbuffered I/O函数每次文件的读写都会进入内核， 调用一个系统函数要比调用一个用户空间的函数更为耗时， 所以在用户空间开辟I/O缓冲区还是很有必要的， 使用C标准I/O库函数非常的方便， 省去了自己管理I/O缓冲区的麻烦。</li>
+  <li>在使用C标准I/O函数时， 由于数据是首先写入I/O缓冲区， 当缓冲区满时才会写入内核缓冲区， 所以会出现与实际文件数据不一致的情况， 在必要时调用<code class="highlighter-rouge">fflush</code>将数据强制刷入内核缓冲区中。</li>
+  <li>在向网络设备写数据时我们希望数据能够通过网络及时的发送出去， 当设备接收到数据时应用程序也希望第一时间被通知到， 所以在网络编程中通常直接调用Unbuffered I/O函数。</li>
+</ol>
+
+<h4 id="4-内存映射文件">4. 内存映射文件</h4>
+<p>内存映射， 简而言之就是将内核空间的一段内存区域映射到用户空间。 映射成功后， 用户对这段内存区域的修改可以直接反映到内核空间。 相反， 内核空间对这段区域的修改也直接反映用户空间。 那么对于内核空间与用户空间两者之间需要大量数据传输等操作的话效率是非常高的。 当然， 也可以将内核空间的一段内存区域同时映射到多个进程， 这样还可以实现进程间的共享内存通信。</p>
+
+<p>系统调用<code class="highlighter-rouge">mmap()</code>就是用来实现上面所说的内存映射。 最常见的就是文件的操作， 可以将某文件映射至内存(进程空间)， 然后就可以把对文件的操作转为对内存的操作， 以此避免更多的<code class="highlighter-rouge">lseek()</code>与<code class="highlighter-rouge">read()</code>、<code class="highlighter-rouge">write()</code>操作， 因此， 在操作大文件或者是需要频繁的访问某一个文件时， 内存映射文件尤为高效。</p>
+
+<p>这里给出一段python程序实例， 其实就是《Python Cookbook》中的例子:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">mmap</span>
+
+<span class="k">def</span> <span class="nf">memory_map</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="n">mmap</span><span class="o">.</span><span class="n">ACCESS_WRITE</span><span class="p">):</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="n">fd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">O_RDWR</span><span class="p">)</span>  <span class="c"># O_RDWR即ReadWrite</span>
+    <span class="k">return</span> <span class="n">mmap</span><span class="o">.</span><span class="n">mmap</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="n">access</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">memory_map</span><span class="p">(</span><span class="s">"data.txt"</span><span class="p">)</span>
+    <span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">11</span><span class="p">]</span> <span class="o">=</span> <span class="n">b</span><span class="s">"Hello World"</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>需要注意的是， 对某个文件进行内存映射并不会导致整个文件被读入内存， 也就是说， 文件并不会拷贝到某种内存缓冲区或者是数组上。 操作系统仅仅只是为文件内容保留一段虚拟内存而已(虚拟内存: 磁盘与内存的交换技术)。 当程序访问文件的不同区域时， 文件的这些区域将被读取并按照需要映射到内存区域中。 但是， 文件中从未访问过的部分会简单的留在磁盘上， 并不会进入内存区域。</p>
+
+<p>所以说， <code class="highlighter-rouge">mmap</code>拥有处理大文件的高效能力， 因为数据不再需要从内核空间拷贝至用户空间， 而是进行数据的映射。</p>
+
+<h4 id="5-sendfile">5. sendfile</h4>
+<p>关于<code class="highlighter-rouge">sendfile</code>函数的内容， 在<a href="https://smartkeyerror.com/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%9F%BA%E7%A1%80%E5%AD%A6%E4%B9%A0-04-Nginx.html">分布式系统基础学习(04)–Nginx</a>这一博文中已有描述， 此处不再赘述。</p>
+
+<h4 id="6-阻塞与非阻塞">6. 阻塞与非阻塞</h4>
+<p>为了引出事件驱动I/O模型， 关于阻塞和非阻塞的概念仍然有必要再次进行整理。</p>
+
+<p>首先需要明确阻塞(Block)的概念。 当进程调用一个阻塞的系统函数时， 该进程被置于睡眠(Sleep)状态， 此时内核调度其它进程运行， 直到该进程的事件发生了(例如DMA发起网络传输包到来的中断， 时钟发起中断)它才<strong>有可能</strong>继续运行。</p>
+
+<p>与睡眠状态相对的是运行(Running)状态和就绪状态(Ready)。运行状态是指进程正在被调度执行， CPU处于该进程的上下文环境中， 程序计数器里保存着该进程的指令地址， 通用寄存器里保存着该进程运算的中间结果， 正在执行该进程的指令， 正在读写该进程的地址空间。</p>
+
+<p>就绪状态是指该进程不需要等待什么事情发生， 随时都可以执行， 只不过此时CPU还在执行另一个进程， 所以该进程在一个就绪队列中等待被内核调度。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/IO/%E8%BF%9B%E7%A8%8B%E7%8A%B6%E6%80%81%E7%9A%84%E8%BD%AC%E6%8D%A2.png" alt="" /></p>
+
+<p>通常来讲， 调用系统函数<code class="highlighter-rouge">read</code>读取终端或者是网络设备数据时， 会被阻塞。 但是在<code class="highlighter-rouge">open</code>一个设备时指定了<code class="highlighter-rouge">O_NONBLOCK</code>标识， <code class="highlighter-rouge">read/write</code>就不会阻塞。 以<code class="highlighter-rouge">read</code>为例， 如果设备暂时没有数据可读就返回-1， 同时设置<code class="highlighter-rouge">errno</code>为<code class="highlighter-rouge">EWOULDBLOCK</code>， 表示本来应该阻塞在这里， 但是实际上并没有阻塞而是直接返回错误， 调用者应该试着再读一次， 这种方式称为轮询(Poll)。</p>
+
+<p><strong>非阻塞I/O通常被用来监视多个设备的数据读取， 单独的I/O读取意义不大， 除非读取的内容与程序下文没有直接的联系</strong>。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">while</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+    <span class="err">非阻塞</span><span class="n">read</span><span class="p">(</span><span class="err">设备</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span><span class="err">设备</span><span class="mi">1</span><span class="err">有数据到达，</span> <span class="err">处理数据</span><span class="p">);</span>
+
+    <span class="err">非阻塞</span><span class="n">read</span><span class="p">(</span><span class="err">设备</span><span class="mi">2</span><span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span><span class="err">设备</span><span class="mi">2</span><span class="err">有数据到达，</span> <span class="err">处理数据</span><span class="p">);</span>
+
+    <span class="p">...</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>这种方式有一个比较大的缺点就是当所有的设备都没有数据到达时， 调用者反复查询做无用功， 白白浪费CPU资源。 如果说加上延时， 例如:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">while</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+    <span class="err">非阻塞</span><span class="n">read</span><span class="p">(</span><span class="err">设备</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span><span class="err">设备</span><span class="mi">1</span><span class="err">有数据到达，</span> <span class="err">处理数据</span><span class="p">);</span>
+
+    <span class="err">非阻塞</span><span class="n">read</span><span class="p">(</span><span class="err">设备</span><span class="mi">2</span><span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span><span class="err">设备</span><span class="mi">2</span><span class="err">有数据到达，</span> <span class="err">处理数据</span><span class="p">);</span>
+
+    <span class="p">...</span>
+
+    <span class="n">sleep</span><span class="p">(</span><span class="n">n</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>虽然能够解决一些CPU资源问题， 但是<code class="highlighter-rouge">n</code>如何选取? 并且如果程序刚刚进入睡眠， 设备1的数据就准备完毕了， 那么程序也要至少等待n秒才能处理， 此时处理的延迟将会非常之大。 所以， 才会有<code class="highlighter-rouge">select</code>, <code class="highlighter-rouge">poll</code>以及<code class="highlighter-rouge">epoll</code>函数的诞生。</p>
+
+<p><code class="highlighter-rouge">select</code>, <code class="highlighter-rouge">poll</code>以及<code class="highlighter-rouge">epoll</code>的内容将会在未来的文章中进行详细描述， 这里只是写一个引子。</p>
+
+<h4 id="7-小结">7. 小结</h4>
+<p>在本篇文章中， 主要是通过磁盘， 网卡等硬件设备的组成， 以及DMA直接存储器的原理来对操作系统的磁盘I/O进行了梳理， 列举了一些常见的函数， 例如C标准库中的<code class="highlighter-rouge">fgets</code>， C标准库底层的<code class="highlighter-rouge">read/write</code>函数。</p>
+
+<p>需要明确一点的是， I/O操作的确是一个非常耗时的操作， 但是这是相对于应用程序而言。 而对于操作系统而言， 通过DMA以及内存映射文件等技术手段， 已经充分利用了系统资源， 只不过在执行I/O操作时， CPU在执行其余的进程， 而并非I/O应用进程。</p>
+
+<p>对于应用程序而言， 想要提高应用的负载能力以及运行效率， 要么采用多线程的方式使得CPU在执行某一个线程的I/O操作时进行线程切换， 执行其余线程的非I/O操作， 要么采用<code class="highlighter-rouge">select</code>, <code class="highlighter-rouge">poll</code>, <code class="highlighter-rouge">epoll</code>函数来对大量非阻塞文件或者Socket的读写进行管理。</p>
+
+
+	  ]]></description>
+	</item>
+
+
+</channel>
+</rss>

@@ -302,7 +302,7 @@ tmpfs           7.9G     0  7.9G   0% /sys/fs/cgroup
 
 <p>只不过是将ad-hoc模式下变量传递的方式改写成yaml文件的格式而已， 本质上仍然是对模块的应用。 但是这种任务编写的方式提供了额外的拓展功能， 例如<code class="highlighter-rouge">chdir</code>改变当前任务的工作目录， <code class="highlighter-rouge">register</code>将当前任务的执行结果保存至某一个变量中， 可以用于后续的DEBUG。</p>
 
-<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">print current date</span>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">print current date</span>
   <span class="na">shell</span><span class="pi">:</span> <span class="s">date</span>
   <span class="na">args</span><span class="pi">:</span>
     <span class="na">chdir</span><span class="pi">:</span> <span class="s">/home/monitor</span>
@@ -508,12 +508,10 @@ smart@Zero:~<span class="nv">$ </span><span class="nb">sudo </span>ansible-vault
     <!-- [[! /next_post ]] -->
     <!-- [[! prev_post ]] -->
     
-        <a class="read-next-story prev no-cover" href="/Reflect">
+        <a class="read-next-story prev no-cover" href="/operation-system-with-IO">
             <section class="post">
-                <h2>Java基础编程(06)--反射</h2>
-                <p>为了保持Java基础编程系列的完整性， 反射机制还是写一下， 没有什么太难的地方。 在文章的最后与Python进行了一个对比和演示， 用于加深对这两种语言设计本身的理解。
-
-</p>
+                <h2>操作系统原理(01)-I/O</h2>
+                <p>在写了许多代码， 搭建了一些分布式服务之后， 越发觉得一个大型的高并发系统就是一个操作系统。 在分布式系统中， 我们会讲数据一致性， 如何做到缓存和DB的一致性， 这也是操作系统需要解决的问题: 内核高速页缓存如何与磁盘文件数据一致。 又比如对于一些耗时且非必需的任务， 在分布式系统中很有可能采用消息队列来进行异步处理， 例如邮件的发送， 而在操作系统中， I/O也是一个非常耗时的任务， 同样采用了异步处理的方式来最大化的利用系统资源， 只不过并不是采用消息队列而已。...</p>
             </section>
         </a>
     

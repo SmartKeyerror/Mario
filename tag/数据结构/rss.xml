@@ -12,6 +12,679 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>那些有趣的数据结构与算法(05)--限流</title>
+	  <link>//limits</link>
+	  <author></author>
+	  <pubDate>2019-07-20T21:54:55+00:00</pubDate>
+	  <guid>//limits</guid>
+	  <description><![CDATA[
+	     <p>有时候限流也可以称为防刷， 这两者的界定并不是很明显， 常用的限流算法包括固定窗口， 滑动窗口， 漏桶以及令牌桶算法， 它们都有各自的优势与最适合的使用场景， 算法不分好坏， 之分场景。</p>
+
+<!---more--->
+
+<h4 id="1-固定窗口">1. 固定窗口</h4>
+<p>固定窗口属于最简单但是也最容易出现问题的限流策略， 假设某接口限制请求频率为<code class="highlighter-rouge">10000/minute</code>， 则统计一分钟内接口请求的总次数， 若次数大于10000， 则请求失败， 开始限流， 直到下一个一分钟开始。</p>
+
+<p>使用Redis可以非常轻松的实现该功能:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 该功能可用Lua优化，详见Lua模块</span>
+<span class="kn">from</span> <span class="nn">redis</span> <span class="kn">import</span> <span class="n">Redis</span>
+<span class="n">redis</span> <span class="o">=</span> <span class="n">Redis</span><span class="p">(</span><span class="s">"127.0.0.1"</span><span class="p">,</span> <span class="mi">6379</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">hit_user_access</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">redis_key</span> <span class="o">=</span> <span class="s">"restrict_access:"</span><span class="o">+</span><span class="n">api</span>
+        <span class="n">access_number</span> <span class="o">=</span> <span class="n">redis</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">redis_key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">access_number</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">redis</span><span class="o">.</span><span class="n">expire</span><span class="p">(</span><span class="n">redis_key</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">access_number</span> <span class="o">&gt;</span> <span class="n">MAX_ACCESS_NUMBER</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">False</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="c"># 日记记录</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>借助于Redis的expire-key功能来实现”当前一分钟”和”下一个一分钟”， 若键过期， 则重新进行计数， 表示下一个一分钟开始了。</p>
+
+<p>固定窗口用来做小流量的防刷比较适合， 但是并不适合作为整体系统的限流。 其原因就在于在这一分钟内接收流量并不一定是平均的。 攻击方可以在每一个一分钟开始的前1秒或几秒中疯狂攻击接口， 使得接口的请求数量在一开始就达到上限， 这样一来后续的正常用户将无法访问。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/limit/fixed.png" alt="" /></p>
+
+<p>但是在一些简单的场景下， 例如单个用户的验证码发送条数限制， 当天密码输入失败的最大次数等等， 使用Redis实现的固定窗口不失为一个最佳选择。</p>
+
+<h4 id="2-滑动窗口">2. 滑动窗口</h4>
+<p>固定窗口很像一步接着一步的走路， 两步之间没有间隙， 但是每一步之间不会重叠。 而滑动窗口则是”拖着脚”在走路， 下一步会部分的覆盖前一步所走过的路径。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/limit/moving-window.png" alt="" /></p>
+
+<p>如上图所示， 窗口大小为60s， 每过一秒向前移动一小步， 60s过后将会移动一整个窗口， 此时就像固定窗口移动一样。</p>
+
+<p>滑动窗口在限流上其实使用的不是很多， 原因就在于滑动窗口也无法处理1s内请求过载的问题，  但是在监控告警上却是不二之选。</p>
+
+<p>滑动窗口的最大优势就在于”重叠”， 因为窗口在滑动过程中， 势必会跨越前一分钟和后一分钟， 使得控制更加精细。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/limit/moving-window-alert.png" alt="" /></p>
+
+<p>在具体的实现上， 通常会使用计算的方式来模拟窗口的向右滑动， 也可以说是”薛定谔的滑动”。 这里不考虑限流的滑动窗口实现， 而是转而实现监控告警的功能。</p>
+
+<div class="language-lua highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">local</span> <span class="n">key</span> <span class="o">=</span> <span class="n">KEYS</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="kd">local</span> <span class="n">now_timestamp</span> <span class="o">=</span> <span class="nb">tonumber</span><span class="p">(</span><span class="n">ARGV</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="kd">local</span> <span class="n">window_size</span> <span class="o">=</span> <span class="nb">tonumber</span><span class="p">(</span><span class="n">ARGV</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+<span class="kd">local</span> <span class="n">limit</span> <span class="o">=</span> <span class="nb">tonumber</span><span class="p">(</span><span class="n">ARGV</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+
+<span class="kd">local</span> <span class="n">should_clear</span> <span class="o">=</span> <span class="n">now_timestamp</span> <span class="o">-</span> <span class="n">window_size</span>
+<span class="n">redis</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="s2">"ZREMRANGEBYSCORE"</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">should_clear</span><span class="p">)</span>
+
+<span class="kd">local</span> <span class="n">amount</span> <span class="o">=</span> <span class="n">redis</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="s2">"ZCARD"</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">amount</span> <span class="o">&lt;</span> <span class="n">limit</span> <span class="k">then</span>
+    <span class="n">redis</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="s2">"ZADD"</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">now_timestamp</span><span class="p">,</span> <span class="n">now_timestamp</span><span class="p">)</span>
+<span class="k">end</span>
+<span class="n">redis</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="s2">"EXPIRE"</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">window_size</span><span class="p">)</span>
+
+<span class="k">return</span> <span class="n">amount</span> <span class="o">&lt;</span> <span class="n">limit</span>
+</code></pre></div></div>
+
+<p>在熔断器里面会有这样的技术细节: 5分钟内失败率达到某个阈值时进行熔断， 像这样的需求完全可以使用滑动窗口很好的实现， 不管是使用简单的单机实现， 还是使用Redis的分布式实现。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MovingWindow</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">rate</span><span class="p">):</span>
+        <span class="s">"""
+        :param window: 窗口大小
+        :param rate: 移动速率
+        """</span>
+        <span class="k">assert</span> <span class="n">window</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">rate</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s">"window and rate should more than zero value"</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="s">"window and rate should be a Integer"</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">window</span> <span class="o">=</span> <span class="n">window</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rate</span> <span class="o">=</span> <span class="n">rate</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__window</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">window</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__last_moving</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">__shift</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="s">"""
+        :param step: 窗口向右滑动的距离
+        """</span>
+        <span class="k">if</span> <span class="n">step</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">window</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__window</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__window</span><span class="p">[</span><span class="n">step</span><span class="p">:]</span> <span class="o">+</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">step</span>
+
+    <span class="k">def</span> <span class="nf">__clock_shift</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s">"""
+        计算窗口应当滑动的距离
+        """</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+        <span class="n">expire</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">__last_moving</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">expire</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">step</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__shift</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__last_moving</span> <span class="o">=</span> <span class="n">now</span>
+
+    <span class="k">def</span> <span class="nf">incr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c"># 首先将窗口滑动至正确位置</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__clock_shift</span><span class="p">()</span>
+        <span class="c"># 将值添加至窗口最后一个元素上即可</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__window</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s">"""
+        :return: 返回当前窗口计数总数
+        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__clock_shift</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__window</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__window</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">window</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">"window: {}"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__window</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h4 id="3-令牌桶">3. 令牌桶</h4>
+<p>令牌桶算法可能是生产用使用的较为广泛的限流算法， 一方面可以限制瞬时流量， 一方面也可以限制一段时间内的流量， 算是比较两全的算法。</p>
+
+<p>令牌桶引入缓冲区， 按照一定的速率生成令牌， 并将其置于令牌桶中。 每一个请求首先尝试从令牌桶中获取令牌， 若无令牌可用， 则直接返回失败。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">TokenBucket</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">capacity</span><span class="p">,</span> <span class="n">rate</span><span class="p">):</span>
+        <span class="s">"""
+        :param capacity: 桶的容量
+        :param rate: 生成令牌的速率
+        """</span>
+        <span class="k">assert</span> <span class="n">capacity</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">rate</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s">"capacity and rate should more than zero"</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">capacity</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="s">"capacity and rate should be integer"</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span> <span class="o">=</span> <span class="n">capacity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rate</span> <span class="o">=</span> <span class="n">rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__last_clock</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+        <span class="c"># 初始令牌数为0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__bucket</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">hit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># 非并发安全的实现</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__bucket</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">,</span> <span class="p">(</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">__last_clock</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__bucket</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__bucket</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__last_clock</span> <span class="o">=</span> <span class="n">now</span>
+            <span class="k">return</span> <span class="bp">False</span>
+</code></pre></div></div>
+
+<h4 id="4-小结">4. 小结</h4>
+<p>无论是最简单的固定窗口， 还是稍微复杂一些的滑动窗口与令牌桶， 都有其适用的场景。 比如固定窗口适合限制具体的接口某个ip的访问次数， 滑动窗口用于记录一段时间内错误次数， 令牌桶用于秒杀场景下的限流。 在一个系统中综合运用这三种算法完全有可能， 只不过可能会根据业务场景的不同而进行稍加变动而已。</p>
+
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>那些有趣的数据结构与算法(04)--B-Tree与B+Tree</title>
+	  <link>//B+Tree-and-B-Tree</link>
+	  <author></author>
+	  <pubDate>2019-06-23T16:01:47+00:00</pubDate>
+	  <guid>//B+Tree-and-B-Tree</guid>
+	  <description><![CDATA[
+	     <p>树型结构由于其良好的递归特性， 高效的查询效率， 在软件系统设计中有着非常广泛的使用。 IO多路复用的epoll实现采用红黑树组织和管理sockfd， 以支持快速的增删改查； Golang中的Timer采用多叉堆实现； Java中的TreeMap以及TreeSet同样采用红黑树实现…而在MySQL中， 索引的构建同样采用树结构实现。</p>
+
+<!---more--->
+
+<h4 id="1-什么是b-tree">1. 什么是B-Tree</h4>
+<p>B-Tree简单的来讲就是一颗矮胖的多叉平衡树， 通常不会超过3层。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/index/B-Tree.png" alt="" /></p>
+
+<p>如上图所示， 每一层均由指针， 索引值以及卫星数据组成。 进行搜索时， 同样采用二分查找的方式进行搜索， 所以搜索效率与树的高度直接相关， 这也是为什么B-Tree的树高非常少的原因， 其目的就在于提高搜索效率。</p>
+
+<p>那么既然降低树高能够提高搜索效率， 为什么不干脆使用有序列表呢?</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/index/sorted-list.png" alt="" /></p>
+
+<p>现在树高只有1， 搜索的平均时间复杂度即为<code class="highlighter-rouge">O(logn)</code>， 不是比B-Tree更快吗？ 有一个很关键的点就是， B-Tree是为了构建存储数据的索引而生， 数据量庞大且将会被持久化至磁盘或者SSD上。 如果说某一张表拥有过亿的数据量， 且服务器只有4G的内存， 根本无法将列表形式的索引完全载入内存， 二分查找也就无从说起。</p>
+
+<h4 id="2-为硬盘存储而生的b-tree">2. 为硬盘存储而生的B-Tree</h4>
+<p>已经9102年了， 服务器使用HDD作为持久层已经成为了一个过去式， 目前均采用SSD， 即固态硬盘作为持久层， 其读写效率约为HDD的10倍左右。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/index/ssd-block.png" alt="" /></p>
+
+<p>SSD简单的来看是由很多个Block(块)组成， 而Block又由很多个Page(页)所组成。 Page的大小通常为4K或者是8K， Blcok的大小通常为512K。</p>
+
+<p>由于SSD没有向磁盘一样的悬臂， 所以不需要磁头的机械运动， 在读取数据时， 只需要找到数据所在的Block即可。 由于SSD特殊的组成方式， 在进行数据读取时， 其最小单位为Page， 也就是一次最小读取为4K或者是8K。 而对于删除数据来说， 其最小单位为Block， 因为需要进行加压擦除。</p>
+
+<p>B-Tree之所以适合作为数据库索引结构的存储， 就是因为其矮胖的树型结构。 如果我们将索引树改为红黑树或者是AVL树这种二叉树的话， 会发生什么？</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/index/AVL-IO.png" alt="" /></p>
+
+<p>假设树高为4， 所需的数据刚好位于AVL树的叶子节点， 那么在最坏的情况下(数据分散在不同的Page中)， 想要取出这条数据， 就需要4次的IO操作。 而IO操作， 相较于CPU的计算， 可以说慢如龟爬。 随着层高的增加， IO次数随线性增长， 这是我们不能接受的。</p>
+
+<p>而对于B-Tree来讲， 就不会存在这样的问题， 因为其树高也就只有3、4层， 无论数据位于叶子节点还是非叶子节点， 其IO次数最多也只是4次而已。</p>
+
+<h4 id="3-btree">3. B+Tree</h4>
+<p>B+Tree是B-Tree的进化版， 目的在于进一步减少磁盘IO次数， 提供稳定的查询效率以及优化范围查找。</p>
+
+<p>首先来看B+Tree的基本结构， 与B-Tree最大的不同就是: B+Tree的所有数据均保存在叶子节点， 非叶子节点只保存指针以及索引值。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/index/Tree.png" alt="" /></p>
+
+<p>如上图所示， 所有的数据均保存在B+Tree的叶子节点， 非叶子节点不保存数据， 这样一来使得在4K/Page的容量限制下， 能够保存更多的索引数量。 运气好的话原来使用B-Tree需要4层树高， 使用B+Tree的话可能只需要3层树高， 磁盘IO次数进一步降低了。</p>
+
+<p>并且由于B+Tree只在叶子节点保存数据， 所以每一次查询都需要遍历至树底， 而所有叶子节点均处于同一层， 所以所有的查询时间复杂度都是相同的。</p>
+
+<p>除此之外， 在叶子节点所有的数据均使用指针进行相连接， 也就是一个有序链表， 在进行范围查找时拥有极高的效率。 并不需要像B-Tree一样进行前序或者后序遍历。</p>
+
+<h4 id="4-哈希索引">4. 哈希索引</h4>
+<p>其实到这里有关B-Tree和B+Tree的内容就结束了， 但是还是忍不住再BB两句。</p>
+
+<p>Hash Table是一种以空间换时间的数据结构， 底层由数组实现， 其平均查询时间复杂度为<code class="highlighter-rouge">O(1)</code>。 而B+Tree的平均查询时间复杂度为<code class="highlighter-rouge">O(logn)</code>， 那么索引为什么不使用哈希表， 而要使用B+Tree呢？</p>
+
+<p>因为在数据库查询这一场景， 取出单一的一条数据这种需求占比并不会特别大， 更多的是使用某一种规则取出符合该规则的多条数据。 如果只是单一的一条数据， 那么哈希索引的效率确实要优于B+Tree。 但如果取出多条数据， 或者对数据进行排序的话， 那么B+Tree为更好的选择。</p>
+
+<p>MySQL的InnoDB存储引擎只允许用户定义B+Tree索引， 不允许用户定义哈希索引， 就是因为无法判断用户是否能正确使用哈希索引。 但是InnoDB会根据实际情况自动地为某些数据添加哈希索引， 以增加查询速度。</p>
+
+<h4 id="5-小结">5. 小结</h4>
+<p>从B-Tree以及B+Tree的使用场景上来看， 没有适用于一切场景的数据结构， 只有最适合某些场景的数据结构。 在学习数据结构的过程中， 有时候不仅要关注它的原理， 更需要关注它的设计初衷以及适用场景。</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>那些有趣的数据结构与算法(03)--并查集</title>
+	  <link>//UnionFind</link>
+	  <author></author>
+	  <pubDate>2019-03-25T15:02:02+00:00</pubDate>
+	  <guid>//UnionFind</guid>
+	  <description><![CDATA[
+	     <p>在《算法》(第四版)的第一章最后一小节中， 也就是”案例研究: union-find算法”这一小节， 我看到了并查集。 在我完整的阅读了所有的算法内容之后， 脑子里只剩下两个字: 优美。</p>
+
+<!---more--->
+
+<h4 id="1-为什么需要union-find算法">1. 为什么需要union-find算法</h4>
+<p>小A的人际关系非常之广， 拥有非常多的朋友， 同时， 他的朋友也有很多朋友。 如果两个人是朋友关系的话就记为a-b。</p>
+
+<p>小A的人际关系可以表示为： A-C A-E A-F A-P A-M A-O A-K…而他的一些朋友的人际关系可以表示为 S-W M-I M-O M-T O-Y O-C E-G…小A朋友的朋友的人际关系可以表示为 K-P K-B X-U Z-O…</p>
+
+<p>通过这样的方式整理出了小A的所有人际关系连接， 以及小A的朋友的人际关系连接。 现在我想要知道， 某一位同学能不能推荐给小A。 例如A-C C-F， 小C是A, F的共同好友， 尽管A, F两人不是朋友关系， 但是由于小C这层枢纽的存在， 很有可能使得他们成为朋友。 也就是说， 需要判断A， F两者之间的连通性， 从而生成推荐朋友的功能。</p>
+
+<p>在一个大型网络系统中， 如果节点A与节点C连接， 记为A-C。 如果节点A既与节点C由于节点B连接的话， 我们可以说节点B和节点C是连接的。 给定相当数量节点连接情况， 判断出系统中任意两个节点是否连接。</p>
+
+<p>很明显的， union-find算法就是解决这一类问题的: 动态连接问题。 连接问题在上面已经描述过了， 那么动态是什么意思？ 人和人之间的人际关系不是一成不变的， 系统中节点的连接状态也不是一成不变的。 在某些情况下， 两个完全不相关的人成为了朋友， 此时我们就需要处理这些连接， 并重新判断连接性， 这就是动态性。</p>
+
+<h4 id="2-设计union-find算法">2. 设计union-find算法</h4>
+<p>既然是解决系统中的连接性， 那么最基本的API就是判断两个元素是否处于连接状态， 如果两个元素的标识位是相同的， 我们就可以判断它们是连通的， 所以需要额外的一个查找API。 此外， 还要提供将两个元素连接的API。</p>
+
+<p>那么整体的API设计就是这样:</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">UnionFind</span><span class="o">:</span>
+    <span class="n">UnionFind</span><span class="o">(</span><span class="kt">int</span> <span class="n">N</span><span class="o">)</span>                  <span class="c1">// 初始化节点</span>
+    <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span>          <span class="c1">// 连接p, q</span>
+    <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span>                   <span class="c1">// 查找p的标志位</span>
+    <span class="kt">boolean</span> <span class="nf">connected</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span>   <span class="c1">// 判断p, q是否连接</span>
+</code></pre></div></div>
+
+<p>整体的算法基于什么样的基本数据结构呢？ 数组， 链表还是树？ 数组的下标以及数组中所存储的元素会有一种对应。 例如<code class="highlighter-rouge">data[0] = 1</code>， 我们可以认为0这个节点的标识是1。 如果又有<code class="highlighter-rouge">data[12] = 1</code>， 节点12的标识位也是1， 此时可以判断节点0和节点12是连接的。</p>
+
+<p>如果采用数组实现， 连接p, q两个节点又该如何操作？ 一个非常简单的做法就是将节点p的标志位设置为节点q的标志位， 使两者的标识位同步即可。</p>
+
+<p>在数组初始化的时候就有:
+<img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2009-37-46.png" alt="" /></p>
+
+<p>那么<code class="highlighter-rouge">UnionFind</code>类的初始化过程就非常简单了， 申请容量为N的数组， 逐一赋值即可:</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">UnionFind</span><span class="o">:</span>
+    <span class="kd">private</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">data</span><span class="o">;</span>
+    <span class="n">UnionFind</span><span class="o">(</span><span class="kt">int</span> <span class="n">N</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="n">N</span><span class="o">];</span>
+        <span class="k">for</span><span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">N</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">i</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre></div></div>
+
+<h5 id="21-quick-find算法">2.1 quick-find算法</h5>
+<p>quick-find算法的思路是这样的: 使用数组的索引作为节点， 数组索引所对应的值作为节点标识。 在连接p, q两个节点时， 首先查找p, q两个节点的标识位， 将所有与p连接的节点的标识位改为q的标识位。 图示过程如下:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/quick-find.png" alt="" /></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">];</span>  <span class="c1">// 返回节点p的标志位</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kt">int</span> <span class="n">pID</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
+    <span class="kt">int</span> <span class="n">qID</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">q</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">pID</span> <span class="o">==</span> <span class="n">qID</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
+
+    <span class="c1">// 遍历所有与节点q标识位相同的节点, 并将其标识位改为q的标识位</span>
+    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">data</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">==</span> <span class="n">pID</span><span class="o">)</span>
+            <span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">qID</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>为什么这个算法称为quick-find呢？ 因为在查找过程中， 采用的是直接取数组下标的方式， 时间复杂度为O(1)， 而union操作则需要遍历整个数组， 其时间复杂度为O(n)。</p>
+
+<h5 id="22-quick-union算法实现">2.2 quick-union算法实现</h5>
+<p>虽然quick-find算法拥有较高的查找效率， 但是其union操作效率较低， 所以通常会使用quick-union算法来实现并查集。</p>
+
+<p>quick-union算法的思路是将每一个元素看成是一个节点， 将数组整理成为一个树结构， 并由孩子节点指向父亲节点。</p>
+
+<p>在初始化数组的时候， 我们说数组的索引代表了节点本身， 而数组的索引值代表了节点的标识位。 而现在， 数组的索引值不再代表节点的标识位了， 而是代表其父节点。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-10-29.png" alt="" /></p>
+
+<p>如上图所示， 首先我们将节点3与节点2连接， 按照孩子指向父亲的原则， <code class="highlighter-rouge">data[3] = 2</code>。 再将节点1与节点3进行连接， 此时节点3不直接与节点1进行连接， 而是与节点1的父亲节点进行连接， 也就是节点2， 所以就有<code class="highlighter-rouge">data[1] = 2</code>。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-14-17.png" alt="" /></p>
+
+<p>在上图中， 我们让节点8和节点2进行连接， 它们不会直接连接， 因为节点8还有父节点5， 让节点5和节点2进行连接。 由于节点5和节点2都是父节点， 所以节点5可以直接指向节点2。 此时数组内的数据情况为:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-20-51.png" alt="" /></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// 循环查找父节点</span>
+    <span class="k">while</span> <span class="o">(</span><span class="n">p</span> <span class="o">!=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">])</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">];</span>
+    <span class="k">return</span> <span class="n">p</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// 此时find操作得到的结果是两个节点的根节点</span>
+    <span class="kt">int</span> <span class="n">pRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
+    <span class="kt">int</span> <span class="n">qRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">q</span><span class="o">);</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">pRoot</span> <span class="o">==</span> <span class="n">qRoot</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
+
+    <span class="n">data</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">qRoot</span><span class="o">;</span>  <span class="c1">// 使p的父节点指向q的父节点</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h4 id="3-quick-union算法的优化">3. quick-union算法的优化</h4>
+<h5 id="31-基于树高的优化">3.1 基于树高的优化</h5>
+<p>B-Tree之所以非常高效的原因， 是因为其树高最多只有4层(树叶因子如果是500的话， 此时可容纳250T的数据)， 那么对于我们的数组树结构来说， 虽然没有指针， 但是逻辑上仍然是一颗树， 所以对树高的优化非常有必要。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-43-00.png" alt="" /></p>
+
+<p>如上图所示， 如果是左侧根节点指向右侧根节点的话， 整体树高为4。 而如果是右侧根节点指向左侧根节点的话， 整体树高为3。 所以我们需要额外的增加一些数据， 来记录每棵树的树高。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">UnionFind</span><span class="o">:</span>
+    <span class="kd">private</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">data</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">rank</span><span class="o">;</span>
+
+    <span class="n">UnionFind</span><span class="o">(</span><span class="kt">int</span> <span class="n">N</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="n">N</span><span class="o">];</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="n">N</span><span class="o">]</span>
+        <span class="nf">for</span><span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">N</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">i</span><span class="o">;</span>
+            <span class="n">rank</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>  <span class="c1">// 初始化时每棵树的高度均为1</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre></div></div>
+
+<p>那么在<code class="highlighter-rouge">union</code>方法中， 就需要进行一些比较。 将树高低的指向树高高的即可。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kt">int</span> <span class="n">pRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
+    <span class="kt">int</span> <span class="n">qRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">q</span><span class="o">);</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">pRoot</span> <span class="o">==</span> <span class="n">qRoot</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">rank</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">&lt;</span> <span class="n">rank</span><span class="o">[</span><span class="n">qRoot</span><span class="o">])</span>
+        <span class="n">data</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">qRoot</span><span class="o">;</span>
+    <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">rank</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">&gt;</span> <span class="n">rank</span><span class="o">[</span><span class="n">qRoot</span><span class="o">])</span>
+        <span class="n">data</span><span class="o">[</span><span class="n">qRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">pRoot</span><span class="o">;</span>
+    <span class="k">else</span> <span class="o">{</span>  <span class="c1">// 当两棵树的树高相同时， 谁指向谁都一样， 树高必定会增加</span>
+        <span class="n">data</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">qRoot</span><span class="o">;</span>
+        <span class="n">rank</span><span class="o">[</span><span class="n">qRoot</span><span class="o">]</span> <span class="o">++;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h5 id="32-路径压缩">3.2 路径压缩</h5>
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-56-03.png" alt="" /></p>
+
+<p>图中3种树结构都表达了同一个意思， 节点5， 7， 10， 8互相连接， 且根节点都为5。 虽然表达的意思相同， 但是它们在union和find操作上的效率却不尽相同。 很明显的， 最右侧的树有着最高的操作效率， 这也是路径压缩需要做的事情。</p>
+
+<p>这个过程其实很简单， 只需要执行<code class="highlighter-rouge">data[p] = data[data[p]]</code>即可。 也就是说， 让某一个节点指向父节点的父节点， 这样一来树高就能减少一层。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">while</span> <span class="o">(</span><span class="n">p</span> <span class="o">!=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">])</span> <span class="o">{</span>
+        <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">[</span><span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">]];</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">];</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="n">p</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h4 id="4-小结">4. 小结</h4>
+<p>union-find算法主要是为了解决连通问题， 从实际角度上来讲， 使用频率并不是很高。 但是其利用数组所构建的树结构却是整个算法最为精妙的部分， 同时也体现出了数组这个基本数据结构的强大威力。</p>
+
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>那些有趣的数据结构与算法(02)--Bitmap</title>
+	  <link>//Bitmap</link>
+	  <author></author>
+	  <pubDate>2019-03-18T15:02:02+00:00</pubDate>
+	  <guid>//Bitmap</guid>
+	  <description><![CDATA[
+	     <p>在我刚接触Python这门开发语言时， 并没有想用它做Web后端开发， 而是拿来写爬虫。 第一个接触的爬虫框架就是Scrapy。 网络爬虫绕不开的一个话题就是URL去重问题。 在Scrapy原生框架下， 使用的是集合来对URL进行去重的。 集合本身采用哈希表实现， 是一种典型的以空间换时间的数据结构， 当URL数量极为庞大时， 使用这种策略的去重很有可能导致内存溢出而造成服务器宕机的问题。 此时， Bitmap走进了我的视线。</p>
+
+<!---more--->
+
+<h4 id="1-什么是bitmap">1. 什么是Bitmap</h4>
+<p>现代计算机使用二进制来作为信息存储和传输的基本单位， 由于计算机是老美发明的， 他们只需要使用A-Z这26个英文字母， 再加上一些字符， 就可以表达所有的文字内容了。 所以就有了ASCII编码， 使用8个bit(位)来表示一个byte(字节)。</p>
+
+<p>例如”Hey”这个字符， 是由3个字节所组成的， 分别是’H’, ‘e’, ‘y’， 所对应的ASCII码分别是72， 101， 121。 将其转换成二进制， 分别为01001000， 01100101， 01111001。 也就是说， “Hey”这个单词， 在底层存储时， 是使用010010000110010101111001来进行存储的。</p>
+
+<p>在了解了这些内容之后， 再来看如何通过Bitmap来进行URL去重。 假如对于<code class="highlighter-rouge">https://smartkeyerror.com/</code>这个URL， 我们对其进行某种编码操作， 让它变成一个数字， 例如12； 对于<code class="highlighter-rouge">https://smartkeyerror.com/categories/</code>这个URL采用同样的编码方式， 将其变为一个数字， 例如7…以此类推， 有10亿个URL， 就有10亿个数字。</p>
+
+<p>在上面我们得到了两个数字， 一个是12， 一个是7， 分别代表了两个URL。 接下来构建一个以位为单位的数组， 将这两个URL所代表的数字作为数组索引， 修改其值为1， 得到的结果就是这样的：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/BitMap%E7%BC%96%E7%A0%81.png" alt="" /></p>
+
+<p>如果爬虫再次爬取了<code class="highlighter-rouge">https://smartkeyerror.com/</code>这个URL， 通过编码得到了12， 发现这个数组索引为12的元素值为1， 那么就知道这个URL已经被爬取过了， 不会再次进行爬取， 也就达到了去重的作用。</p>
+
+<p>在图中， 位所组成的数组有16个元素， 即能够表示16个URL， 占用空间仅有2个字节。 如果有10亿个URL， 占用空间为 10×10^8 / 8 = 125×10^6字节， 约为125M， 对内存要求非常之低。</p>
+
+<h4 id="2-bitmap的实现">2. Bitmap的实现</h4>
+<p>如果是自己使用Python或者是Java来实现Bitmap这种数据结构的话， 还是比较麻烦的， 所以能够捡现成的用最为合适， 如果现成的不符合特定的需求的话， 自己实现也不迟。</p>
+
+<p>Redis所实现的Bitmap接口相当的简单：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 设置值</span>
+setbit key offset value
+<span class="c"># 获取值</span>
+getbit key offect
+</code></pre></div></div>
+
+<p>Bitmap除了能够用来进行数据去重以外， 还可以做一些统计功能。 例如用户每天对网站的访问情况， 使用用户id作为Bitmap的偏移量， 如果访问了， 将其值修改为1：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>setbit user_access_2019-03-10 15 1
+setbit user_access_2019-03-10 25 1
+setbit user_access_2019-03-10 1688 1
+</code></pre></div></div>
+
+<p>上面的3条命令表示在2019-03-10这天， id为15， 25， 1688的用户访问了网站。 通过使用<code class="highlighter-rouge">bitcount</code>命令可以很方便的统计出当天总访问用户是多少：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitcount user_access_2019-03-10
+</code></pre></div></div>
+
+<p>并且， Redis提供的Bitmap实现支持4种运算操作， 分别是and(交集), or(并集), not(非), xor(异或)， 并将结果保存至destkey中。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitop option destkey key1 key2 .....
+</code></pre></div></div>
+
+<p>例如， 查看2019-03-10和2019-03-09这两天都访问了网站的用户数量：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitop and user_access_2019-03-09_10 user_access_2019-03-09 user_access_2019-03-10
+</code></pre></div></div>
+
+<h4 id="3-利用bitmap实现网站标签统计">3. 利用Bitmap实现网站标签统计</h4>
+<p>这几天在拉钩上更新了自己许久未更的简历， 发现多了一个功能: 综合能力。 这一项需要我们从众多的能力标签中选出5个符合自己能力的标签， 例如沟通协调能力， 自驱动， 抗压能力等等。 自然， 我们可以用一个数组列表来对这些标签进行存储并展示， 但是在数据统计时， 就会有些麻烦了。</p>
+
+<p>如果采用列表存储标签的方法来做的话， 想要统计给自己打上”自驱动”标签的用户数量是多少， 或者是哪个标签是用户作为喜爱的标签等等， 这些统计功能很难展开。</p>
+
+<p>这个时候Redis实现的Bitmap就派上用场了， 假如标签有self-driven， communication-skills， work-well-under-pressure等等， 同样采用用户id作为偏移量:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>setbit self-driven 15 1
+setbit self-driven 2544 1
+
+setbit communication-skills 15 1
+setbit communication-skills 268 1
+
+setbit work-well-under-pressure 125 1
+</code></pre></div></div>
+
+<p>统计”自驱动”标签的用户数量:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitcount self-driven
+</code></pre></div></div>
+
+<p>统计最热门的标签:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitcount self-driven
+bitcount communication-skills
+bitcount work-well-under-pressure
+<span class="c"># 得到结果之后将其整理成为一个字典， 扫描该字典即可得到结果</span>
+</code></pre></div></div>
+
+<h4 id="4-利用bitmap对大文件进行排序">4. 利用Bitmap对大文件进行排序</h4>
+<p>这一小节的应用就比较功利了， 因为对磁盘大文件进行排序， 并且限制了内存使用不能超过50M的情况下， 在日常开发中出现的频次还是极低的。</p>
+
+<p>问题描述: 一个最多包含1000万个正整数的文件， 每个数的大小都小于10000000， 且数据没有重复。 如何在内存使用小于50M的情况下， 对该文件进行排序。</p>
+
+<p>由于内存以及效率的限制(使用归并排序会造成多次磁盘读取)， 这个问题最佳的解决方案就是使用Bitmap。 在内存中建立一个包含有1000万个bit的数组， 依次写入文件中的数字， 而后再顺序输出即可。 伪代码如下:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 初始化bit数组</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+    <span class="n">bit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c"># 数据逐行写入bit数组</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"file.txt"</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">bit</span><span class="p">[</span><span class="n">data</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="c"># 数据逐个输出</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">write</span> <span class="n">i</span> <span class="n">on</span> <span class="n">output</span> <span class="nb">file</span>
+</code></pre></div></div>
+
+<h4 id="5-小结">5. 小结</h4>
+<p>我记得Bitmap这个数据结构在Java中有内置的实现， 并且Guava包也对Bitmap进行了实现和优化， 至于Python,  似乎只有第三方包实现了该结构。 总的来说我们不用从零开始去编写， Redis也为我们提供了丰富的API。</p>
+
+<p>Bitmap最常用的场景依然是海量数据的去重以及判断某一个数是否在海量数据当中， 除此之外就是日常的小功能实现， 例如标签统计， 网站访客信息记录等等。</p>
+
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>那些有趣的数据结构与算法(01)--优先队列</title>
+	  <link>//PriorityQueue</link>
+	  <author></author>
+	  <pubDate>2019-03-12T14:54:58+00:00</pubDate>
+	  <guid>//PriorityQueue</guid>
+	  <description><![CDATA[
+	     <p>优先队列为动态变化的数据赋予了高效且准确的排序能力， 尽管有非常大规模的数据， 二叉堆所实现的优先队列依然能够表现出色。</p>
+
+<!---more--->
+
+<h4 id="1-为什么要有优先队列">1. 为什么要有优先队列</h4>
+<p>队列是一种先进先出的数据结构， 所有的入队元素的优先级都是一样的， 完全遵循先进先出的规则。 然而在实际中这种绝对的公平有时需要被打破。 例如操作系统的进程调度， 在当前环境下， 会有优先级调度高的进程， 例如IDE的运行， 浏览器的运行。 一些进程的调度优先级并不会很高， 例如邮件系统。 系统中的进程数量和对应的优先级是一个动态变化的过程， 不能够简单的对所有进程排序， 而后选取优先级最高的进程， 而是需要维护一个优先级队列。</p>
+
+<h4 id="2-优先队列的实现方式">2. 优先队列的实现方式</h4>
+<p>假设使用数组来实现优先队列， 并维持该数组的有序性。 那么取出优先级最大的元素可以在O(1)时间内完成， 而插入一个元素的时间则不定。 采用二分查找的方式查找元素的时间复杂度为O(logN), 插入元素所导致的数组元素的移动平均时间复杂度为O(N)， 结合起来总的时间复杂度为O(NlogN)。</p>
+
+<p>如果使用链表来实现的话， 可以使用跳跃表来维护一个有序链表。 出队操作可以在O(1)时间内完成， 入队操作最坏情况为O(N)， 平均时间复杂度为O(logN)。 实际上在数据量较小的时候， 采用跳跃表实现优先队列也是一个不错的选择， 但是当数据量比较多的时候， 由于跳跃表需要除有序链表本身所需要的空间以外， 还需要一些额外的空间来存储每层的索引， 所以此时跳跃表的综合表现就会降低。</p>
+
+<p>平衡二分搜索树或者红黑树是一个比较好的选择， 入队以及出队操作平均时间复杂度均为O(logN)， 但是树的随机访问性要差一些， 在有些时候， 树所实现的优先队列也是一个比较好的选择。</p>
+
+<p>在更多的情况下， 我们采用底层由数组所实现的堆结构来实现优先队列。</p>
+
+<h4 id="3-二叉堆">3. 二叉堆</h4>
+<p>二叉堆是一颗完全二叉树， 完全二叉树定义起来有些费劲， 图示会更加清晰一些：</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center ](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2019-01-05%2014-53-37%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>在一棵完全二叉树中， 最后一层所缺失的叶子节点均在整棵树的右侧。 并且在一个最大二叉堆中， 父节点元素值要大于其子孙节点的元素值。</p>
+
+<p>由于二叉堆是一颗完全二叉树， 那么我们可以使用数组来进行存储， 如下图所示：</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center ](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2019-01-05%2015-11-23%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>使用数组进行存储的话， 完全可以使用索引的运算来获取一个节点的父节点， 以及左右孩子节点的索引， 省去了指针的存储空间。</p>
+
+<p>所以， 基于此特性， 我们可以大致的定义出<code class="highlighter-rouge">PriorityQueue</code>这个类所拥有的属性以及部分方法：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">PriorityQueue</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="c"># 这里使用了一个mutable变量作为默认参数, 所以对其进行内存的重新分配, 会有一定的内存浪费， 但是会增加一些灵活性</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_parent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="c"># 获取父节点索引</span>
+        <span class="k">if</span> <span class="n">index</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="nb">ValueError</span><span class="p">(</span><span class="s">"Index 0 doesn't have parent node"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">index</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+
+    <span class="k">def</span> <span class="nf">get_left_child</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="c"># 获取左子节点索引</span>
+        <span class="k">return</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">get_right_child</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="c"># 获取右子节点索引</span>
+        <span class="k">return</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">2</span>
+
+    <span class="k">def</span> <span class="nf">swap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="c"># 交换数组中两个元素的位置， 在上浮和下沉操作中都会用到</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+</code></pre></div></div>
+
+<h5 id="31-向堆中添加元素">3.1 向堆中添加元素</h5>
+<p>首先将该元素扔到数组末尾， 然后执行上浮操作即可。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2019-01-05%2015-26-35%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sift_up</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">sift_up</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+    <span class="c"># 上浮操作</span>
+    <span class="k">while</span> <span class="n">index</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">index</span><span class="p">)]</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">]:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">swap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">index</span><span class="p">),</span> <span class="n">index</span><span class="p">)</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h5 id="32-取出堆中最大元素">3.2 取出堆中最大元素</h5>
+<p>既然是最大堆， 那么堆顶就是最大的元素， 直接弹出即可。 在弹出之后仍然需要维护堆的性质， 此时将堆最后一个叶子节点置于堆顶， 并执行下沉操作即可。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2019-01-05%2015-56-50%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>下沉操作要比上浮操作稍微复杂一些， 主要是需要与左右孩子进行比较， 取较大者进行交换。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">get_max</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="nb">ValueError</span><span class="p">(</span><span class="s">"Heap is empty"</span><span class="p">)</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">swap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sift_down</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+<span class="k">def</span> <span class="nf">sift_down</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+    <span class="c"># 下沉操作， 当下沉到没有左孩子或者是当前节点数值大于左右孩子时, 下沉结束</span>
+    <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_left_child</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_left_child</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_right_child</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">]:</span>
+            <span class="k">break</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">swap</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">j</span>
+</code></pre></div></div>
+
+<h5 id="33-将已有数组进行堆化操作">3.3 将已有数组进行堆化操作</h5>
+<p>给定一个数组， 将其整理为堆。 这个过程常常称为heapify， 从最后一个非叶子节点开始， 对每一个非叶子节点均进行<strong>下沉</strong>操作即可。 之所以进行下沉操作而不是上浮操作的理由也非常简单， 如果进行上浮操作的话， 首要的冲突就是最后一层的叶子节点无法顾及， 并且上浮操作并不一定能保证最后的结果仍然是一个堆。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2019-01-05%2017-43-34%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">heapify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="c"># 给定一个数组， 采用heapify的方式将其整理成堆</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">last_non_leaf_node_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">last_non_leaf_node_index</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sift_down</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</code></pre></div></div>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>Java基础编程(03)--容器</title>
 	  <link>//Java-Container</link>
 	  <author></author>

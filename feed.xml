@@ -8,6 +8,51 @@
     
       
       <item>
+        <title>数据变更操作日志设计</title>
+        
+          <description>&lt;p&gt;当系统的某些行为涉及到资金与资产的数据变更时，常常会为其增加操作日志， 便于后续的问题排查。 例如红包的使用明细， 银行转账的详细记录等等。 操作日志记录这个需求看起来很简单， 但是深挖下去， 依然能找到很有趣的东西。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Sat, 10 Aug 2019 21:39:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/change-log-system-design</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/change-log-system-design</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>那些有趣的数据结构与算法(05)--限流</title>
+        
+          <description>&lt;p&gt;有时候限流也可以称为防刷， 这两者的界定并不是很明显， 常用的限流算法包括固定窗口， 滑动窗口， 漏桶以及令牌桶算法， 它们都有各自的优势与最适合的使用场景， 算法不分好坏， 之分场景。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Sat, 20 Jul 2019 21:54:55 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/limits</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/limits</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>那些有趣的数据结构与算法(04)--B-Tree与B+Tree</title>
+        
+          <description>&lt;p&gt;树型结构由于其良好的递归特性， 高效的查询效率， 在软件系统设计中有着非常广泛的使用。 IO多路复用的epoll实现采用红黑树组织和管理sockfd， 以支持快速的增删改查； Golang中的Timer采用多叉堆实现； Java中的TreeMap以及TreeSet同样采用红黑树实现…而在MySQL中， 索引的构建同样采用树结构实现。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Sun, 23 Jun 2019 16:01:47 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/B+Tree-and-B-Tree</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/B+Tree-and-B-Tree</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>DevOps基础(1)--Shell脚本编程</title>
         
           <description>&lt;p&gt;由于Docker容器以及Kubernetes容器编排服务的蓬勃发展， 服务器以及业务服务的运维不再是运维工程师的专属， 业务的开发工程师也必须加入到运维的领域之中， 与运维工程师合作， 形成一套完整、高效的自动化运维与部署的系统。 而在我看来， 传统的运维工程师将会逐渐被应用开发工程师所取代， 因为Kubernetes赋予了开发人员强大的负载均衡、自动横向拓展以及高效管理的相关功能。 而在这些宏大的系统建设之前， Shell编程是无论如何都离不开的话题。&lt;/p&gt;
@@ -33,6 +78,277 @@
         <link>
         https://smartkeyerror.com/Ansible</link>
         <guid isPermaLink="true">https://smartkeyerror.com/Ansible</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>操作系统原理(01)-I/O</title>
+        
+          <description>&lt;p&gt;在写了许多代码， 搭建了一些分布式服务之后， 越发觉得一个大型的高并发系统就是一个操作系统。 在分布式系统中， 我们会讲数据一致性， 如何做到缓存和DB的一致性， 这也是操作系统需要解决的问题: 内核高速页缓存如何与磁盘文件数据一致。 又比如对于一些耗时且非必需的任务， 在分布式系统中很有可能采用消息队列来进行异步处理， 例如邮件的发送， 而在操作系统中， I/O也是一个非常耗时的任务， 同样采用了异步处理的方式来最大化的利用系统资源， 只不过并不是采用消息队列而已。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Mon, 15 Apr 2019 10:17:46 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/operation-system-with-IO</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/operation-system-with-IO</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>分布式系统基础学习(05)--分布式缓存设计</title>
+        
+          <description>&lt;p&gt;在单机缓存中， 并发的安全性问题与语言的并发安全问题完全可以归为一类， 缓存的穿透问题可以采用巧妙的数据结构进行处理， 很多问题本质上仍然是一些基础问题。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Mon, 01 Apr 2019 10:17:46 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/distributed-cache</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/distributed-cache</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>一文理解Flask Web开发</title>
+        
+          <description>&lt;p&gt;Flask作为Python语言中最为轻量的Web框架， 由于其核心内容的简洁以及良好的可拓展性， 一直受到广泛的开发者所喜爱。 对比于Django， Flask并没有”我给你的就是最好的， 别管那么多， 拿着用就好”的思想， 而是让开发者自己做出选择， 自己设计开发一个组件， 或者挑选一个你喜欢的第三方库。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Sun, 31 Mar 2019 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Flask-Web</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Flask-Web</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>那些有趣的数据结构与算法(03)--并查集</title>
+        
+          <description>&lt;p&gt;在《算法》(第四版)的第一章最后一小节中， 也就是”案例研究: union-find算法”这一小节， 我看到了并查集。 在我完整的阅读了所有的算法内容之后， 脑子里只剩下两个字: 优美。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Mon, 25 Mar 2019 15:02:02 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/UnionFind</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/UnionFind</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>那些有趣的数据结构与算法(02)--Bitmap</title>
+        
+          <description>&lt;p&gt;在我刚接触Python这门开发语言时， 并没有想用它做Web后端开发， 而是拿来写爬虫。 第一个接触的爬虫框架就是Scrapy。 网络爬虫绕不开的一个话题就是URL去重问题。 在Scrapy原生框架下， 使用的是集合来对URL进行去重的。 集合本身采用哈希表实现， 是一种典型的以空间换时间的数据结构， 当URL数量极为庞大时， 使用这种策略的去重很有可能导致内存溢出而造成服务器宕机的问题。 此时， Bitmap走进了我的视线。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Mon, 18 Mar 2019 15:02:02 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Bitmap</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Bitmap</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Redis基本数据结构与实现</title>
+        
+          <description>&lt;p&gt;Redis内置了5种对外开放的数据结构， 分别是字符串， 列表， 集合， 有序集合以及哈希对象。 每一种数据结构的底层实现都会由存入的数据产生动态变化， 这也是Redis具有极佳吞吐量的原因之一。 本篇文章主要描述其基本数据结构的实现以及这些结构在使用时的注意事项。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Wed, 13 Mar 2019 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Redis-base-data-structure</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Redis-base-data-structure</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>那些有趣的数据结构与算法(01)--优先队列</title>
+        
+          <description>&lt;p&gt;优先队列为动态变化的数据赋予了高效且准确的排序能力， 尽管有非常大规模的数据， 二叉堆所实现的优先队列依然能够表现出色。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 12 Mar 2019 14:54:58 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/PriorityQueue</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/PriorityQueue</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>分布式系统基础学习(04)--Nginx</title>
+        
+          <description>&lt;p&gt;Nginx不管是在单机部署还是在集群部署下， 都起着非常重要的作用。 底层由C语言编写， 并且采用事件驱动模型对Socket连接进行管理， 所以有着非常高效的请求处理能力， 并且支持海量的并发。 本篇文章不会对Nginx的底层原理进行深究， 而是整理自己在工作中所遇到的一些问题和积累的经验。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 15 Jan 2019 10:09:44 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Nginx</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Nginx</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>分布式系统基础学习(03)--消息队列(RabbitMQ)</title>
+        
+          <description>&lt;p&gt;消息队列常常被用于跨进程通信， 异步调用， 系统解耦以及流量削峰等场景下。 目前市场上的消息队列种类繁多， 有LinkedIn开源的&lt;code class=&quot;highlighter-rouge&quot;&gt;kafka&lt;/code&gt;， 阿里开源的&lt;code class=&quot;highlighter-rouge&quot;&gt;RocketMQ&lt;/code&gt;， 以及使用较为广泛的&lt;code class=&quot;highlighter-rouge&quot;&gt;RabbiMQ&lt;/code&gt;。 &lt;code class=&quot;highlighter-rouge&quot;&gt;Redis&lt;/code&gt;虽然也可以做消息队列， 但是更多的是用来做缓存和其它工具使用。 但是随着Redis 5.0 版本的发布， Redis的功能越来越丰富， 也不排除在未来的某一天也能够占据消息队列的重要一席。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Fri, 11 Jan 2019 09:52:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/message-queue</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/message-queue</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>分布式系统基础学习(02)--应用间通信(gRPC)</title>
+        
+          <description>&lt;p&gt;我始终认为， 随着语言和计算机技术的发展， 分布式系统才是互联网技术的未来。 而现在众多的分布式开源技术， 如&lt;code class=&quot;highlighter-rouge&quot;&gt;Zookeper&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;SpringCloud&lt;/code&gt;等的蓬勃发展也证明这一点。 在分布式的系统中， A服务可能由Java编写， B服务可能由Python编写， C服务可能由PHP编写， 服务于服务之间的通信固然可以使用&lt;code class=&quot;highlighter-rouge&quot;&gt;HTTP&lt;/code&gt;协议以&lt;code class=&quot;highlighter-rouge&quot;&gt;RESTful-API&lt;/code&gt;的方式进行通信， 但是由于许多不必要的数据传输， 例如HTTP请求头， 会降低服务之间的通信速度， 在高并发的场景下极有可能成为系统瓶颈。 所以， 就有了RPC通信机制。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 08 Jan 2019 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/service-communication</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/service-communication</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>分布式系统基础学习(01)--通信(TCP/UDP)</title>
+        
+          <description>&lt;p&gt;分布式系统是一个很庞大的话题， 在我个人的知识版图中， 也仅仅只是对一小部分土地进行了开荒。 不管是分布式系统， 还是单机应用系统， 都是建立在互联网通信机制之上的。 而提到通信， 就不得不提到&lt;code class=&quot;highlighter-rouge&quot;&gt;TCP/UDP&lt;/code&gt;这两个非常经典的协议。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Thu, 03 Jan 2019 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/distributed-system-of-communication</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/distributed-system-of-communication</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java并发编程(07)--锁</title>
+        
+          <description>&lt;p&gt;锁在并发编程中可以说是必须使用的一种资源保护技术， 而且是一种及其庞大且复杂的技术， 随着计算机学科的发展， 锁技术同样的在不断的发展和优化。 作为一个开发者， 当然无法直接深入到CPU的最底层去理解锁的原理， 但是通过一些其它的手段可以间接的理解锁的原理以及运行机制。
+本篇文章进行一个现阶段的总结， 整理一下所学的全部关于锁的知识， 涉及的编程语言包括&lt;code class=&quot;highlighter-rouge&quot;&gt;Python&lt;/code&gt;和&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;， 应用包括&lt;code class=&quot;highlighter-rouge&quot;&gt;MySQL&lt;/code&gt;以及&lt;code class=&quot;highlighter-rouge&quot;&gt;Redis&lt;/code&gt;， 如有错误， 还请指正。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Mon, 31 Dec 2018 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Lock</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Lock</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java并发编程(06)--AbstractQueuedSynchronizer</title>
+        
+          <description>&lt;p&gt;在整理下一篇文章， 有关锁的知识之前， 有一个无论如何都绕不开的话题：&lt;code class=&quot;highlighter-rouge&quot;&gt;AbstractQueuedSynchronizer&lt;/code&gt;， 队列同步器， 通常简称AQS。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Wed, 26 Dec 2018 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/AbstractQueuedSynchronizer</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/AbstractQueuedSynchronizer</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java并发编程(05)--Python线程池源码剖析</title>
+        
+          <description>&lt;p&gt;本来是一个对&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;并发编程的一个学习和总结专题， 虽然&lt;code class=&quot;highlighter-rouge&quot;&gt;Python&lt;/code&gt;有&lt;code class=&quot;highlighter-rouge&quot;&gt;GIL&lt;/code&gt;的存在， 但不能否认其线程池的实现非常的简洁而优雅， 此外温故而知新， 通过理解其它语言的线程池也能够加深我们对&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;线程池的理解。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Mon, 24 Dec 2018 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Python-ThreadingPool</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Python-ThreadingPool</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java并发编程(04)--线程池</title>
+        
+          <description>&lt;p&gt;抛开&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;自己封装的&lt;code class=&quot;highlighter-rouge&quot;&gt;newFixedThreadPool&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;newCachedThreadPool&lt;/code&gt;等工厂线程池方法， 最核心的就是&lt;code class=&quot;highlighter-rouge&quot;&gt;ThreadPoolExecutor&lt;/code&gt;的配置， 包括线程池的大小， 工作队列， 空闲线程存活时间以及饱和策略。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 18 Dec 2018 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Java-ThreadingPool</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Java-ThreadingPool</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java并发编程(03)--任务的取消与异常处理</title>
+        
+          <description>&lt;p&gt;在前面的一章整理并发编程的一些基础内容， 包括任务的创建， 任务的执行， 线程池的简单使用， 加入一个线程以及守护线程和线程同步。 基本上涵盖了绝大多数的基础内容， 在本章中学习任务的取消与异常处理。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Fri, 14 Dec 2018 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/task-cancel-and-exception</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/task-cancel-and-exception</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>Java并发编程(02)--CPU和缓存一致性</title>
+        
+          <description>&lt;p&gt;在继续学习&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;并发编程之前， CPU的执行过程以及CPU缓存一致性问题是必须要了解的， 这一部分的内容是&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;并发设计的基石， 对后续内容的了解也有非常大的帮助。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 11 Dec 2018 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/CPU-and-cache</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/CPU-and-cache</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>JJava并发编程(01)--基础学习</title>
+        
+          <description>&lt;p&gt;打了2年多的&lt;code class=&quot;highlighter-rouge&quot;&gt;Python&lt;/code&gt;代码， 大大小小的项目也做了一些， 代码规范和并发效率一直以来是比较头疼的问题。 因为&lt;code class=&quot;highlighter-rouge&quot;&gt;GIL&lt;/code&gt;全局解释器锁的存在使得&lt;code class=&quot;highlighter-rouge&quot;&gt;Python&lt;/code&gt;程序员永远只能使用单核， 并且在锁的保护下许多的效率问题都被掩盖。 在学习了&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;之后， 对其并发模块的设计深感惊艳， 比如&lt;code class=&quot;highlighter-rouge&quot;&gt;ConcurrentHashMap&lt;/code&gt;的分段锁实现， &lt;code class=&quot;highlighter-rouge&quot;&gt;volatile&lt;/code&gt;关键字保证变量的可见性， 所以在这里对其进行整理并进一步加深理解。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Mon, 10 Dec 2018 08:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Java-Concurrent-Base</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Java-Concurrent-Base</guid>
       </item>
       
     
@@ -128,6 +444,36 @@
     
       
       <item>
+        <title>MySQL权限管理</title>
+        
+          <description>&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;MySQL&lt;/code&gt;的权限管理重要性等同于服务器数据的重要性， 权限体系如果建立的不到位的话， 也就意味着生产数据处于危险状态。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 30 Oct 2018 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/MySQL-Permissions</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/MySQL-Permissions</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>MySQL慢查询日志分析工具</title>
+        
+          <description>&lt;p&gt;慢查询日志使我们对MySQL进行性能优化的关键指标， 只有在确定了哪些查询的确是慢查询之后才能对症下药， 进行性能优化， 而不是凭自身的感觉去判断， 结果有事往往出乎意料。 直接打开慢查询日志进行查看效率比较低效， 所以需要借助&lt;code class=&quot;highlighter-rouge&quot;&gt;pt-query-digest&lt;/code&gt;工具来进行分析。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Thu, 25 Oct 2018 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/MySQL-slow-query-analysis-tool</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/MySQL-slow-query-analysis-tool</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>binlog的正确打开方式</title>
         
           <description>&lt;p&gt;在前面的主从复制中我们提到了bin-log， 主从复制中bing-log主要作为一种增量复制的方法进行主库与从库的同步。 在日常生产中， bin-log常常也作为实时数据恢复的必要手段。&lt;/p&gt;
@@ -138,6 +484,21 @@
         <link>
         https://smartkeyerror.com/MySQL-binlog</link>
         <guid isPermaLink="true">https://smartkeyerror.com/MySQL-binlog</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>MySQL之主从复制</title>
+        
+          <description>&lt;p&gt;MySQL的主从复制是建立读写分离以及MySQL集群的根本， 为了能够保证复制的正常运行， 那么就必然需要对其原理以及核心的配置项有足够的了解， 才能够在复杂的生产环境中对错误进行排查。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 23 Oct 2018 09:49:09 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/MySQL-master-slave</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/MySQL-master-slave</guid>
       </item>
       
     

@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Java并发编程(07)--锁</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Lock" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java并发编程(07)--锁" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//Lock" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Java并发编程(07)--锁" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Lock" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Java并发编程(07)--锁",
+    "url": "https://smartkeyerror.com//Lock",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Java并发编程(07)--锁</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-12-31">31 Dec 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/并发编程'>并发编程</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>锁在并发编程中可以说是必须使用的一种资源保护技术， 而且是一种及其庞大且复杂的技术， 随着计算机学科的发展， 锁技术同样的在不断的发展和优化。 作为一个开发者， 当然无法直接深入到CPU的最底层去理解锁的原理， 但是通过一些其它的手段可以间接的理解锁的原理以及运行机制。
+本篇文章进行一个现阶段的总结， 整理一下所学的全部关于锁的知识， 涉及的编程语言包括<code class="highlighter-rouge">Python</code>和<code class="highlighter-rouge">Java</code>， 应用包括<code class="highlighter-rouge">MySQL</code>以及<code class="highlighter-rouge">Redis</code>， 如有错误， 还请指正。</p>
+
+<!---more--->
+
+<h4 id="1-锁的分类">1. 锁的分类</h4>
+<p>在完整的学习各种锁之前， 有必要对锁进行一个分类：</p>
+
+<p>1）按是否<strong>可重入</strong>划分： 可重入锁， 非重入锁</p>
+
+<p>2）按是否<strong>排他</strong>划分： 排它锁， 共享锁</p>
+
+<p>3）按是否<strong>公平</strong>划分： 公平锁， 非公平锁</p>
+
+<p>4）按是否需要<strong>显式加锁</strong>划分： 显式锁， 隐式锁</p>
+
+<p>5）按是否<strong>使用锁</strong>划分： 乐观锁， 悲观锁</p>
+
+<p>6）按<strong>系统状态</strong>划分： 单机锁， 分布式锁</p>
+
+<p>每一个划分的标准都可以代表一个使用场景， 一个锁的实现必定会有上述分类特征， 例如可重入排他隐式锁， 可重入排他显式锁， 等等。</p>
+
+<h4 id="2-synchronized">2. synchronized</h4>
+<p><code class="highlighter-rouge">synchronized</code>关键字在开发过程中可以说是使用最为频繁的可重入排他隐式锁了， 为我们提供了非常强的线程安全性以及线程变量可见性。</p>
+
+<p>需要特别注意的是， <code class="highlighter-rouge">synchronized</code>是一个关键字， 不是一个锁， 其作用是为我们生成一个锁。 而<code class="highlighter-rouge">Java</code>中每一个对象都可以作为锁：
+1）对于普通的成员同步方法， 锁即是当前的实例对象
+2）对于静态同步方法， 锁是当前类的Class对象
+3）对于同步的部分代码段， 锁是<code class="highlighter-rouge">synchronized</code>括号中所指定的对象。</p>
+
+<p>所以， 如果我们需要使用多线程并且保证线程安全性的去运行某一个任务时， 传入到多个线程的对象实例必须是同一个。</p>
+
+<p>此外， 使用<code class="highlighter-rouge">synchronized</code>关键字所创建的锁具有可重入性， 这一点在开发过程中同样尤为重要。 在一个需要线程同步的方法中调用另一个需要线程同步的方法非常常见， 可重入锁提供了这样的支持。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">SynchronizedReentrant</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kd">synchronized</span> <span class="kt">int</span> <span class="nf">get</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="n">count</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">synchronized</span> <span class="kt">void</span> <span class="nf">set</span><span class="o">(</span><span class="kt">int</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="n">get</span><span class="o">();</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">count</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="n">value</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">SynchronizedReentrant</span> <span class="n">demo</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SynchronizedReentrant</span><span class="o">();</span>
+
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">demo</span><span class="o">.</span><span class="na">get</span><span class="o">());</span>
+        <span class="n">demo</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="mi">10</span><span class="o">);</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">demo</span><span class="o">.</span><span class="na">get</span><span class="o">());</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>上面儿的代码不是很好的例子， 但是能说明<code class="highlighter-rouge">synchronized</code>的可重入性。 简单来说， 可重入锁通常会在递归调用以及线程在同步方法中调用对象的其它同步方法中进行使用， 其目的是避免死锁， 提供更大的灵活性。</p>
+
+<h5 id="21-synchronized原理">2.1 synchronized原理</h5>
+<p>由于<code class="highlighter-rouge">synchronized</code>所生成的锁为隐式锁， 所以只能通过<code class="highlighter-rouge">javap</code>来反编码<code class="highlighter-rouge">.class</code>文件来获得JVM字节码来进行查看， 写一个最简单的demo：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">SynchronizedReentrant</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kd">synchronized</span> <span class="kt">int</span> <span class="nf">getCount</span><span class="o">()</span> <span class="o">{</span> <span class="k">return</span> <span class="n">count</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">doSomething</span><span class="o">()</span> <span class="o">{</span>
+        <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"start"</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span> <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>使用<code class="highlighter-rouge">javap</code>对其进行反编译：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">javap</span> <span class="o">-</span><span class="n">c</span> <span class="n">SynchronizedReentrant</span>
+</code></pre></div></div>
+
+<p>查看反编码之后的结果， 会发现在<code class="highlighter-rouge">doSomething</code>方法中有<code class="highlighter-rouge">monitorenter</code>和<code class="highlighter-rouge">monitorexit</code>， 这个其实就是获取锁以及释放锁的过程。 而在<code class="highlighter-rouge">getCount</code>同步方法中却没有看到这样的指令对。</p>
+
+<p>实际上， JVM会基于进入和退出<code class="highlighter-rouge">Monitor</code>对象来实现方法同步和代码块同步， 但是这两者之间的实现细节有所差别。 代码块同步是使用<code class="highlighter-rouge">monitorenter</code>和<code class="highlighter-rouge">monitorexit</code>指令实现， 而方法同步JVM并没有说明， 但是可以使用这两个方法来进行实现。</p>
+
+<p>锁其实是存在于<code class="highlighter-rouge">Java</code>对象头中， 保存着锁信息以及线程信息， 用于保证不同的线程不会持有同一个对象的锁。</p>
+
+<h4 id="3-reentrantlock">3. ReentrantLock</h4>
+<p><code class="highlighter-rouge">synchronized</code>关键字使用虽然很方便， 但是灵活性会差一些。 比如无法定义等待锁的超时时间， 这样可能会发生无期限的等待锁的获取， 造成系统阻塞。 <code class="highlighter-rouge">ReentrantLock</code>提供了和<code class="highlighter-rouge">synchronized</code>相似的功能， 但是拥有更高的灵活性。</p>
+
+<p><code class="highlighter-rouge">ReentrantLock</code>在<code class="highlighter-rouge">java.util.concurrent</code>包中实现， 也就意味着我们可以通过阅读java-doc来对其进行理解。</p>
+
+<blockquote>
+  <p>A reentrant mutual exclusion Lock with the same basic behavior and semantics as the implicit monitor lock accessed using synchronized methods and statements, but with extended capabilities.</p>
+</blockquote>
+
+<p>在文档中也很明确的写出， <code class="highlighter-rouge">ReentrantLock</code>和<code class="highlighter-rouge">synchronized</code>具有相同的语义， 也是一种排它锁(互斥锁)， 但是功能得到了拓展。</p>
+
+<p>在接下来的文档描述中， 有一段相当重要的解释， 描述了公平锁和非公平锁对系统的稳定性和吞吐量所带来的影响。 <strong>那么什么是公平锁？</strong>当多个线程尝试获取同一个对象的锁时， 并且此时该对象的锁还未释放， 公平锁则保证等待时间最久的线程将会获得该锁。 而非公平锁则是让多个线程继续争抢， 哪个线程抢到了就是谁的， 没有先来后到一说。</p>
+
+<p>公平在现实生活中是一件好事， 然而维护公平却需要更多的开销。 例如我们需要法院， 需要维护秩序的人员， 等等。 然而在计算机的世界中， 效率和吞吐量才是首要。 当我们将<code class="highlighter-rouge">fairness</code>参数设置为true时， 系统需要记录谁先申请锁， 谁后申请锁， 即维护一个加锁队列， 这样一来就会有额外的开销， 从而降低吞吐量。 所以在没有非常强的需求下， 使用默认的非公平锁即可。</p>
+
+<p>文档还给出了使用显式可重入锁的最佳实践， 将释放锁的代码放到<code class="highlighter-rouge">finally</code>语句块儿中能够保证锁资源的正确释放， 增加系统的稳定性。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">X</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">ReentrantLock</span> <span class="n">lock</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ReentrantLock</span><span class="o">();</span>
+    <span class="c1">// ...</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">m</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">lock</span><span class="o">.</span><span class="na">lock</span><span class="o">();</span>  <span class="c1">// block until condition holds</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="c1">// ... method body</span>
+        <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+            <span class="n">lock</span><span class="o">.</span><span class="na">unlock</span><span class="o">()</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h5 id="31-reentrantlock实现原理">3.1 ReentrantLock实现原理</h5>
+<p><code class="highlighter-rouge">ReentrantLock</code>基于AQS所实现， AQS的基本原理在上一篇文章做了一个粗略的介绍， 那么在可重入锁这里， 着重分析一下其实现源码。 关键代码为<code class="highlighter-rouge">ReentrantLock.Sync</code>内部类， 以及其子类。 当我们使用默认的非公平锁构造器创建一个对象时， 实际实例化的对象类为<code class="highlighter-rouge">NonfairSync</code>。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">static</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">NonfairSync</span> <span class="kd">extends</span> <span class="n">Sync</span> <span class="o">{</span>
+    <span class="kd">final</span> <span class="kt">void</span> <span class="nf">lock</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">compareAndSetState</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">))</span>
+            <span class="n">setExclusiveOwnerThread</span><span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">());</span>
+        <span class="k">else</span>
+            <span class="nf">acquire</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">protected</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">tryAcquire</span><span class="o">(</span><span class="kt">int</span> <span class="n">acquires</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="nf">nonfairTryAcquire</span><span class="o">(</span><span class="n">acquires</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>对于一个加锁操作， 必须借助于硬件为我们提供的原子性比较与赋值操作(compare-and-set, 以下简称CAS)。 当我们尝试调用<code class="highlighter-rouge">ReentrantLock().lock()</code>时， 首先对前锁对象的状态(state)值， 该值在<code class="highlighter-rouge">AbstractQueuedSynchronizer</code>中进行定义， 如果state == 0， 说明还没有线程上锁， 那么将当前线程赋给<code class="highlighter-rouge">exclusiveOwnerThread</code>属性， 并将state置为1。</p>
+
+<p>此时其余线程想要对其进行加锁， 因为状态为1， 则执行<code class="highlighter-rouge">acquire(1)</code>操作：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">acquire</span><span class="o">(</span><span class="kt">int</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(!</span><span class="n">tryAcquire</span><span class="o">(</span><span class="n">arg</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="n">acquireQueued</span><span class="o">(</span><span class="n">addWaiter</span><span class="o">(</span><span class="n">Node</span><span class="o">.</span><span class="na">EXCLUSIVE</span><span class="o">),</span> <span class="n">arg</span><span class="o">))</span>
+        <span class="n">selfInterrupt</span><span class="o">();</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">tryAcquire</code>方法其实是再一次确认state值是否为0， 以及是否是同一线程再次进行加锁操作； <code class="highlighter-rouge">addWaiter</code>方法将会创建一个双向链表节点(Node)并进行挂载， 并将该节点返回； <code class="highlighter-rouge">acquireQueued</code>接受一个Node对象并在内部维护一个死循环， 当前面一个节点的线程将锁释放之后该循环返回， 并且此时线程已经成功获取到了锁资源。 锁的释放与该过程相反， 基本类似。</p>
+
+<p>比较有意思的是<code class="highlighter-rouge">ReentrantReadWriteLock</code>， 可重入读写锁。 假如我们有一个list， 读多写少并且在多个线程间共享， 为了保证读到的数据为最新数据以及写数据时的安全性， 对该list的读写均进行加锁操作。 因为操作为读多写少， 两个线程并发的读应该是允许的， 这样才能增加系统的吞吐量， 所以就有了读写锁：<code class="highlighter-rouge">ReentrantReadWriteLock</code></p>
+
+<p><code class="highlighter-rouge">ReentrantReadWriteLock</code>保证了写操作时读操作阻塞， 读操作时另一个线程可以执行读操作， 但不允许执行写操作。 这样的设计极大的增加了系统的吞吐量。</p>
+
+<h5 id="32-synchronized与reentrantlock">3.2 synchronized与ReentrantLock</h5>
+<p><code class="highlighter-rouge">synchronized</code>可以认为是纯底层实现， 线程的阻塞与唤醒交由操作系统管理， 这样一来就会有用户态和内核态来回切换的过程， 属于重量级操作， 所以又称为重量级锁。 并且开发人员没有办法控制和进行监控， 灵活性比较差， 但是使用很方便。</p>
+
+<p><code class="highlighter-rouge">ReentrantLock</code>由AQS所实现， 线程的阻塞与唤醒采用自旋进行管理， 即所有操作均在用户空间进行， 但是如果自旋时间过长同样会降低系统吞吐量。 该锁为开发人员提供了很灵活的接口， 能够结合业务场景进行定制化， 但是使用较为复杂。</p>
+
+<p>当系统中持有锁的时间较长， 需要对一个执行较长时间的操作进行加锁时， <code class="highlighter-rouge">synchronized</code>会更好； 如果系统中持有锁的时间很短， 例如向map中添加一个对象这种O(1)操作， 使用<code class="highlighter-rouge">ReentrantLock</code>更好。 另外如果处理器为单核， 不要使用<code class="highlighter-rouge">ReentrantLock</code>， 因为在单核情况下， 自旋会耗尽CPU为其分配的时间片， 白白浪费资源且会造成大量的线程阻塞。</p>
+
+<h5 id="32-rlock">3.2 RLock</h5>
+<p><code class="highlighter-rouge">RLock</code>是<code class="highlighter-rouge">Python</code>中所提供的一种互斥可重入锁， 其原理和使用与<code class="highlighter-rouge">Java</code>没有什么明显的区别。 只不过由于<code class="highlighter-rouge">Python</code>中可以使用上下文管理器， 对资源的释放能够更好的管理而已：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">threading</span>
+
+<span class="n">r_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">do_something</span><span class="p">():</span>
+    <span class="k">with</span> <span class="n">r_lock</span><span class="p">:</span>
+        <span class="n">do_something</span><span class="o">...</span>
+</code></pre></div></div>
+
+<h4 id="4-condition">4. Condition</h4>
+
+<h5 id="41-线程状态">4.1 线程状态</h5>
+<p>如果想要理解<code class="highlighter-rouge">Condition</code>条件锁的用法， 首先得明白线程状态以及之间的转换。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>状态名称</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>初始(NEW)</td>
+      <td>线程被构建(实例化)， 但是未调用start方法</td>
+    </tr>
+    <tr>
+      <td>运行(RUNNABLE)</td>
+      <td>运行状态， 已调用start方法， 或者是线程已就绪</td>
+    </tr>
+    <tr>
+      <td>阻塞(BLOCKED)</td>
+      <td>阻塞状态， 线程等待进入synchronized方法中， 等待获取对象锁</td>
+    </tr>
+    <tr>
+      <td>等待(WAITING)</td>
+      <td>通常是自身调用wait, join方法进入等待通知状态</td>
+    </tr>
+    <tr>
+      <td>超时等待(TIMED_WAITING)</td>
+      <td>等待超时， 例如获取Lock锁超时， join超时或者wait超时等</td>
+    </tr>
+    <tr>
+      <td>终止(TERMINATED)</td>
+      <td>线程结束， 任务执行完毕或异常抛出</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>值得一提的只有阻塞和等待状态， 这两个状态比较容易混淆。 只有在线程等待<code class="highlighter-rouge">synchronized</code>锁时才会进入阻塞状态， 而对于J.U.C.Lock所实现的各种锁， 由于底层是通过<code class="highlighter-rouge">LockSupport</code>方法实现， 所以会进入等待状态。</p>
+
+<h5 id="42-notify与notifyall">4.2 notify与notifyAll</h5>
+<p>这两个方法属于Java对象(Object)， 也就是说任何一个对象都可以调用<code class="highlighter-rouge">notify</code>或者是<code class="highlighter-rouge">notifyAll</code>， 在获取到对象锁的前提下。</p>
+
+<p>wait：线程释放所持有的对象锁， 并等待其它线程的notify(RUNNABLE -&gt; WAITING)。
+notify：唤醒一个当前处于wait当前对象的线程， 并使其获得对象锁(WAITING -&gt; RUNNABLE)。
+notifyAll：唤醒所有对当前对象处于wait状态的线程， 并让这些线程重新对锁进行争抢。</p>
+
+<p>使用这两个方法可以实现一些比较复杂的线程同步问题， <code class="highlighter-rouge">wait</code>和<code class="highlighter-rouge">notify</code>有些类似于回合制游戏， 我先打一拳， 你再给我一脚； <code class="highlighter-rouge">notifyAll</code>类似于抛绣球， 丢出去一堆人哄抢。</p>
+
+<h5 id="43-condition">4.3 Condition</h5>
+<p><code class="highlighter-rouge">Condition</code>锁的核心函数同样也是<code class="highlighter-rouge">notify</code>, <code class="highlighter-rouge">wait</code>以及<code class="highlighter-rouge">notifyAll</code>， 但是<code class="highlighter-rouge">Condition</code>是由逻辑层面所实现的， 并不涉及<code class="highlighter-rouge">synchronized</code>， 所以这些方法区别于Objects的相关方法。 其原理与对象的<code class="highlighter-rouge">notify</code>等方法基本相同。</p>
+
+<p>对于一个阻塞队列， 当队列已满时， <code class="highlighter-rouge">put</code>方法会阻塞直到队列中腾出了空间。 <code class="highlighter-rouge">take</code>方法当队列没有任何元素可取时同样会被阻塞， 直到有元素可以取出。 这种阻塞队列应用非常的广泛， 例如<code class="highlighter-rouge">LinkedBlockingQueue</code>,  <code class="highlighter-rouge">ArrayBlockingQueue</code>, <code class="highlighter-rouge">PriorityBlockingQueue</code>， 这些阻塞队列的实现都由<code class="highlighter-rouge">Condition</code>完成。</p>
+
+<p>我们来看一下<code class="highlighter-rouge">LinkedBlockingQueue</code>对于<code class="highlighter-rouge">put</code>和<code class="highlighter-rouge">take</code>方法的基本实现， 核心的成员变量：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">LinkedBlockingQueue</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span> <span class="o">{</span>
+
+    <span class="c1">// 定义了两个可重入锁， 以及获取这两个可重入锁的Condition锁</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">ReentrantLock</span> <span class="n">takeLock</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ReentrantLock</span><span class="o">();</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Condition</span> <span class="n">notEmpty</span> <span class="o">=</span> <span class="n">takeLock</span><span class="o">.</span><span class="na">newCondition</span><span class="o">();</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">ReentrantLock</span> <span class="n">putLock</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ReentrantLock</span><span class="o">();</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Condition</span> <span class="n">notFull</span> <span class="o">=</span> <span class="n">putLock</span><span class="o">.</span><span class="na">newCondition</span><span class="o">();</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">put</code>方法:</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">put</span><span class="o">(</span><span class="n">E</span> <span class="n">e</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">InterruptedException</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">e</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">NullPointerException</span><span class="o">();</span>
+    <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
+    <span class="n">Node</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span> <span class="n">node</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Node</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;(</span><span class="n">e</span><span class="o">);</span>
+    <span class="kd">final</span> <span class="n">ReentrantLock</span> <span class="n">putLock</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">putLock</span><span class="o">;</span>
+    <span class="c1">// count表示当前队列所容纳的元素数量， 为原子变量</span>
+    <span class="kd">final</span> <span class="n">AtomicInteger</span> <span class="n">count</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">count</span><span class="o">;</span>
+    <span class="c1">// 对可重入锁尝试加锁操作</span>
+    <span class="n">putLock</span><span class="o">.</span><span class="na">lockInterruptibly</span><span class="o">();</span>
+    <span class="k">try</span> <span class="o">{</span>
+        <span class="c1">// 当队列已满时， 调用notFull.await方法， 等待唤醒</span>
+        <span class="k">while</span> <span class="o">(</span><span class="n">count</span><span class="o">.</span><span class="na">get</span><span class="o">()</span> <span class="o">==</span> <span class="n">capacity</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">notFull</span><span class="o">.</span><span class="na">await</span><span class="o">();</span>
+        <span class="o">}</span>
+        <span class="n">enqueue</span><span class="o">(</span><span class="n">node</span><span class="o">);</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">count</span><span class="o">.</span><span class="na">getAndIncrement</span><span class="o">();</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">c</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="n">capacity</span><span class="o">)</span>
+            <span class="c1">// signal可以认为就是notify方法， 唤醒一正在await的线程</span>
+            <span class="n">notFull</span><span class="o">.</span><span class="na">signal</span><span class="o">();</span>
+    <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+        <span class="n">putLock</span><span class="o">.</span><span class="na">unlock</span><span class="o">();</span>
+    <span class="o">}</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">c</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span>
+        <span class="n">signalNotEmpty</span><span class="o">();</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">take</code>方法与<code class="highlighter-rouge">put</code>方法基本类似， 只不过<code class="highlighter-rouge">await</code>的判断条件不同而已， 并且会使用成员变量中的<code class="highlighter-rouge">takeLock</code>和<code class="highlighter-rouge">notEmpty</code>。 在不同的线程中进行协作式的同步， 最终达到阻塞队列的效果。</p>
+
+<p>现在来具体的从逻辑上分析这两个方法的源代码， 以及理解为何需要两个可重入锁以及对应的条件锁。</p>
+
+<p>首先， 如果我们自己实现<code class="highlighter-rouge">put</code>方法， 需要关心哪些细节？ 首先在获取当前队列的数量时， 可重入锁就应该已经进行加锁操作， 禁止线程上下文切换； 当当前队列已满时， 操作应当阻塞， 调用<code class="highlighter-rouge">notFull.await</code>方法， 线程等待唤醒； 此时在另外一个线程中执行<code class="highlighter-rouge">take</code>操作， 取出队列一个元素， 那么此时就需要通知<code class="highlighter-rouge">put</code>方法中的等待线程， 也就是<code class="highlighter-rouge">signalNotFull</code>方法， <code class="highlighter-rouge">put</code>线程被唤醒继续执行， 本质上是调用<code class="highlighter-rouge">notFull.signal</code>方法。 同理， 在队列为空且<code class="highlighter-rouge">put</code>方法向队列中添加了一个元素， 会调用<code class="highlighter-rouge">signalNotEmpty</code>方法去唤醒<code class="highlighter-rouge">take</code>方法等待的线程， 本质上还是调用<code class="highlighter-rouge">notEmpty.signal</code>方法。</p>
+
+<p>因为<code class="highlighter-rouge">take</code>和<code class="highlighter-rouge">put</code>方法通常会在两个不同的线程中执行， 所以需要不同的可重入锁对象， 那么也就必须要有不同的<code class="highlighter-rouge">Condition</code>对象。</p>
+
+<h4 id="5-实现aqs的其它工具锁">5. 实现AQS的其它工具锁</h4>
+
+<h5 id="51-countdownlatch">5.1 CountDownLatch</h5>
+<p><code class="highlighter-rouge">CountDownLatch</code>同步对象在开发中使用频率也会有， 但是没有那么多。 该同步对象的作用是： 等待或者超时等待多少个任务完成。 假如我有10个任务并发运行， 前三个任务是上下文相关的任务， 所以必须执行完毕才能继续执行， 而后面儿的7个任务我不关心， 那么此时就可以使用<code class="highlighter-rouge">CountDownLatch</code>来实现。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">CountDownLatchDemo</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="kd">static</span> <span class="kt">int</span> <span class="n">taskCount</span> <span class="o">=</span> <span class="mi">3</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">InterruptedException</span> <span class="o">{</span>
+        <span class="n">Thread</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">100</span><span class="o">);</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getName</span><span class="o">());</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">InterruptedException</span> <span class="o">{</span>
+        <span class="n">ExecutorService</span> <span class="n">exec</span> <span class="o">=</span> <span class="n">Executors</span><span class="o">.</span><span class="na">newCachedThreadPool</span><span class="o">();</span>
+
+        <span class="kd">final</span> <span class="n">CountDownLatch</span> <span class="n">count</span> <span class="o">=</span> <span class="k">new</span> <span class="n">CountDownLatch</span><span class="o">(</span><span class="n">taskCount</span><span class="o">);</span>
+
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="n">exec</span><span class="o">.</span><span class="na">execute</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="o">{</span>
+                <span class="k">try</span> <span class="o">{</span>
+                    <span class="n">test</span><span class="o">();</span>
+                <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+                <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+                    <span class="n">count</span><span class="o">.</span><span class="na">countDown</span><span class="o">();</span>
+                <span class="o">}</span>
+            <span class="o">});</span>
+        <span class="o">}</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"This is a Line"</span><span class="o">);</span>
+        <span class="n">count</span><span class="o">.</span><span class="na">await</span><span class="o">();</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Three task has completed"</span><span class="o">);</span>
+        <span class="n">exec</span><span class="o">.</span><span class="na">shutdown</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>核心方法为<code class="highlighter-rouge">countDown</code>以及<code class="highlighter-rouge">await</code>， 当我们创建<code class="highlighter-rouge">CountDownLatch</code>对象时， 需要指定<code class="highlighter-rouge">count</code>大小， 每次执行<code class="highlighter-rouge">countDown</code>都会使得<code class="highlighter-rouge">count</code>原子性自减， 当减至为0时， 唤醒<code class="highlighter-rouge">await</code>等待。</p>
+
+<p>顺带一提<code class="highlighter-rouge">await</code>方法同样是可以传入超时时间的。</p>
+
+<h5 id="53-cyclicbarrier">5.3 CyclicBarrier</h5>
+<p><code class="highlighter-rouge">CyclicBarrier</code>的作用与<code class="highlighter-rouge">CountDownLatch</code>的作用非常相似， 只不过<code class="highlighter-rouge">CyclicBarrier</code>更像是在无红绿灯斑马线过马路一样， 凑齐一波人就走。 其作用是当调用<code class="highlighter-rouge">await</code>方法的线程达到了指定的数量时， 这些线程才继续向下执行。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">CyclicBarrierDemo</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="kd">static</span> <span class="n">CyclicBarrier</span> <span class="n">barrier</span> <span class="o">=</span> <span class="k">new</span> <span class="n">CyclicBarrier</span><span class="o">(</span><span class="mi">3</span><span class="o">);</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">ExecutorService</span> <span class="n">exec</span> <span class="o">=</span> <span class="n">Executors</span><span class="o">.</span><span class="na">newCachedThreadPool</span><span class="o">();</span>
+
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">9</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="n">exec</span><span class="o">.</span><span class="na">execute</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="o">{</span>
+                <span class="k">try</span> <span class="o">{</span>
+                    <span class="n">test</span><span class="o">();</span>
+                <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+                <span class="o">}</span>
+            <span class="o">});</span>
+        <span class="o">}</span>
+        <span class="n">exec</span><span class="o">.</span><span class="na">shutdown</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">BrokenBarrierException</span><span class="o">,</span> <span class="n">InterruptedException</span> <span class="o">{</span>
+        <span class="n">Thread</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">100</span><span class="o">);</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Thread: "</span> <span class="o">+</span> <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getName</span><span class="o">()</span> <span class="o">+</span> <span class="s">", 数据完成计算， 等待其余线程"</span><span class="o">);</span>
+        <span class="n">barrier</span><span class="o">.</span><span class="na">await</span><span class="o">();</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Thread: "</span> <span class="o">+</span> <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getName</span><span class="o">()</span> <span class="o">+</span> <span class="s">", 继续执行"</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>Demo代码写的并不是很严谨， 线程池的关闭和<code class="highlighter-rouge">await</code>方法之间会有一个耦合， 说明一下。 <code class="highlighter-rouge">CyclicBarrier</code>中的计数器是可以进行重用的， 而<code class="highlighter-rouge">CountDownLatch</code>则是一次性的， 无法进行重用。 这个也是这两个同步对象之间的主要差别。</p>
+
+<h5 id="53-semaphore">5.3 Semaphore</h5>
+<p><code class="highlighter-rouge">Semaphore</code>有点儿类似于高速的收费站， 8车道变4车道， 每次只允许4辆车同时收费。 <code class="highlighter-rouge">Semaphore</code>的真正作用其实就是限制并发数量， 使用方式与<code class="highlighter-rouge">ReentrantLock</code>类似。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SemaphoreDemo</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">maxTask</span> <span class="o">=</span> <span class="mi">3</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+
+        <span class="kd">final</span> <span class="n">Semaphore</span> <span class="n">semaphore</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Semaphore</span><span class="o">(</span><span class="n">maxTask</span><span class="o">);</span>
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="n">Thread</span> <span class="n">t</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Thread</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="o">{</span>
+                <span class="k">try</span> <span class="o">{</span>
+                    <span class="n">semaphore</span><span class="o">.</span><span class="na">acquire</span><span class="o">();</span>  <span class="c1">// 申请一个许可</span>
+                    <span class="n">test</span><span class="o">();</span>
+                <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">InterruptedException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+                <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+                    <span class="n">semaphore</span><span class="o">.</span><span class="na">release</span><span class="o">();</span>  <span class="c1">// 释放一个许可</span>
+                <span class="o">}</span>
+            <span class="o">});</span>
+            <span class="n">t</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">InterruptedException</span> <span class="o">{</span>
+        <span class="n">Thread</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">1000</span><span class="o">);</span>  <span class="c1">// 测试需要， 更直观的显示并发运行的线程数量</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getName</span><span class="o">());</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>上面的代码在运行时可以很明显的感觉到线程并发的数量为3， 通常<code class="highlighter-rouge">Semaphore</code>会作为一个限流器来使用。</p>
+
+<h4 id="6-mysql数据库相关锁">6. MySQL数据库相关锁</h4>
+<p><code class="highlighter-rouge">MySQL</code>的重要程度不言而喻， 在<code class="highlighter-rouge">Web</code>开发中， 几乎绝大多数的并发问题都会映射至底层数据库。 例如商城应用的减库存操作， 首先我们要判断当前库存是否大于0， 大于0时进行下单逻辑并将库存数量减1， 我们可以写出这样的代码：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">if</span> <span class="o">(</span><span class="n">stock</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+    <span class="cm">/* 下单逻辑 */</span>
+    <span class="n">update</span> <span class="n">table</span> <span class="n">set</span> <span class="n">stock</span> <span class="o">=</span> <span class="n">stock</span> <span class="o">-</span><span class="mi">1</span> <span class="n">where</span> <span class="o">..;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>这是一个非常典型的<code class="highlighter-rouge">Compare-And-Set</code>操作， 在<code class="highlighter-rouge">Java</code>语言层面我们使用硬件提供支持的原子类来完成， 但是在这里并没有这种东西。 而且<code class="highlighter-rouge">MySQL</code>也是一种应用， 我们的Web APP和数据库通过socket进行交互， 不可能有原子类来提供相应的援助。</p>
+
+<p>如果我们把上面儿的逻辑整体加锁呢？</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">synchronized</span><span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">stock</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+        <span class="cm">/* 下单逻辑 */</span>
+        <span class="n">update</span> <span class="n">table</span> <span class="n">set</span> <span class="n">stock</span> <span class="o">=</span> <span class="n">stock</span> <span class="o">-</span><span class="mi">1</span> <span class="n">where</span> <span class="o">..;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>似乎可行， 但是如果下单逻辑比较复杂， 运行时间较长， 那么整体的下单吞吐量会受到很大的影响。 并且如果以多进程的方式来运行我们的应用， 那么线程锁在这里毫无用武之地。 进程和进程之间是不会管线程锁的， 当进程A的线程判断了库存大于0， 并准备执行下单逻辑， 此时进程B看到库存大于0， 直接完成该接口操作， 并将库存减1， 如果此时刚好库存为0， 那么进程A在执行逻辑时很有可能将库存减为负数， 毫无疑问的超卖了。</p>
+
+<p>一种方式是将锁下沉到数据库， 采用事务 + 数据库锁的方式来解决这个问题。 不管我们的数据库集群采用什么样儿的拓补结构， 是<code class="highlighter-rouge">MMM</code>结构， 还是<code class="highlighter-rouge">MMH</code>结构， 最终的主库只有一个， 从库不参与写操作， 可以不考虑。 数据库的高可用架构是指当主库不可用时如何自动进行主从切换， 而不是构建多个主库。</p>
+
+<p>顺带一提， 如果系统在<code class="highlighter-rouge">MMM</code>或者<code class="highlighter-rouge">MMH</code>的架构设计， 并且主库服务器采用顶配(128核256G内存)， 被配置了4个或更多从库分担读压力， 在这种情况下数据库仍然是瓶颈的情况下， 就不是我这种杂鱼能够解决的了。</p>
+
+<p>扯远了， <code class="highlighter-rouge">MySQL</code>为我们提供了<code class="highlighter-rouge">select .. where id=xx for update</code>这种语法。 即如果当前Data Line正在被修改， 那么语句等待获取锁， 当语句获取到锁时， 该锁会一直持有到事务结束。 那么当其余进程想要对该数据进行修改时， 会被锁阻塞。 这样一来我们可以写出这样的代码：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">with</span> <span class="nl">transaction:</span>
+    <span class="n">stock</span> <span class="o">=</span> <span class="n">select</span> <span class="n">stock</span> <span class="n">from</span> <span class="n">table</span> <span class="n">where</span> <span class="n">id</span><span class="o">=</span><span class="mi">1</span> <span class="k">for</span> <span class="n">update</span><span class="o">;</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">stock</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+        <span class="cm">/* 下单逻辑 */</span>
+        <span class="n">update</span> <span class="n">table</span> <span class="n">set</span> <span class="n">stock</span> <span class="o">=</span> <span class="n">stock</span> <span class="o">-</span><span class="mi">1</span> <span class="n">where</span> <span class="n">id</span><span class="o">=</span><span class="mi">1</span><span class="o">;</span>
+    <span class="o">}</span>
+</code></pre></div></div>
+
+<p>OK， 这样一来就解决了多进程或者集群应用情况下的库存超卖问题， 但是所有的下单操作均会因为获取锁而形成串行化操作， 效率还是不高。 有没有可能进一步的将串行化粒度降低？</p>
+
+<p>在下单时其实我们只是对库存数量进行判断而已， 只关心是不是大于0， 具体有多少， 并不care， 所以可以采用下面的方式：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">with</span> <span class="nl">transaction:</span>
+    <span class="n">stock</span> <span class="o">=</span> <span class="n">select</span> <span class="n">stock</span> <span class="n">from</span> <span class="n">table</span> <span class="n">where</span> <span class="n">id</span><span class="o">=</span><span class="mi">1</span><span class="o">;</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">stock</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+        <span class="cm">/* 下单逻辑 */</span>
+        <span class="n">stock</span> <span class="o">=</span> <span class="n">select</span> <span class="n">stock</span> <span class="n">from</span> <span class="n">table</span> <span class="n">where</span> <span class="n">id</span><span class="o">=</span><span class="mi">1</span> <span class="k">for</span> <span class="n">update</span><span class="o">;</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">stock</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span>
+            <span class="err">事务直接回滚</span><span class="o">,</span> <span class="err">接口返回商品已售罄</span>
+        <span class="k">else</span>
+            <span class="n">update</span> <span class="n">table</span> <span class="n">set</span> <span class="n">stock</span> <span class="o">=</span> <span class="n">stock</span> <span class="o">-</span><span class="mi">1</span> <span class="n">where</span> <span class="n">id</span><span class="o">=</span><span class="mi">1</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="cm">/* 接口直接返回商品售罄 */</span>
+</code></pre></div></div>
+<p>这里做了一个双重校验(可以认为是双重校验锁)， 首先粗略的判断库存是否充足， 若不充足直接返回， 可以降低事务回滚的次数； 第二次校验则是应对并发场景， 让能够下单的请求在减库存时进行串行化处理。</p>
+
+<p>这种的处理方式能够解决一定并发量的问题， 对于更高的并发， 通常会采用异步化的处理：在秒杀开始前将库存写入Redis， 请求进入后利用Redis单线程操作的特性， 即<code class="highlighter-rouge">DECR</code>操作减库存， 若返回结果大于1则将其放入队列等待后续处理， 若返回结果小于1， 请求直接返回失败。 这种策略要比上面的策略效率更高， 但是代码编同时也更为复杂。</p>
+
+<p>在上面以一个常见的业务场景引出了<code class="highlighter-rouge">MySQL</code>中常见的锁：<code class="highlighter-rouge">update</code>所加的行锁。</p>
+
+<p>这是一个非常基本的知识：数据库在更新一条或者多条数据时， 会加入写锁； <code class="highlighter-rouge">select .. for update</code>也会对所查询的数据进行加锁。</p>
+
+<p>关于数据库我想更多的讨论关于乐观锁和悲观锁的问题。 悲观锁， 其实也就是一系列的互斥锁， 读锁， 写锁等等， 由操作系统提供或者由语言底层提供。 而乐观锁， 则是在业务层面进行控制。</p>
+
+<p><code class="highlighter-rouge">MVCC</code>， Multi-Version Concurrency Control， 多版本并发控制就是应用了乐观锁的最佳体现。 我们对每一行数据都添加一个版本号， 简称为<code class="highlighter-rouge">version</code>， 该值在每一个的更新操作都会自增。 为了避免数据在读取完成之后改变， 通过两次查询该<code class="highlighter-rouge">version</code>值进行对比判断。</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center ](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-11-16%2014-17-47%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>进行select操作， 得到version， 然后准备进行更新， 更新时比较先前拿到的version值于当前version值是否相同， 若相同则进行更新， 若不相同则放弃更新重新select获取新值， 直至成功。</p>
+
+<p>多版本并发控制主要就是比较和重试， 没有任何的锁涉及， 所以将其称为”乐观锁”。</p>
+
+<h4 id="7-分布式锁">7. 分布式锁</h4>
+<p>分布式锁的实现是一个非常复杂且极易出现问题的技术难题， 不管是使用<code class="highlighter-rouge">Redis</code>还是<code class="highlighter-rouge">Zookeper</code>来实现， 在细节方面都会有安全性以及一致性的问题， 所以这部分内容还需继续研究与实践。 关于分布式锁的内容将在后面的博文中给出。</p>
+
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Java并发编程(07)--锁&amp;url=https://smartkeyerror.comLock"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comLock"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comLock"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/distributed-system-of-communication">
+            <section class="post">
+                <h2>分布式系统基础学习(01)--通信(TCP/UDP)</h2>
+                <p>分布式系统是一个很庞大的话题， 在我个人的知识版图中， 也仅仅只是对一小部分土地进行了开荒。 不管是分布式系统， 还是单机应用系统， 都是建立在互联网通信机制之上的。 而提到通信， 就不得不提到TCP/UDP这两个非常经典的协议。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/AbstractQueuedSynchronizer">
+            <section class="post">
+                <h2>Java并发编程(06)--AbstractQueuedSynchronizer</h2>
+                <p>在整理下一篇文章， 有关锁的知识之前， 有一个无论如何都绕不开的话题：AbstractQueuedSynchronizer， 队列同步器， 通常简称AQS。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

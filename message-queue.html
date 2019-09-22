@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>分布式系统基础学习(03)--消息队列(RabbitMQ)</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//message-queue" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="分布式系统基础学习(03)--消息队列(RabbitMQ)" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//message-queue" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="分布式系统基础学习(03)--消息队列(RabbitMQ)" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//message-queue" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "分布式系统基础学习(03)--消息队列(RabbitMQ)",
+    "url": "https://smartkeyerror.com//message-queue",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">分布式系统基础学习(03)--消息队列(RabbitMQ)</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-01-11">11 Jan 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/分布式系统'>分布式系统</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>消息队列常常被用于跨进程通信， 异步调用， 系统解耦以及流量削峰等场景下。 目前市场上的消息队列种类繁多， 有LinkedIn开源的<code class="highlighter-rouge">kafka</code>， 阿里开源的<code class="highlighter-rouge">RocketMQ</code>， 以及使用较为广泛的<code class="highlighter-rouge">RabbiMQ</code>。 <code class="highlighter-rouge">Redis</code>虽然也可以做消息队列， 但是更多的是用来做缓存和其它工具使用。 但是随着Redis 5.0 版本的发布， Redis的功能越来越丰富， 也不排除在未来的某一天也能够占据消息队列的重要一席。</p>
+
+<!---more--->
+
+<h4 id="1-每种消息队列的特性以及适用场景">1. 每种消息队列的特性以及适用场景</h4>
+<p>待填坑， <code class="highlighter-rouge">kafka</code>尚未实际使用过， 所以不贸然的评价。</p>
+
+<h4 id="2-rabbitmq架构形式">2. RabbitMQ架构形式</h4>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-12%2017-01-57%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>与其它的消息队列有着明显不同的地方就是在<code class="highlighter-rouge">RabbitMQ</code>中有一个显式指定的组件： Exchange(交换机)。</p>
+
+<p>如上图所示， 生产者将消息发送至某一个Virtual Host的某一个交换机， 交换机根据Routing Key将消息路由到相应的队列中， 然后由消费者进行消费。 可以看到消费者其实可以只和队列打交道， 完全屏蔽掉交换机。</p>
+
+<p>那么Virtual Host， Exchange， Routing Key以及Queue又有什么作用呢？</p>
+
+<p>Virtual Host其实就是一个字符串， 可以<code class="highlighter-rouge">/</code>， <code class="highlighter-rouge">/test</code>等等， 是一种逻辑隔离的手段。 如同Redis的db0, db1一样， 每一个Virtual Host中可以有多个交换机和队列， 但是不允许重名。</p>
+
+<p>Exchang是<code class="highlighter-rouge">RabbitMQ</code>最为核心的组件， 从上图中可以看到交换机和队列是一种多对多的关系， 即一个交换机可以绑定多个队列， 一个队列也可以有多个交换机与其绑定。</p>
+
+<p>Routing Key就是交换机和队列的绑定关系， 本质上就是一个字符串。 但是可以使用通配符的方式与交换机配合来达到广播的效果， 这一点在交换机的类型中将会详细说明。</p>
+
+<p>Queue即为队列， 为消息实际存储的位置， 与<code class="highlighter-rouge">Redis</code>显著不同的是， 在<code class="highlighter-rouge">RabbitMQ</code>中的队列有自己的相关属性， 例如队列的过期时间， 是否持久化， 队列的最大长度等， 相关特性在队列一小节中也会详细说明。 此外， 队列是消费者直接连接并消费的地方。</p>
+
+<p>这些组件构成了<code class="highlighter-rouge">RabbitMQ</code>的核心构成， 我们在日常进行开发和维护时， 也是和这些组件打交道， 所以理清每个组件是做什么的以及组件之间的关系是非常重要的。</p>
+
+<h4 id="3-交换机">3. 交换机</h4>
+<p>在详细的解释交换机的种类之前， 首先看一下最基本的生产者代码：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SimpleProducer</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span><span class="o">{</span>
+        <span class="cm">/* 创建连接工厂, 并设置IP, 端口以及Virtual Host参数 */</span>
+        <span class="n">ConnectionFactory</span> <span class="n">connectionFactory</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ConnectionFactory</span><span class="o">();</span>
+        <span class="n">connectionFactory</span><span class="o">.</span><span class="na">setHost</span><span class="o">(</span><span class="s">"127.0.0.1"</span><span class="o">);</span>
+        <span class="n">connectionFactory</span><span class="o">.</span><span class="na">setPort</span><span class="o">(</span><span class="mi">5672</span><span class="o">);</span>
+        <span class="c1">// 设置VirtualHost为/test, 这里可以是任意值， 前提是该VirtualHost已被添加</span>
+        <span class="n">connectionFactory</span><span class="o">.</span><span class="na">setVirtualHost</span><span class="o">(</span><span class="s">"/test"</span><span class="o">);</span>
+
+        <span class="n">Connection</span> <span class="n">connection</span> <span class="o">=</span> <span class="n">connectionFactory</span><span class="o">.</span><span class="na">newConnection</span><span class="o">();</span>
+        <span class="n">Channel</span> <span class="n">channel</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="na">createChannel</span><span class="o">();</span>
+
+        <span class="cm">/* 交换机类型 */</span>
+        <span class="n">String</span> <span class="n">exchangeType</span> <span class="o">=</span> <span class="s">"direct"</span><span class="o">;</span>
+        <span class="cm">/* 交换机名称 */</span>
+        <span class="n">String</span> <span class="n">exchangeName</span> <span class="o">=</span> <span class="s">"test_exchange"</span><span class="o">;</span>
+
+        <span class="n">String</span> <span class="n">routingKey</span> <span class="o">=</span> <span class="s">"routeApp"</span><span class="o">;</span>
+        <span class="n">String</span> <span class="n">queueName</span> <span class="o">=</span> <span class="s">"test_queue"</span><span class="o">;</span>
+
+        <span class="cm">/* 声明交换机, 类型为direct, 名称为test_exchange */</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">exchangeDeclare</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="n">exchangeType</span><span class="o">);</span>
+
+        <span class="cm">/* 声明一个持久化的, 非独占的, 非自动删除且没有扩展参数的队列 */</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">queueDeclare</span><span class="o">(</span><span class="n">queueName</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+
+        <span class="cm">/* 将交换机和队列通过Routing Key进行绑定 */</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">queueBind</span><span class="o">(</span><span class="n">queueName</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="n">routingKey</span><span class="o">);</span>
+
+        <span class="cm">/* 发送消息时, 可以只指定交换机名称以及Routing Key */</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">basicPublish</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="n">routingKey</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="s">"hello"</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
+
+        <span class="n">channel</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+        <span class="n">connection</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>在我们声明了交换机和队列之后， 剩下的就是将交换机和队列通过Routing Key进行绑定， 在绑定完成之后， 就可以完全不管队列了， 因为通过交换机的名称以及Routing Key就能够找到所对应的队列。 在发送消息时， 我们也的确没有指定队列名称。</p>
+
+<h5 id="31-direct交换机">3.1 direct交换机</h5>
+<p><code class="highlighter-rouge">direct</code>交换机可以翻译成直接交换机， 当一个交换机为<code class="highlighter-rouge">direct</code>类型时， 消息至多会发送给一个队列。</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-14%2018-39-23%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>我们对<code class="highlighter-rouge">test_exchange</code>这个交换机和<code class="highlighter-rouge">test_queue</code>这个队列使用了<code class="highlighter-rouge">routeApp</code>这个Routing Key进行了绑定， 由于交换机是<code class="highlighter-rouge">direct</code>类型的， 那么如果我们在发送消息时， 指定的路由键不是<code class="highlighter-rouge">routeApp</code>， 并且该交换机下没有与之对应的路由键的话， 该消息就会被丢弃。</p>
+
+<p>也就是说， <code class="highlighter-rouge">direct</code>类型的交换机与Routing Key之间是一个完全绑定的关系， 在发送消息时所指定的路由键必须与之完全匹配才能够投递到队列中。</p>
+
+<h5 id="32-fanout交换机">3.2 fanout交换机</h5>
+<p><code class="highlighter-rouge">fanout</code>, 译为扇出， 那么<code class="highlighter-rouge">fanout</code>类型的交换机将会把消息路由到所有与之绑定的队列上， 相当于一种无条件的广播。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">String</span> <span class="n">exchangeType</span> <span class="o">=</span> <span class="s">"fanout"</span><span class="o">;</span>
+<span class="n">String</span> <span class="n">exchangeName</span> <span class="o">=</span> <span class="s">"test_exchange"</span><span class="o">;</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">exchangeDeclare</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="n">exchangeType</span><span class="o">);</span>
+
+<span class="cm">/* 声明3个队列 */</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueDeclare</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_01"</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueDeclare</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_02"</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueDeclare</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_03"</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+
+<span class="cm">/* 将fanout交换机和3个队列以不同的Routing Key进行绑定 */</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueBind</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_01"</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="s">"fake_01"</span><span class="o">);</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueBind</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_02"</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="s">"fake_02"</span><span class="o">);</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueBind</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_03"</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="s">"fake_03"</span><span class="o">);</span>
+
+<span class="cm">/* 向test_exchange发送消息, 并指定一个从未出现过的Routing Key */</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">basicPublish</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="s">"fake_key"</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="s">"hello"</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
+</code></pre></div></div>
+
+<p>在这里我们声明了3个队列， 并使用3种路由键将其与交换机进行绑定， 然后在发送消息时， 使用了一个非常随意的路由键， 消息依然能够以广播的形式路由到这3个队列中。</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center ](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-14%2019-10-05%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h5 id="33-topic交换机">3.3 topic交换机</h5>
+<p><code class="highlighter-rouge">topic</code>交换机与<code class="highlighter-rouge">fanout</code>交换机很类似， 只不过<code class="highlighter-rouge">topic</code>交换机是以通配符来进行路由键匹配， 而<code class="highlighter-rouge">fanout</code>类型的交换机所有的路由键都可通过。</p>
+
+<p>在进行交换机和队列绑定时， Routing Key可以传入一个模糊匹配词， 如<code class="highlighter-rouge">*</code>或者是<code class="highlighter-rouge">#</code>。 其中<code class="highlighter-rouge">*</code>表示匹配一个单词， <code class="highlighter-rouge">#</code>匹配任意单词(可以是零个)。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-17%2010-22-28%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如上图所示， 我们一共声明了4种队列， 并使用4种不同的Routing Key与其进行绑定， 通常我们称之为这种绑定的关系为Binding Key。 生产端在进行消息产出时会指定一个Routing Key和交换机名称， 那么在这个时候所有与usa相关的信息均会被路由到第一个队列中。 所有与asia相关的信息都会被路由到最后一个队列中， 所有的新闻消息将会被路由到第二个队列中， 所有的天气信息将会被路由到第三个队列中。 这样一来就完成了信息的不同维度的分类。</p>
+
+<p>对信息进行不同维度的分类是<code class="highlighter-rouge">topic</code>类型交换机的一个功能之一， 此外， 在死信队列这种特殊的交换机下， 通常也会用到模糊匹配的功能。</p>
+
+<p>以上就是<code class="highlighter-rouge">RabbitMQ</code>所提供的三种类型的交换机， 尽管来讲可能<code class="highlighter-rouge">direct</code>类型的交换机是使用最为广泛的， 但是每一种类型都是有其所适用的场景的。</p>
+
+<h5 id="34-声明交换机时的其它参数">3.4 声明交换机时的其它参数</h5>
+<p>在上面的demo中， 只是简单的使用交换机名称和交换机类型， 除此之外， 还有一些额外的有用的参数， 具有完整参数的函数如下：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="n">DeclareOk</span> <span class="nf">exchangeDeclare</span><span class="o">(</span><span class="n">String</span> <span class="n">exchange</span><span class="o">,</span>
+                                 <span class="n">String</span> <span class="n">type</span><span class="o">,</span>
+                                 <span class="kt">boolean</span> <span class="n">durable</span><span class="o">,</span>
+                                 <span class="kt">boolean</span> <span class="n">autoDelete</span><span class="o">,</span>
+                                 <span class="kt">boolean</span> <span class="n">internal</span><span class="o">,</span>
+                                 <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;</span> <span class="n">arguments</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span>
+</code></pre></div></div>
+
+<p>前两个自然就是交换机名称和交换机类型， <code class="highlighter-rouge">durable</code>是一个布尔类型的参数， 表示交换机是否持久化， 若为<code class="highlighter-rouge">true</code>， 则该交换机将会被保存至磁盘中。 若<code class="highlighter-rouge">RabbitMQ</code>重启， 则该部分数据不会丢失。 <code class="highlighter-rouge">autoDelete</code>表示是否自动删除， 当该交换机与之绑定的队列均与其解绑时， 该交换机将会被自动删除， 通常来讲都会将其设置为<code class="highlighter-rouge">false</code>。 <code class="highlighter-rouge">internal</code>表示是否用于<code class="highlighter-rouge">RabbitMQ</code>内部， <code class="highlighter-rouge">arguments</code>则是一些拓展参数。</p>
+
+<h4 id="4-队列">4. 队列</h4>
+<p>在<code class="highlighter-rouge">RabbitMQ</code>中， 队列是保存消息的唯一载体， 生产者所生产的消息经过交换机均会路由到相应的队列， 或者是在Routing Key不匹配的情况下将消息丢弃。 相比于交换机， 队列的类型就只有一种， 队列就是队列。 所以直接来看在声明队列时可以传递的参数：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="o">....</span><span class="na">DeclareOk</span> <span class="n">queueDeclare</span><span class="o">(</span><span class="n">String</span> <span class="n">queue</span><span class="o">,</span>
+                                  <span class="kt">boolean</span> <span class="n">durable</span><span class="o">,</span>
+                                  <span class="kt">boolean</span> <span class="n">exclusive</span><span class="o">,</span>
+                                  <span class="kt">boolean</span> <span class="n">autoDelete</span><span class="o">,</span>
+                                  <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;</span> <span class="n">arguments</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span>
+</code></pre></div></div>
+
+<p>参数的数量并不是很多， 但是都很重要。 前两个是队列的名称以及是否持久化， 不再赘述。</p>
+
+<p><code class="highlighter-rouge">exclusive</code>表示是否排他， 是一个很容易用错的一个参数。 <strong>如果一个队列被声明为排他队列， 那么该队列仅对首次声明它的连接可见， 并在连接断开时自动删除， 不管有没有指定其持久化</strong>。 所以说， 同一个连接下的不同<code class="highlighter-rouge">Channel</code>， 是能够对访问该队列的， 也就是说， 如果一个队列是排他队列， 那么只有声明方可以发送和接收信息。 通常会用于”自娱自乐”这种情况下， 也就是自己发送消息， 自己接收消息。</p>
+
+<p><code class="highlighter-rouge">autoDelete</code>与交换机参数的<code class="highlighter-rouge">autoDelete</code>基本相似， 译为是否自动删除。 当一个队列的所有连接均断开时， 这个队列才会被自动删除， 而不是在没有连接的情况下被删除(如果是这样的话， 那么在声明队列之后， 没有客户端连接， 难道就直接删除该队列吗？)， 这点需要注意。</p>
+
+<p><code class="highlighter-rouge">arguments</code>为拓展参数， 队列的拓展参数就比交换机的拓展参数要丰富的多。</p>
+
+<ul>
+  <li>x-message-ttl： 指定队列中所有消息在被路由到当前队列的存活时间。</li>
+  <li>x-expires： 指定当前队列在不活跃时的存活时间， 有些类似于Java线程池的线程存活时间。</li>
+  <li>x-max-length： 指定当前队列所能容纳的最大消息数量。</li>
+  <li>x-dead-letter-exchange： 用于指定队列中有死信产生时， 将消息投放至哪个交换机。</li>
+  <li>x-dead-letter-routing-key： 与上一个参数配合， 指定死信消息的Routing Key。</li>
+  <li>x-max-priority： 指定当前队列的最大优先级。</li>
+</ul>
+
+<p>这些参数在日常使用中经常会用到， 例如死信队列的相关参数和配置等。 死信队列的内容将会在下面进行描述。</p>
+
+<h4 id="5-消息">5. 消息</h4>
+<p>在介绍完<code class="highlighter-rouge">RabbitMQ</code>的交换机与队列之后， 那么剩下一个核心组件就是流转于这些组件的消息。 消息同样会有许多的属性， 例如优先级， 消息id， 过期时间等等。 一些常见的消息属性以及添加属性的方式如下：</p>
+
+<ul>
+  <li>deliveryMode： 消息是否持久化， 2为持久化， 1为非持久化</li>
+  <li>content_type： 消息内容的类型</li>
+  <li>content_encoding： 消息内容的编码格式</li>
+  <li>priority： 消息的优先级</li>
+  <li>expiration： 消息于队列中的存活时间， 可以对某一条消息特别指定</li>
+  <li>message_id： 消息id</li>
+  <li>timestamp：消息时间戳</li>
+</ul>
+
+<p>使用方式：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">AMQP</span><span class="o">.</span><span class="na">BasicProperties</span> <span class="n">properties</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AMQP</span><span class="o">.</span><span class="na">BasicProperties</span><span class="o">.</span><span class="na">Builder</span><span class="o">()</span>
+        <span class="o">.</span><span class="na">deliveryMode</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">expiration</span><span class="o">(</span><span class="s">"10000"</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">contentEncoding</span><span class="o">(</span><span class="s">"utf-8"</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+</code></pre></div></div>
+
+<h4 id="6-可靠消息投递">6. 可靠消息投递</h4>
+<p>虽然<code class="highlighter-rouge">RabbitMQ</code>能够最大程度上的保证消息的可靠性投递， 但是由于网络情况的复杂性， 我们不得不再设计一个系统， 用于99.9%的保证消息的准确送达于消费。</p>
+
+<p>这里给出两种常用的方式， 第一种方式实现较为简单， 但是并发性会有一些问题； 第二种方式要相对更加复杂一些， 但是有较好的并发性。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-12%2017-01-44%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如上图所示， 主要的实现方式就是添加一个<code class="highlighter-rouge">message table</code>以及一个定时任务。 在一条消息发送之前， 将该消息以及当前的时间进行入库， 并给定一个状态值(<code class="highlighter-rouge">status</code>)， 例如已发送但未确认为0， 消息经由客户端并返回了当前消息的ACK之后， 更新该消息的状态值。 定时任务每隔1分钟或者3分钟扫描一次该table， 筛选出超时的消息， 并告知Producer重发该消息。</p>
+
+<p>这里有一些细节需要注意， 发送消息的前提条件是业务数据以及消息入库正常。 生产端能够接收ACK， 那么就需要开启消息确认模式， 该模式将会在下文叙述。 此外， 重发消息一定要是定时任务通知Producer重发该消息， 因为对重发的消息也需要进行确认。</p>
+
+<p>这种实现方式相对来说比较简单， 对于一条消息， 我们可以使用16位的时间戳进行唯一标记， 并在DB中对该字段加上<code class="highlighter-rouge">unique</code>索引来加速查找。 这种模式在几百或者几千的QPS下能够运行良好， 但是如果并发超过该值， 那么第二种方式效率更高。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-12%2017-01-34%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>从图示来看， 主要是采用了一个延迟信息投递的方式， 并且采用了2组交换机。 Producer发送2条消息， 一条为即时发送， 一条为延迟发送， 当客户端成功接收即时消息之后， 向Exchange2交换机发送一个当前消息的确认信息， 第三方服务接收该消息并将该消息入库。 一定时间后， 例如1分钟后， 延迟消息抵达至Exchange2， 同样地， 第三方服务接收该消息判断该消息是否存在于<code class="highlighter-rouge">message table</code>中， 若不存在， 则通知Producer重发该消息。</p>
+
+<p>这种方式采用异步写库的方式来完成可靠消息的确认， 并且移除了定时脚本， 这样一来就省去了扫描<code class="highlighter-rouge">message table</code>部分区间的时间。 但是也带来了其它的复杂性， 例如延迟消息的实现， Exchange2的管理和维护等。</p>
+
+<h4 id="7-消息的ack与重回队列">7. 消息的ACK与重回队列</h4>
+<p>在上一小节的同步DB实现中， 需要用到消息的ACK。 消息的ACK分为2种， 自动确认和手动确认， 自动确认是指当消费者接收到了这条消息之后， 由<code class="highlighter-rouge">RabbitMQ</code>自动的回送ACK消息， 手动确认顾名思义就是需要显式的回送ACK消息。</p>
+
+<p>生产端需要开启确认模式， 主要是针对<code class="highlighter-rouge">Channel</code>而言的：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">channel</span><span class="o">.</span><span class="na">confirmSelect</span><span class="o">();</span>
+
+<span class="n">channel</span><span class="o">.</span><span class="na">addConfirmListener</span><span class="o">(</span><span class="k">new</span> <span class="n">ConfirmListener</span><span class="o">()</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleAck</span><span class="o">(</span><span class="kt">long</span> <span class="n">l</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">b</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="c1">// 其中l为deliveryTag, b为是否批量</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"------ACK------"</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleNack</span><span class="o">(</span><span class="kt">long</span> <span class="n">l</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">b</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"------NACK------"</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">});</span>
+</code></pre></div></div>
+
+<p>消费端在进行消费时， 通过传入布尔参数<code class="highlighter-rouge">b</code>来指定是否为自动签收， <code class="highlighter-rouge">true</code>为自动签收， <code class="highlighter-rouge">false</code>为手工签收。 当我们采用手工签收时， 在消费完消息之后， 需要显式地回复ACK：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">channel</span><span class="o">.</span><span class="na">basicAck</span><span class="o">(</span><span class="n">envelope</span><span class="o">.</span><span class="na">getDeliveryTag</span><span class="o">(),</span><span class="kc">false</span><span class="o">);</span>
+<span class="c1">// channel.basicNack();  回送一个NACK确认， 即否定确认</span>
+</code></pre></div></div>
+
+<p>可能有人会说既然已经有了ACK确认消息， 为什么还需要消息入库这种可靠性的手段。 因为ACK消息也会丢失， 所以只能作为可靠消息投递的一个组件使用， 而不能完全依赖ACK消息。 在<a href="https://smartkeyerror.com/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%9F%BA%E7%A1%80%E5%AD%A6%E4%B9%A0-01-%E9%80%9A%E4%BF%A1-TCP-UDP.html">通信(TCP/UDP)</a>这篇文章中有介绍到为什么TCP连接需要序列号， ACK包以及校验和， 定时器来确保数据分组的可靠传输。 可以看到这些内容都是非常相似的， 或者说理念就是完全相同的， 除非有了绝对的可靠传输链路， 否则这些内容是不会过时的。</p>
+
+<h4 id="8-消息的限流">8. 消息的限流</h4>
+<p>有时候消费端由于意外需要进行重启， 这个时候队列可能积压了大量的信息， 在没有限流的情况下重启消费端， 成百上千的消息一次性的涌入， 可能会造成服务器资源在短时间内用尽， 导致服务假死。 所以就需要有限流机制， 限流的设置也非常简单， 需要注意一点的就是此时<strong>必须使用手工签收</strong>。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* 自定义消费者类, 继承自DefaultConsumer, 并覆盖handleDelivery方法 */</span>
+<span class="kd">class</span> <span class="nc">MyConsumer</span> <span class="kd">extends</span> <span class="n">DefaultConsumer</span> <span class="o">{</span>
+
+    <span class="kd">public</span> <span class="nf">MyConsumer</span><span class="o">(</span><span class="n">Channel</span> <span class="n">channel</span><span class="o">)</span> <span class="o">{</span> <span class="kd">super</span><span class="o">(</span><span class="n">channel</span><span class="o">);</span> <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleDelivery</span><span class="o">(</span><span class="n">String</span> <span class="n">consumerTag</span><span class="o">,</span> <span class="n">Envelope</span> <span class="n">envelope</span><span class="o">,</span>
+                               <span class="n">AMQP</span><span class="o">.</span><span class="na">BasicProperties</span> <span class="n">properties</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[]</span> <span class="n">body</span><span class="o">)</span>
+            <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"recv message: "</span> <span class="o">+</span> <span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="n">body</span><span class="o">));</span>
+
+        <span class="c1">// 限流时必须手工回送ACK消息</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">basicAck</span><span class="o">(</span><span class="n">envelope</span><span class="o">.</span><span class="na">getDeliveryTag</span><span class="o">(),</span><span class="kc">false</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// 每次最多只能有60条消息进行消费</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">basicQos</span><span class="o">(</span><span class="mi">60</span><span class="o">);</span>
+
+<span class="c1">// 关闭自动签收， 并添加消费者</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">basicConsume</span><span class="o">(</span><span class="n">QUEUE_NAME</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="k">new</span> <span class="n">MyConsumer</span><span class="o">(</span><span class="n">channel</span><span class="o">));</span>
+</code></pre></div></div>
+
+<h4 id="9-死信队列">9. 死信队列</h4>
+<p>与<code class="highlighter-rouge">Redis</code>一样， <code class="highlighter-rouge">RabbitMQ</code>提供了类似监听Key过期的机制， 只不过实现方式要稍微复杂一些。 在<code class="highlighter-rouge">Redis</code>中， 我们可以设置Key过期的发布订阅， 当Key过期时， 订阅方能够接受到该Key， 但是无法拿到Value， 这是我比较疑惑的地方， 如果能拿到Value， 那么这个功能就相当出色了。</p>
+
+<p>回到<code class="highlighter-rouge">RabbitMQ</code>， 死信队列其实是指当某一个消息在成为”死信”时， <code class="highlighter-rouge">RabbitMQ</code>会将该消息发送至所绑定的”死信交换机”中， 由该交换机路由至某一个队列。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-17%2015-43-23%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>所以说， 如果我们想要使用死信队列的话， 就需要有额外的交换机， Routing Key以及队列。 当然， 队列和Routing Key可以有多个， 完成死信消息的分拣功能。</p>
+
+<p>那么消息在什么情况下会变成死信呢？</p>
+
+<ul>
+  <li>消息被拒绝(basic.reject/basic.nack), 并且requeue为false</li>
+  <li>消息TTL过期</li>
+  <li>队列达到最大长度或队列空间已满</li>
+</ul>
+
+<p>在这些情况下队列中的消息将会成为死信， 如果在声明队列时添加了如下设置， 那么该队列就会成为死信队列。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;</span> <span class="n">arguments</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HashMap</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;();</span>
+<span class="n">arguments</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">"x-dead-letter-exchange"</span><span class="o">,</span> <span class="n">deadLetterExchange</span><span class="o">);</span>
+</code></pre></div></div>
+
+<p>说白了， 死信队列就是当某一个消息变成死信时， <code class="highlighter-rouge">RabbitMQ</code>将会根据我们的设置将该消息重新投递到所指定的交换机中。 通过使用死信队列， 我们就可以实现延迟发送的功能。</p>
+
+<h4 id="10-小结">10. 小结</h4>
+<p>在本篇文章中， 介绍了<code class="highlighter-rouge">RabbitMQ</code>消息中间件的基本使用以及一些高级功能， 例如消息的限流， 死信队列等。 在可靠消息投递的设计中充分的借鉴了TCP协议的可靠数据传输模型， 针对于并发这个因素制定了2种不同的解决方案。</p>
+
+<p>除此之外， 消息队列的高可用的拓扑结构以及运维相关的内容， 将会在后续文章中进行讨论。 最后附一张思维导图， 便于记忆与整理。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-17%2016-02-38%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=分布式系统基础学习(03)--消息队列(RabbitMQ)&amp;url=https://smartkeyerror.commessage-queue"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.commessage-queue"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.commessage-queue"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Nginx">
+            <section class="post">
+                <h2>分布式系统基础学习(04)--Nginx</h2>
+                <p>Nginx不管是在单机部署还是在集群部署下， 都起着非常重要的作用。 底层由C语言编写， 并且采用事件驱动模型对Socket连接进行管理， 所以有着非常高效的请求处理能力， 并且支持海量的并发。 本篇文章不会对Nginx的底层原理进行深究， 而是整理自己在工作中所遇到的一些问题和积累的经验。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/service-communication">
+            <section class="post">
+                <h2>分布式系统基础学习(02)--应用间通信(gRPC)</h2>
+                <p>我始终认为， 随着语言和计算机技术的发展， 分布式系统才是互联网技术的未来。 而现在众多的分布式开源技术， 如Zookeper, SpringCloud等的蓬勃发展也证明这一点。 在分布式的系统中， A服务可能由Java编写， B服务可能由Python编写， C服务可能由PHP编写， 服务于服务之间的通信固然可以使用HTTP协议以RESTful-API的方式进行通信， 但是由于许多不必要的数据传输， 例如HTTP请求头， 会降低服务之间的通信速度， 在高并发的场景下极有可能成为系统瓶颈。...</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

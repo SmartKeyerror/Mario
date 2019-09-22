@@ -114,7 +114,7 @@
                     <span class="author-location icon-location">China</span>
                     <span class="author-link icon-link"><a href="https://smartkeyerror.com">https://smartkeyerror.com</a></span>
                     <!-- <span class="author-stats"><i class="icon-stats"></i> [[plural ../pagination.total empty='No posts' singular='% post' plural='% posts']]</span> -->
-                    <span class="author-stats"><i class="icon-stats"></i>10 posts</span>
+                    <span class="author-stats"><i class="icon-stats"></i>34 posts</span>
                 </div>
             
         
@@ -130,7 +130,7 @@
         <!---->
             <!--<nav class="pagination" role="pagination">
     
-    <span class="page-number"> Page 1 of 2 </span>
+    <span class="page-number"> Page 1 of 4 </span>
     
         <a class="older-posts" href="/author/smartkeyerror/page2/" title="Next Page">Older Posts &raquo;</a>
     
@@ -140,6 +140,105 @@
     <!--</div>-->
 
     <!-- This is the post loop - each post will be output using this markup -->
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/change-log-system-design">数据变更操作日志设计</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>当系统的某些行为涉及到资金与资产的数据变更时，常常会为其增加操作日志， 便于后续的问题排查。 例如红包的使用明细， 银行转账的详细记录等等。 操作日志记录这个需求看起来很简单， 但是深挖下去， 依然能找到很有趣的东西。
+
+ <a class="read-more" href="/change-log-system-design">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/系统设计'>系统设计</a>
+                    
+                
+            
+            <time class="post-date" datetime="2019-08-10">10 Aug 2019</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/limits">那些有趣的数据结构与算法(05)--限流</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>有时候限流也可以称为防刷， 这两者的界定并不是很明显， 常用的限流算法包括固定窗口， 滑动窗口， 漏桶以及令牌桶算法， 它们都有各自的优势与最适合的使用场景， 算法不分好坏， 之分场景。
+
+ <a class="read-more" href="/limits">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/数据结构'>数据结构</a>
+                    
+                
+            
+            <time class="post-date" datetime="2019-07-20">20 Jul 2019</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/B+Tree-and-B-Tree">那些有趣的数据结构与算法(04)--B-Tree与B+Tree</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>树型结构由于其良好的递归特性， 高效的查询效率， 在软件系统设计中有着非常广泛的使用。 IO多路复用的epoll实现采用红黑树组织和管理sockfd， 以支持快速的增删改查； Golang中的Timer采用多叉堆实现； Java中的TreeMap以及TreeSet同样采用红黑树实现…而在MySQL中， 索引的构建同样采用树结构实现。
+
+ <a class="read-more" href="/B+Tree-and-B-Tree">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/数据结构'>数据结构</a>
+                    
+                
+            
+            <time class="post-date" datetime="2019-06-23">23 Jun 2019</time>
+        </footer>
+    </article>
     
     <article class="post">
         <header class="post-header">
@@ -217,12 +316,12 @@
     
     <article class="post">
         <header class="post-header">
-            <h2 class="post-title"><a href="/Reflect">Java基础编程(06)--反射</a></h2>
+            <h2 class="post-title"><a href="/operation-system-with-IO">操作系统原理(01)-I/O</a></h2>
         </header>
         <section class="post-excerpt">
-            <p>为了保持Java基础编程系列的完整性， 反射机制还是写一下， 没有什么太难的地方。 在文章的最后与Python进行了一个对比和演示， 用于加深对这两种语言设计本身的理解。
+            <p>在写了许多代码， 搭建了一些分布式服务之后， 越发觉得一个大型的高并发系统就是一个操作系统。 在分布式系统中， 我们会讲数据一致性， 如何做到缓存和DB的一致性， 这也是操作系统需要解决的问题: 内核高速页缓存如何与磁盘文件数据一致。 又比如对于一些耗时且非必需的任务， 在分布式系统中很有可能采用消息队列来进行异步处理， 例如邮件的发送， 而在操作系统中， I/O也是一个非常耗时的任务， 同样采用了异步处理的方式来最大化的利用系统资源， 只不过并不是采用消息队列而已。
 
- <a class="read-more" href="/Reflect">&raquo;</a></p>
+ <a class="read-more" href="/operation-system-with-IO">&raquo;</a></p>
         </section>
         <footer class="post-meta">
             
@@ -240,26 +339,22 @@
                 on
                 
                     
-                       <a href='/tag/Java基础'>Java基础</a>
-                    
-                
-                    
-                       <a href='/tag/Python基础'>Python基础</a>
+                       <a href='/tag/操作系统原理'>操作系统原理</a>
                     
                 
             
-            <time class="post-date" datetime="2018-12-07">07 Dec 2018</time>
+            <time class="post-date" datetime="2019-04-15">15 Apr 2019</time>
         </footer>
     </article>
     
     <article class="post">
         <header class="post-header">
-            <h2 class="post-title"><a href="/Java-Design-Pattern-02">Java基础编程(05)--常用的设计模式(02)</a></h2>
+            <h2 class="post-title"><a href="/distributed-cache">分布式系统基础学习(05)--分布式缓存设计</a></h2>
         </header>
         <section class="post-excerpt">
-            <p>在前面的一篇文章中大致了描述了单例模式， 原型模式， 策略模式， 责任链模式， 代理模式以及观察者模式， 本文接上。
+            <p>在单机缓存中， 并发的安全性问题与语言的并发安全问题完全可以归为一类， 缓存的穿透问题可以采用巧妙的数据结构进行处理， 很多问题本质上仍然是一些基础问题。
 
- <a class="read-more" href="/Java-Design-Pattern-02">&raquo;</a></p>
+ <a class="read-more" href="/distributed-cache">&raquo;</a></p>
         </section>
         <footer class="post-meta">
             
@@ -277,26 +372,22 @@
                 on
                 
                     
-                       <a href='/tag/Java基础'>Java基础</a>
-                    
-                
-                    
-                       <a href='/tag/设计模式'>设计模式</a>
+                       <a href='/tag/分布式系统'>分布式系统</a>
                     
                 
             
-            <time class="post-date" datetime="2018-12-05">05 Dec 2018</time>
+            <time class="post-date" datetime="2019-04-01">01 Apr 2019</time>
         </footer>
     </article>
     
     <article class="post">
         <header class="post-header">
-            <h2 class="post-title"><a href="/Java-Design-Pattern">Java基础编程(04)--常用的设计模式(01)</a></h2>
+            <h2 class="post-title"><a href="/Flask-Web">一文理解Flask Web开发</a></h2>
         </header>
         <section class="post-excerpt">
-            <p>在前面I/O系统中介绍了装饰模式， 在接口与抽象类中介绍了适配器模式， 以及设计模式的基础， 设计原则。 设计模式其实并没有那么神秘， 那么复杂， 本质上仍然是六大设计原则的体现。 既然要写， 就把所有的设计模式统统讲完， 才有快感。 另外这篇文章同样也会结合Python语言中的设计模式一起进行梳理， 这样做会进一步的加深我们对设计模式的理解， 至少在我这里是这样的。
+            <p>Flask作为Python语言中最为轻量的Web框架， 由于其核心内容的简洁以及良好的可拓展性， 一直受到广泛的开发者所喜爱。 对比于Django， Flask并没有”我给你的就是最好的， 别管那么多， 拿着用就好”的思想， 而是让开发者自己做出选择， 自己设计开发一个组件， 或者挑选一个你喜欢的第三方库。
 
- <a class="read-more" href="/Java-Design-Pattern">&raquo;</a></p>
+ <a class="read-more" href="/Flask-Web">&raquo;</a></p>
         </section>
         <footer class="post-meta">
             
@@ -314,15 +405,77 @@
                 on
                 
                     
-                       <a href='/tag/Java基础'>Java基础</a>
-                    
-                
-                    
-                       <a href='/tag/设计模式'>设计模式</a>
+                       <a href='/tag/Python'>Python</a>
                     
                 
             
-            <time class="post-date" datetime="2018-12-05">05 Dec 2018</time>
+            <time class="post-date" datetime="2019-03-31">31 Mar 2019</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/UnionFind">那些有趣的数据结构与算法(03)--并查集</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>在《算法》(第四版)的第一章最后一小节中， 也就是”案例研究: union-find算法”这一小节， 我看到了并查集。 在我完整的阅读了所有的算法内容之后， 脑子里只剩下两个字: 优美。
+
+ <a class="read-more" href="/UnionFind">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/数据结构'>数据结构</a>
+                    
+                
+            
+            <time class="post-date" datetime="2019-03-25">25 Mar 2019</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/Bitmap">那些有趣的数据结构与算法(02)--Bitmap</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>在我刚接触Python这门开发语言时， 并没有想用它做Web后端开发， 而是拿来写爬虫。 第一个接触的爬虫框架就是Scrapy。 网络爬虫绕不开的一个话题就是URL去重问题。 在Scrapy原生框架下， 使用的是集合来对URL进行去重的。 集合本身采用哈希表实现， 是一种典型的以空间换时间的数据结构， 当URL数量极为庞大时， 使用这种策略的去重很有可能导致内存溢出而造成服务器宕机的问题。 此时， Bitmap走进了我的视线。
+
+ <a class="read-more" href="/Bitmap">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/数据结构'>数据结构</a>
+                    
+                
+            
+            <time class="post-date" datetime="2019-03-18">18 Mar 2019</time>
         </footer>
     </article>
     
@@ -331,7 +484,7 @@
     
         <nav class="pagination" role="pagination">
     
-    <span class="page-number"> Page 1 of 2 </span>
+    <span class="page-number"> Page 1 of 4 </span>
     
         <a class="older-posts" href="/author/smartkeyerror/page2/" title="Next Page">Older Posts &raquo;</a>
     

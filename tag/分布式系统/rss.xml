@@ -1,0 +1,1213 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+   
+      <title>smartkeyerror.com/</title>
+   
+   <link>https://smartkeyerror.com</link>
+   <description></description>
+   <language>en-uk</language>
+   <managingEditor> </managingEditor>
+   <atom:link href="rss" rel="self" type="application/rss+xml" />
+   
+	<item>
+	  <title>分布式系统基础学习(05)--分布式缓存设计</title>
+	  <link>//distributed-cache</link>
+	  <author></author>
+	  <pubDate>2019-04-01T10:17:46+00:00</pubDate>
+	  <guid>//distributed-cache</guid>
+	  <description><![CDATA[
+	     <p>在单机缓存中， 并发的安全性问题与语言的并发安全问题完全可以归为一类， 缓存的穿透问题可以采用巧妙的数据结构进行处理， 很多问题本质上仍然是一些基础问题。</p>
+
+<!---more--->
+
+<h4 id="1-cache-aside单机缓存模式">1. Cache Aside单机缓存模式</h4>
+<p>在业务应用中， Cache Aside是最常用的缓存模式。 其主要逻辑为当请求未命中缓存时， 从DB中取出数据并将其置于缓存中， 当数据发生更新时， 删除该数据所对应的缓存。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/distributed-cache/cache-aside.png" alt="" /></p>
+
+<p>以Django框架为例， 其伪代码为:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">redis</span> <span class="o">=</span> <span class="n">Redis</span><span class="p">(</span><span class="s">"127.0.0.1"</span><span class="p">,</span> <span class="mi">6379</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">SomeView</span><span class="p">(</span><span class="n">APIView</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="c"># 尝试获取缓存</span>
+        <span class="n">response_data</span> <span class="o">=</span> <span class="n">redis</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">"some_key"</span><span class="p">)</span>
+        <span class="c"># 缓存未命中</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">original_data</span> <span class="o">=</span> <span class="n">SimpleModel</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">SimpleModelSerializers</span><span class="p">(</span><span class="n">original_data</span><span class="p">)</span><span class="o">.</span><span class="n">data</span>
+                <span class="n">response_data</span> <span class="o">=</span> <span class="p">{</span><span class="s">"code"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">"message"</span><span class="p">:</span> <span class="s">"success"</span><span class="p">,</span> <span class="s">"data"</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
+                <span class="c"># DB数据写入缓存， 并给予15分钟的过期时间</span>
+                <span class="n">redis</span><span class="o">.</span><span class="nb">set</span><span class="p">(</span><span class="s">"some_key"</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">response_data</span><span class="p">)</span><span class="err">，</span> <span class="mi">15</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+            <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="c"># 标准错误处理流程</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">response_data</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">SimpleModel</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force_insert</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">force_update</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+             <span class="n">update_fields</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="c"># 重写Model.save方法, 在数据更新时删除失效缓存</span>
+        <span class="n">redis</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s">"some_key"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>这看起来似乎很简单， 而且Cache Aside模式能够最大程度的减少由于并发所带来的脏数据问题， 但是不能完全避免脏数据问题。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/distributed-cache/cache-aside%E8%84%8F%E6%95%B0%E6%8D%AE%E9%97%AE%E9%A2%98.png" alt="" /></p>
+
+<p>如上图所示， 更新请求和查询请求先后发出， 由于更新操作需要进行表单验证等步骤， 操作时间要长一些， 在还没有删除掉失效缓存之前， 查询请求就从缓存中取到了脏数据并返回了。 这种情况出现的概率比较低， 受到影响的也仅仅只有紧跟更新请求的几个查询操作。 尽管如此， 仍然需要对这种情况进行处理， 目前比较好的实现就是为缓存添加过期时间。</p>
+
+<h4 id="2-高并发下带来的缓存问题">2. 高并发下带来的缓存问题</h4>
+<p>仍然是使用Cache Aside模式进行缓存的设计， 考虑这样一个场景: 两个查询请求并发执行, 并且此时缓存中没有对应的数据， 那么两个查询请求很有可能会将缓存数据重复写入， 如下图所示:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/distributed-cache/%E7%BC%93%E5%AD%98%E9%87%8D%E5%A4%8D%E5%86%99%E5%85%A5.png" alt="" /></p>
+
+<p>2个查询请求并发执行， 缓存数据很有可能被重复写入2次。 那么N个查询请求并发执行， 缓存数据也有可能被重复的写入N次。</p>
+
+<p>对于以json数据格式作为value的缓存数据来说， 重复写入问题也不大， 无非是将前一个结果覆盖了而已。 但是对于列表对象而言， 重复写入的问题就不得不去处理了。 列表的<code class="highlighter-rouge">lpush</code>或者是<code class="highlighter-rouge">rpush</code>操作并不会覆盖原有的数据， 而是直接追加， 这样一来就会造成严重的缓存数据重复问题，  并且多次的DB查询也会对系统整体的吞吐量造成影响。</p>
+
+<p>限制资源的请求速率以及保证资源的唯一使用， 该怎么做？ 加锁。 在Python或者是Java语言层面， 为了保证操作的原子性以及并发安全性， 通常都会使用各种各样的互斥锁， 那么在这里也不例外， 只不过此时必须使用分布式锁。 因为Web服务要么是多进程多线程并行运行， 要么是多服务器组成的集群运行， 操作层面都在进程这一层， 只能使用分布式锁。</p>
+
+<p>分布式锁的基本思想也很简单， 多个进程在对某个资源进行修改时， 先向第三方服务申请一下， 申请通过了才能用， 没通过就等着(轮询)。 这里无意扩展分布式锁的内容， 所以就简单的使用Redis的<code class="highlighter-rouge">setnx</code>命令实现。 此时我们只需要简单的修改一下设置缓存的部分代码即可:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 从DB中获取数据并对其进行序列化操作</span>
+<span class="n">original_data</span> <span class="o">=</span> <span class="n">SimpleModel</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">SimpleModelSerializers</span><span class="p">(</span><span class="n">original_data</span><span class="p">)</span><span class="o">.</span><span class="n">data</span>
+<span class="n">response_data</span> <span class="o">=</span> <span class="p">{</span><span class="s">"code"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">"message"</span><span class="p">:</span> <span class="s">"success"</span><span class="p">,</span> <span class="s">"data"</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
+
+
+<span class="k">if</span> <span class="n">redis</span><span class="o">.</span><span class="nb">set</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">"some_key_lock"</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s">"1"</span><span class="p">,</span> <span class="n">ex</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">nx</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">redis</span><span class="o">.</span><span class="nb">set</span><span class="p">(</span><span class="s">"some_key"</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">response_data</span><span class="p">)</span><span class="err">，</span> <span class="mi">15</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="c"># 虽然对分布式锁添加了1秒的过期时间, 但是为了提高系统吞吐量, 在这里手动删除该锁</span>
+        <span class="n">redis</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s">"some_key_lock"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>是不是这样就可以了？ 并不是， 这样写在某些情况下仍然会出现问题。 我们把两个查询操作的时间稍微错开几十毫秒， 就有可能出现下图的情况:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/distributed-cache/%E7%BC%93%E5%AD%98%E9%87%8D%E5%A4%8D%E5%86%99%E5%85%A52.png" alt="" /></p>
+
+<p>缓存数据依然被写入了两次。 其实这个问题在很多的并发场景下都会有出现， 不单单只是缓存的设计。 例如不采用枚举类所实现的单例模式， 在文章<a href="https://smartkeyerror.com/Java%E5%9F%BA%E7%A1%80%E7%BC%96%E7%A8%8B-04-%E5%B8%B8%E7%94%A8%E7%9A%84%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-01.html">Java基础编程(04)–常用的设计模式(01)</a>中采用了双重校验锁的方式解决此类问题:</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">static</span>  <span class="n">SingletonClass</span> <span class="nf">getSingletonClass</span><span class="o">()</span> <span class="o">{</span>
+    <span class="cm">/* 第一次校验是让实例已经被初始化之后直接返回 */</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">singletonClass</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="cm">/* 如果此时singletonClass == null, 那么就需要线程安全的实例化对象 */</span>
+        <span class="kd">synchronized</span> <span class="o">(</span><span class="n">SingletonClass</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
+            <span class="cm">/* 再次判断, 此时为加锁判断, 保证变量不会被其它线程所修改, 即保持单例*/</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">singletonClass</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+                <span class="n">singletonClass</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SingletonClass</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="n">singletonClass</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>在这个问题中， 依然可以使用同样的方式来处理， 即在获取分布式锁之后， 更新缓存之前， 再进行一次判断。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">if</span> <span class="n">redis</span><span class="o">.</span><span class="nb">set</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">"some_key_lock"</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s">"1"</span><span class="p">,</span> <span class="n">ex</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">nx</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c"># 再次判断缓存数据是否不存在</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">redis</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">"some_key"</span><span class="p">):</span>
+            <span class="n">redis</span><span class="o">.</span><span class="nb">set</span><span class="p">(</span><span class="s">"some_key"</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">response_data</span><span class="p">)</span><span class="err">，</span> <span class="mi">15</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">redis</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s">"some_key_lock"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h4 id="3-缓存穿透问题">3. 缓存穿透问题</h4>
+<p>缓存穿透是指查询一个根本不存在的数据， 缓存层和存储层都不会命中， 而在通常情况下， 空数据是不会做缓存的， 基于Restful-API来讲， 此时应该直接返回404。 这样一来， 大量的无效请求都会透到DB存储层， 会给存储层带来比较大的压力。</p>
+
+<p>这个问题的解决办法还是蛮多的， 最简单的就是缓存空数据。 依然使用上面的代码， 目光主要聚集在无效数据的处理上:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">try</span><span class="p">:</span>
+    <span class="n">original_data</span> <span class="o">=</span> <span class="n">SimpleModel</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">SimpleModelSerializers</span><span class="p">(</span><span class="n">original_data</span><span class="p">)</span><span class="o">.</span><span class="n">data</span>
+    <span class="n">response_data</span> <span class="o">=</span> <span class="p">{</span><span class="s">"code"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">"message"</span><span class="p">:</span> <span class="s">"success"</span><span class="p">,</span> <span class="s">"data"</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
+    <span class="c"># DB数据写入缓存， 并给予15分钟的过期时间</span>
+    <span class="n">redis</span><span class="o">.</span><span class="nb">set</span><span class="p">(</span><span class="s">"some_key"</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">response_data</span><span class="p">)</span><span class="err">，</span> <span class="mi">15</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+<span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="c"># 标准错误处理流程</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>在Django中， <code class="highlighter-rouge">Model.objects.get</code>操作在数据不存在时会抛出<code class="highlighter-rouge">DoesNotExist</code>的异常， 此时就可以在异常处理中将空数据进行缓存。 遗留的问题就是如果缓存中空数据非常多的话， 非常占用服务器内存， 而且这些key是能够无限增长的。 比如网站攻击， 假如用户id最大值为1000， 而攻击方生成10亿个大于1000的id进行请求， 并限制请求速率以及使用代理服务器。 那么一段时间后服务器就会有10亿个无效数据key， 这时候内存崩没崩都不好说， 系统运行效率一定是降低的。</p>
+
+<p>为这些key设置一个较短的过期时间(比如5秒)能够解决一部分问题， 但是总的来说还是会浪费一部分内存空间。</p>
+
+<p>另一个解决方案就是使用Bitmap。 将所有存在的key通过哈希或者其它算法写入到Bitmap数组中， 作为第一道缓存过滤器。 当请求无效数据时， 发现Bitmap中没有这个key(时间复杂度为O(1))， 直接返回空结果即可。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/distributed-cache/Bitmap%E8%BF%87%E6%BB%A4.png" alt="" /></p>
+
+<p>只不过这种方式维护起来比较费劲， 因为需要保存所有的有效key， 如果是大规模集群缓存的话， 其复杂度以及维护成本都会相应增加。</p>
+
+<h4 id="4-雪崩问题">4. 雪崩问题</h4>
+<p>缓存雪崩问题是指当缓存层为存储层分担了绝大部分压力时， 缓存层因为服务器宕机， 网络连接异常等问题导致的崩溃， 使得所有请求全部压向存储层的现象。 此时存储层由于大量的查询而造成线程数量飙升， 连接数飙升， 内存和CPU使用率飙升， 很有可能发生系统崩溃， 导致服务大面积停机。</p>
+
+<p>雪崩问题没有办法从代码层面去很好的解决， 只能通过高可用设计处理。 例如Redis-sentinel高可用架构， MySQL高可用架构等等， 保证系统能够及时、自动地切换节点。</p>
+
+<h4 id="5-复制">5. 复制</h4>
+<p>在分布式系统中， 由于种种原因， 例如机房故障， 负载均衡， 读写分离等， 需要将数据复制到多个副本部署到其它的机器上， 因此， Redis也提供了主从复制功能。</p>
+
+<p>与MySQL的主从复制相比， Redis的复制功能要简单许多。 通常在主从复制的模型下， 如何发现和处理主从数据的延迟， 以及主/从节点的身份转换， 是需要我们去着重处理的。</p>
+
+<h5 id="51-建立主从复制过程">5.1 建立主从复制过程</h5>
+<p>Redis建立主从复制的方式有多种， 可以在从节点配置文件中进行配置， 也可以在从节点的客户端中进行配置。 命令只有一个:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>slaveof masterHost masterPort
+</code></pre></div></div>
+
+<h5 id="52-断开复制">5.2 断开复制</h5>
+<p>断开复制的命令为<code class="highlighter-rouge">slaveof no one</code>， 在从节点执行完该命令之后， 复制过程终止， 此时从节点仍然会保留原有的数据， 但是无法获取主节点的数据变化。</p>
+
+<p>当我们在一个从节点断开复制之后， 可以与另一个节点建立主从复制的关系， 这个过程称为”切主操作”。 如果一个从节点与当前主节点断开复制关系， 与另外一个节点建立复制关系的话， 此时从节点的数据将会被完全清空。</p>
+
+<p>举个不恰当的例子， 某一天你在网上认了一个干妹妹， 跟她分享了很多有趣的事情。 突然有一天她不想做你妹妹了， 单方面切断了这个联系， 并删除了你的微信， 所以你更新的朋友圈她是不知道的。 然后她又找了一个新的干哥哥， 抛弃了与你所有的记忆(扎不扎心， 老铁)。</p>
+
+<p>所以， 在生产环境的切主操作要慎重进行， 避免因操作不当带来的数据损失。</p>
+
+<h5 id="53-复制过程">5.3 复制过程</h5>
+<p>Redis主从复制过程大致可以分为:</p>
+<ol>
+  <li>从节点保存主节点信息</li>
+  <li>从节点内部的定时任务发现新的主节点， 尝试与主节点建立连接</li>
+  <li>从节点发送PING命令， 检测网络是否正常连接， 主节点是否可用</li>
+  <li>权限验证</li>
+  <li>首次同步时进行全量数据复制</li>
+  <li>数据持续复制</li>
+</ol>
+
+<p>当主节点需要密码登录时， 从节点必须设置<code class="highlighter-rouge">masterauth</code>配置项进行密码登录。 下面贴一个在建立复制时主节点的日志记录:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1060:M 16 Mar 16:05:17.727 <span class="k">*</span> Slave 127.0.0.1:6380 asks <span class="k">for </span>synchronization
+1060:M 16 Mar 16:05:17.727 <span class="k">*</span> Partial resynchronization not accepted: Replication ID mismatch <span class="o">(</span>Slave asked <span class="k">for</span> <span class="s1">'695874fc4ce12a5de99170a5751f57adf33cc032'</span>, my replication IDs are <span class="s1">'8826a80c2972c469cb65688c899b07ae249f6905'</span> and <span class="s1">'0000000000000000000000000000000000000000'</span><span class="o">)</span>
+1060:M 16 Mar 16:05:17.727 <span class="k">*</span> Starting BGSAVE <span class="k">for </span>SYNC with target: disk
+1060:M 16 Mar 16:05:17.727 <span class="k">*</span> Background saving started by pid 1570
+1570:C 16 Mar 16:05:17.729 <span class="k">*</span> DB saved on disk
+1570:C 16 Mar 16:05:17.729 <span class="k">*</span> RDB: 0 MB of memory used by copy-on-write
+1060:M 16 Mar 16:05:17.771 <span class="k">*</span> Background saving terminated with success
+1060:M 16 Mar 16:05:17.771 <span class="k">*</span> Synchronization with slave 127.0.0.1:6380 succeeded
+</code></pre></div></div>
+
+<p>首先就是从节点127.0.0.1:6380要求进行数据同步， 然后验证从节点的Replication ID， 来判断从节点是部分数据复制还是全量数据复制， 由于这是第一个建立复制， 所以必然是全量复制。 而后执行<code class="highlighter-rouge">BGSAVE</code>操作， fork子进程生成dump.rdb文件。 从日志上可以看出， 此时RDB文件是保存在磁盘中的， 并不是直接发送给从节点。 然后， 主节点通过网络传输， 将RDB文件发送给从节点， 从节点读取并写入数据， 复制工作就此开始。</p>
+
+<p>当主节点的子进程开始执行BGSAVE操作时， 主节点仍然会处理写请求。 那么这部分的数据该如何处理？ Redis主节点会建立复制缓冲区， 这一段时间的数据更改都会写入复制缓冲区中， 当从节点加载完RDB文件数据之后， 主节点再将复制缓冲区的内容发送给从节点。 这样一来， 就能够保证数据的完整性。</p>
+
+<p>如果主节点创建和传输RDB的时间过长， 对于高流量写入场景非常容易造成主节点复制缓冲区溢出， 默认配置为<code class="highlighter-rouge">client-output-buffer-limit slave 256MB 64MB 60</code>， 如果在60秒内缓冲区持续大于60MB或者超出了256MB， 主节点将主动关闭与从节点的连接， 全量复制终止。 所以， 开启从节点请选择月黑风高的凌晨。</p>
+
+<h5 id="54-复制延迟">5.4 复制延迟</h5>
+<p>在主节点和从节点分别执行<code class="highlighter-rouge">info replication</code>命令可以查看此时数据复制的偏移量。 主节点为<code class="highlighter-rouge">master_repl_offset</code>， 从节点为<code class="highlighter-rouge">slave_repl_offset</code>， 单位为字节量。 使用</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>master_repl_offset - slave_repl_offset
+</code></pre></div></div>
+
+<p>能够很轻松的计算出主从复制的延迟。 当这个延迟值很高的时候， 例如20MB， 此时应用程序就需要做出反应， 暂时性的从主节点读取数据， 当延迟降低之后， 再从从节点读取数据。</p>
+
+<h4 id="6-redis-sentinel">6. Redis Sentinel</h4>
+<p>哨兵是由Redis官方所提供的高可用架构解决方案， 实现了Redis数据节点的监控， 通知以及自动化的故障转移机制。</p>
+
+<h5 id="61-为什么需要高可用架构">6.1 为什么需要高可用架构</h5>
+<p>在一个中型服务中， Redis实例的数量可能不会特别多， 拓扑结构可能为1主1从或者是1主2从。 从库主要用于数据的读取， 主库用于数据的写入， 进行读写分离。 如果此时主节点发生宕机， 那么从节点与主节点断开连接， 复制终止， 并且应用层连接不上主节点， 无法进行数据写入， 造成服务部分功能无法使用。</p>
+
+<p>此时要做的就是将一个从节点设置为主节点， 另一个从节点进行切主操作， 并且需要修改应用的代码， 将Redis主节点ip重新修改。 这样一套流程下来， 如果顺利的话， 也需要15分钟左右。 如果不顺利， 花费的时间将会更久。 并且人为操作还有可能出现错误， 导致数据丢失。</p>
+
+<h5 id="62-redis-sentinel高可用性">6.2 Redis Sentinel高可用性</h5>
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/distributed-cache/Sentinel.png" alt="" /></p>
+
+<p>如上图所示， Redis Sentinel是一种分布式多机架构， 其中包含了若干个Sentinel节点以及Redis数据节点。 这里的Redis数据节点表示主节点和从节点所组成的集合。 没一个Sentinel节点都会去监控数据节点和Sentinel节点， 当发现服务不可用时， 会对其做下线标识。 如果被标记的是主节点， 那么Sentinel节点将会和其它Sentinel节点进行投票， 当大多数节点都认为主节点不可达时， 它们会推举出一个Sentinel节点来完成自动的故障转移， 并将信息通知给应用服务。</p>
+
+<p>同样以上图为例， 当Master节点不可用并且多数Sentinel节点确认了这个事实， 并且推举Sentinel-2来进行故障转移。 Sentinel-2随机的选取一个从节点作为新的主节点，例如Slave-1， 对其发送<code class="highlighter-rouge">slaveof no one</code>命令， 终止与原有主节点的复制， 并升级为新的主节点。 接着对Slave-2节点发送<code class="highlighter-rouge">slaveof newHost newPort</code>命令， 使其从新的Master节点进行数据复制。</p>
+
+<h4 id="7-如何对数据进行分区">7. 如何对数据进行分区</h4>
+<p>在单机缓存模式下， 当我们处理了并发请求时的数据安全性， 解决了缓存穿透以及雪崩问题， 并且对缓存中big-key进行了足够好的优化之后， 剩下面临的问题就是单机内存容量的限制。</p>
+
+<p>首先考虑一个更加具体化的问题， MySQL单表的最佳容量约为1000万数据， 也就是说， 假设有1亿数据， 那么最佳的分表方式就是将其拆分成10个表及以上。</p>
+
+<h5 id="71-基于关键字区间">7.1 基于关键字区间</h5>
+
+<p>一个最简单的算法就是基于关键字区间进行分区， 例如<code class="highlighter-rouge">user_id</code>。 <code class="highlighter-rouge">user_id</code>在0-1000的写入表1， <code class="highlighter-rouge">user_id</code>在1001-200万的数据写入表2， 以此类推。 这样以来能够最大程度的维护单表数据相关性， 其缺点就是为了更均匀的分布数据， 开发人员需要找到适合数据本身分布特征的分区边界。 根据2/8法则， 贡献80%数据的用户只占所有用户的20%。 所以边界如何选取， 是基于关键字区间方法的重要因素。</p>
+
+<h5 id="72-取模算法分区">7.2 取模算法分区</h5>
+
+<p>另一个分区算法就是根据key进行取模。 如果拆分10个表， 就使用<code class="highlighter-rouge">user_id</code>对10进行取模， 再存储到数据对应的表中。</p>
+
+<p>取模算法一个非常致命的问题就在于水平拓展非常复杂， 只能进行垂直拓展。 在项目设计之初， 开发人员预计某一个表中的数据最多能够到达1亿， 于是拆分了20个分区表， 这样一来系统最大能够存储2亿数据。 但是系统上线后用户量日益剧增， 很早的就达到了2亿数据。 此时再对数据进行取模， 单表存储将会超过1000万。 并且， 由于数据采用取模的方式进行存储， 如果增加分区表的话， 势必会打乱原有的存储结构， Web服务也有可能停机进行数据迁移。</p>
+
+<p>解决这个问题也很简单， 在最初设计时， 就对分区表的数量取一个较大值， 例如100。 按照单表1000万的存储， 整体存储数据量为10亿。 我相信对于绝大部分应用而言， 10亿行数据的存储量， 是完全足够的， 再加上目前SSD不值钱， 即使是1TB的固态， 也只需要1000块。 总成本在1万以内可以搞定。</p>
+
+<p>取模算法最大的优点就在于简单， 易操作和维护， 缺点就是水平拓展困难并且数据的分布均匀性较难保证， MySQL的简单分表方式选择取模算法是一个比较好的方法， 但是对分布式缓存来说， 其中会有一些问题出现。</p>
+
+<p>假设目前有10台Redis缓存服务器， 编号0~9， 并使用了取模方式在这10台机上进行了数据缓存。 突然3号机挂掉了， 原本属于3号机的数据服务只能被迫转移到其它机器， 例如1号机。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">if</span> <span class="n">key</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+    <span class="c"># 转至1号机服务</span>
+</code></pre></div></div>
+
+<p>现在1号机也挂了， 开发人员又不得不再去整理规则， 属于1号机的服务转移至5号机…来来回回， 数据在整体集群中非常混乱， 取模的方式很难建立一个自动化故障转移的机制来处理突发情况。</p>
+
+<h5 id="73-一致性哈希算法分区">7.3 一致性哈希算法分区</h5>
+<p>一致性哈希算法能够最大程度上自动的处理数据分布不均匀问题， 并且能够提供自动化的故障转移机制。</p>
+
+<p>通常我们会设计一个处理字符串的32位哈希函数， 当输入某个字符串时， 它会返回一个0和2^32 - 1之间近似随机的数值。 及时输入的字符非常相似， 返回的哈希值也会在上述数字范围内均匀分布。</p>
+
+<p>既然范围限定在0～2^32-1之间， 那么对于一个哈希值， 只能取前4个字节， 这里取md5加密的前4个字节:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">get_result</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">"utf-8"</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">8</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>将需要缓存的key进行哈希操作， 并且对缓存节点的ip地址使用同样的方法进行哈希操作， 并将其置于一个环中， 如下图左侧所示:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/distributed-cache/hash-circle.png" alt="" /></p>
+
+<p>在完成了这一部操作之后， 剩下的就是解决数据归属问题。 一致性哈希算法的思路就是找到某一个key在顺时针方向上最近的节点， 就是该key应该在的节点。 如上图所示， key1顺时针寻找， 离得最近的节点为Node1， 所以key1存储于Node1。 key2, key3存储于Node2， key4存储于Node3， key5, key6存储于Node4。</p>
+
+<p>当我们在Node3和Node4之间新增一个节点Node5时， 受到影响的key只有Node3和Node5之间的少部分节点:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/distributed-cache/add-node.png" alt="" /></p>
+
+<p>原本key5归属于Node4， 但是由于新增节点的缘故， 在顺时针方向上离key5最近的节点为Node5， 所以key5被重新分配了。 而在缓存这个场景下， 由于key存在过期时间， 再加上缓存数据的非相关性， 系统能够快速的将这些数据重新缓存至新的节点中， 并且只有一小部分的数据会收到影响。</p>
+
+<p>删除节点同样只会影响一小部分的数据分布。 当删除图中的Node2节点之后,  顺时针方向上离的最近的节点为Node3， 那么缓存数据将会被重新分配至Node3节点, 如下图所示:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/distributed-cache/remove-node.png" alt="" /></p>
+
+<p>有的时候系统中节点数据比较少， 在进行顺时针寻找节点时， 很有可能发生绝大多数key都去了同一个节点:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/distributed-cache/%E5%88%86%E5%B8%83%E4%B8%8D%E5%9D%87%E5%8C%80.png" alt="" /></p>
+
+<p>在系统中一种有6个缓存数据， 其中有5个数据均存储在了Node2节点， 分布非常的不均匀。 解决方法为引入虚拟节点， 其实就是将一个节点的ip， 使用字符串后缀的方法哈希多个值， 产生虚拟节点， 数据在顺时针寻找节点时如果结果是虚拟节点的话， 程序做额外的处理工作， 将其存储至虚拟节点的真实节点上。</p>
+
+<p>假如Node3的ip为<code class="highlighter-rouge">172.15.243.16</code>， 通过添加字符串后缀的方式来添加虚拟ip， 例如<code class="highlighter-rouge">172.15.243.16@1</code>, <code class="highlighter-rouge">172.15.243.16@2</code>， 目的就是让同一个节点能够产生多个哈希值， 从而使得数据分布均匀:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/distributed-cache/visual-node.png" alt="" /></p>
+
+<p>以上就是一致性哈希算法的大致内容， 在实现上节点的存储可以采用AVL数或者是红黑树， 如果节点数量很少的话， 有序链表结构都可以。</p>
+
+<p>一致性哈希算法在缓存设计中应用要更多一些， 一方面是因为缓存数据之间没有强关联性， 并且没有类似于关系型数据库的二级索引结构， 怎么分都可以。 更重要的是数据分布均匀性以及自动化的故障转移。</p>
+
+<h4 id="8-一致性哈希算法的热点key问题">8. 一致性哈希算法的热点key问题</h4>
+<p>虽然一致性哈希算法在引入虚拟节点后能够最大程度上的解决分区平衡问题， 但是很难处理热点数据。 一个非常极端的例子就是系统中所有缓存的读/写都是针对同一个关键字， 那么最终所有的请求都将被路由到同一个节点， 造成该节点负载急剧增加。</p>
+
+<p>举个不恰当的例子， 微博声称目前的系统支持8位明星同时出轨(然而不能支持宣布结婚, hiahia)。 如果系统采用用户id或者是事件id作为缓存key， 几秒内的对同一个数据的读/写流量是非常巨大的。</p>
+
+<p>热点key问题并没有一个非常好的解决方案， 只能通过应用层的scatter/gather来解决。 即对于热点的用户id或者是事件id进行随机数的添加， 将其分配至不同的分区上， 读取时再进行合并。</p>
+
+<p>例如原本的热点key为<code class="highlighter-rouge">user_marriage_9527_list</code>, value为一个列表对象。 应用层生成[0-50)的随机数， 添加至<code class="highlighter-rouge">user_marriage_9527_list</code>的尾部， 每次的写操作都进行随机数的追加， 那么得到的key就有<code class="highlighter-rouge">user_marriage_9527_list0</code>, <code class="highlighter-rouge">user_marriage_9527_list1</code>…将这些list数据写入至不同的节点中。 在读取时， 从0到50遍历所有热点key， 结果进行合并， 去重， 返回。</p>
+
+<p>因为读取时的额外操作， 所以通常只对极少数热点key添加随机数才有意义。</p>
+
+<h4 id="9-小结">9. 小结</h4>
+<p>分布式缓存设计是一个相当庞大的话题， 单靠一篇博文没有办法将其完整的描述， 以及对各种问题给出确切的解决方法， 所以本文也仅是在宏观角度上去分析一些最为常见的问题。</p>
+
+<p>对于中小型服务而言， 我认为将缓存设计成为分布式并不是一个很好的选择， 能够进行垂直拓展的服务尽量先进行垂直拓展， 当垂直拓展满足不了需求之后， 再考虑分布式服务设计。</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>分布式系统基础学习(04)--Nginx</title>
+	  <link>//Nginx</link>
+	  <author></author>
+	  <pubDate>2019-01-15T10:09:44+00:00</pubDate>
+	  <guid>//Nginx</guid>
+	  <description><![CDATA[
+	     <p>Nginx不管是在单机部署还是在集群部署下， 都起着非常重要的作用。 底层由C语言编写， 并且采用事件驱动模型对Socket连接进行管理， 所以有着非常高效的请求处理能力， 并且支持海量的并发。 本篇文章不会对Nginx的底层原理进行深究， 而是整理自己在工作中所遇到的一些问题和积累的经验。</p>
+
+<!---more--->
+
+<h4 id="1-进程数与连接数的优化">1. 进程数与连接数的优化</h4>
+<p>由于大多数后端服务器均采用<code class="highlighter-rouge">centos</code>或者是<code class="highlighter-rouge">ubuntu</code>作为服务器操作系统， 所以天然的支持<code class="highlighter-rouge">epoll</code>事件模型的使用， 自然而然的， 需要为Nginx在socket处理模型上进行优化。</p>
+
+<div class="language-nginx highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">events</span> <span class="p">{</span>
+    <span class="kn">use</span> <span class="s">epoll</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>这个配置通常会置于全局的配置文件中， 也就是<code class="highlighter-rouge">/etc/nginx/nginx.conf</code>中。 对于epoll这样的事件驱动模型来说， 通常服务端都会有2个进程一起协同配合来完成请求的处理。</p>
+
+<p>在Nginx中， Master进程主要用于处理配置文件的读取以及请求的分发， 并不参与请求的实际处理过程， 所以Master进行通常只有一个， 并且Nginx并没有为我们开放配置Master进程数的配置。 Worker进程通常有一个或者是多个， 在每个Worker进程中， 都会运行<code class="highlighter-rouge">epoll</code>事件模型， 因此， Worker进程数量应该与CPU核心数保持一致， 如果是4核CPU的话Worker进程数应该也为4。</p>
+
+<div class="language-nginx highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">worker_processes</span> <span class="s">auto</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>这里使用了<code class="highlighter-rouge">auto</code>配置来自动的配置Worker进程数与CPU核心数保持一致。</p>
+
+<p>接下来是Worker进程最大连接数的优化， 这个配置没有那么简单， 需要对服务器所运行的服务以及服务器配置， 最大并发数等数据进行全方位的了解， 并使用严密的压力测试对配置进行测试， 最终才能够得出结果。</p>
+
+<p>在epoll模型中， 每一个Socket连接都需要消耗一个文件描述符， 而由于内存大小的限制， 一台服务器能够占用的描述符最大数量也是不定的。 首选我们需要对一台服务器能够打开多少个文件句柄要有一个判断：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> /proc/sys/fs/file-max
+</code></pre></div></div>
+
+<p>在一台16G内存的Ubuntu服务器中， 结果为1623585， 核心数为8， 所以从最大句柄的角度来看， <code class="highlighter-rouge">worker_connections</code>最大能够配置202948， 大概20万那么个样子。 但是系统中还会有其它的进程运行， 也会占用系统资源， 所以在实际生产中， 8核16G的机器， 是不可能开到这么大的单个进程的连接数的。</p>
+
+<p>保险一点， 这个值给到10万， 那么Nginx最多能够处理80万的Socket文件句柄， 作为反向代理， 所支持的最大瞬时并发数为800000/4=200000， 20万的瞬时并发处理， 在绝大多数场景下都够用， 具体的表现仍然需要看压测的结果。</p>
+
+<p>这里给出一个常规的配置：</p>
+
+<div class="language-nginx highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">worker_processes</span> <span class="s">auto</span><span class="p">;</span>
+<span class="k">events</span> <span class="p">{</span>
+    <span class="kn">worker_connections</span> <span class="mi">100000</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h4 id="2-zero-copy优化">2. Zero-copy优化</h4>
+<p>用户在读取一个文件， 修改部分内容， 并将其再写入文件的过程， 有着多次用户态和内核态的切换。 操作系统的作用就是帮助用户管理硬件， 所以， 将文件内容刷盘到磁盘中， 或者是写入到Socket连接中， 这些过程都需要从用户态切换到内核态， 由内核完成这些动作。 在切换的过程中就会有时间上的损耗， 所以需要对其进行优化。</p>
+
+<p><code class="highlighter-rouge">sendfile</code>配置本质上是使用DMA控制器来完成数据的所有拷贝工作， 让CPU处理其它的事情。 首先CPU设置DMA控制器， 让它将数据从磁盘设备中拷贝至内核Buffer中， 然后向SocketBuffer中追加当前要发送的数据在KernelBuffer中的位置和偏移量， DMA gather copy根据偏移量直接从KernelBuffer里面将需要的内容拷贝至网卡或者是磁盘设备中。 这个过程CPU只有极少的参与， 数据拷贝过程完全不需要CPU的过多干涉， 所以能够提升系统性能。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/Screenshot%20from%202019-03-18%2015-41-24.png" alt="" /></p>
+
+<p>不过虽然<code class="highlighter-rouge">sendfile</code>能够实现”无CPU”数据拷贝， 从而提升效率的功能， 但是Nginx在作为反向代理的时候， 这个配置作用不大。 而作为静态资源服务器的时候， 例如图片服务， 小文件的下载等， 能够得到较大效率的提升。</p>
+
+<h4 id="3-gzip优化">3. gzip优化</h4>
+<p><code class="highlighter-rouge">gzip</code>配置在前端的HTML, CSS以及JS文件压缩中比较常用， 后端的API服务很少会用到这个配置。 该配置是将请求的文件进行在线压缩， 以达到更快的网络传输。 后端开发者了解一下就好。</p>
+
+<h4 id="4-日志格式的扩充">4. 日志格式的扩充</h4>
+<div class="language-nginx highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">log_format</span> <span class="s">main</span> <span class="s">'</span><span class="nv">$remote_addr</span> <span class="s">-</span> <span class="nv">$remote_user</span> <span class="s">[</span><span class="nv">$time_local</span><span class="s">]</span> <span class="s">"</span><span class="nv">$request</span><span class="s">"</span> <span class="s">'</span>
+                <span class="s">'</span><span class="nv">$status</span> <span class="nv">$body_bytes_sent</span> <span class="s">"</span><span class="nv">$http_referer</span><span class="s">"</span> <span class="s">'</span>
+                <span class="s">'"</span><span class="nv">$http_user_agent</span><span class="s">"</span> <span class="nv">$request_time</span> <span class="nv">$upstream_response_time</span><span class="s">'</span>
+                <span class="s">'</span><span class="nv">$upstream_addr</span><span class="s">'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>这里额外的补充了请求的响应时间， 负载均衡服务器响应时间以及该请求实际的处理服务器地址， 这些数据在搭建ELK或者是使用Python脚本对access_log进行日志分析时将会提供非常有用的帮助。</p>
+
+<h4 id="5-root和alias的区别">5. root和alias的区别</h4>
+<p><code class="highlighter-rouge">root</code>和<code class="highlighter-rouge">alias</code>的区别在网上很少有人讲到， 自己在使用中也是踩到了这个坑。</p>
+<h5 id="51-root">5.1 root</h5>
+<p>假设有如下配置:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>location /test <span class="o">{</span>
+    root /var/www/html<span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>在<code class="highlighter-rouge">/var/www/html</code>目录下新建一个目录<code class="highlighter-rouge">test</code>， 再在<code class="highlighter-rouge">test</code>目录下新建一个<code class="highlighter-rouge">smile.txt</code>文件并修改文件权限， 里面随便写一点儿东西。
+访问<code class="highlighter-rouge">smile.txt</code>: <code class="highlighter-rouge">localhost/test/smile.txt</code></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smile
+</code></pre></div></div>
+<p>得到了<code class="highlighter-rouge">smile.txt</code>文本中的内容。 所以<code class="highlighter-rouge">root</code>方式的配置实际请求路径为<code class="highlighter-rouge">/var/www/html/test/smile.txt</code>。 那么很明显的， <code class="highlighter-rouge">url</code>访问路径， 其实就是服务器中路径的子路径，  <code class="highlighter-rouge">/test</code>既表示匹配规则， 也表示文件路径。</p>
+
+<h5 id="52-alias">5.2 alias</h5>
+<p>修改上面的配置:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>location /test <span class="o">{</span>
+    <span class="nb">alias</span> /var/www/html/new_test/<span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>在<code class="highlighter-rouge">new_test</code>文件夹下新建一个<code class="highlighter-rouge">smile.txt</code>文件， 同样的使用<code class="highlighter-rouge">localhost/test/smile.txt</code>进行访问， 得到了:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>new_smile
+</code></pre></div></div>
+<p>也就是说访问<code class="highlighter-rouge">/test/smile.txt</code>时， 服务器实际上是去访问了<code class="highlighter-rouge">/var/www/html/new_test/smile.txt</code>这个文件。 <code class="highlighter-rouge">/test</code>仅仅作为<code class="highlighter-rouge">nginx</code>的匹配规则， 而不是路径， 具体的资源访问路径由<code class="highlighter-rouge">alias</code>来进行确定。</p>
+
+<h4 id="6-nginx-emerg-host-not-found-in-upstream报错问题">6. nginx: [emerg] host not found in upstream报错问题</h4>
+<p>在我们配置完nginx配置文件， 并使用<code class="highlighter-rouge">nginx -t</code>来检测配置是否正确时， 可能会抛出上述问题。 通常来讲我们的配置是没有问题的， 只不过<code class="highlighter-rouge">proxy_pass</code>后面的域名<code class="highlighter-rouge">nginx</code>无法进行解析。 例如：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>location / <span class="o">{</span>
+    proxy_pass: https://smartkeyerror.com<span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>然而在浏览器中该域名能够访问， 此时我们需要手动的为该域名指定ip地址。
+编辑<code class="highlighter-rouge">/etc/hosts</code>文件：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 如果该域名的服务就在本机的话</span>
+127.0.0.1       localhost  smartkeyerror.com
+
+<span class="c"># 如果该域名的服务不在本机</span>
+120.33.54.178 smartkeyerror.com
+</code></pre></div></div>
+<p>编辑保存后即可。</p>
+
+<p>未完待续…..</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>分布式系统基础学习(03)--消息队列(RabbitMQ)</title>
+	  <link>//message-queue</link>
+	  <author></author>
+	  <pubDate>2019-01-11T09:52:09+00:00</pubDate>
+	  <guid>//message-queue</guid>
+	  <description><![CDATA[
+	     <p>消息队列常常被用于跨进程通信， 异步调用， 系统解耦以及流量削峰等场景下。 目前市场上的消息队列种类繁多， 有LinkedIn开源的<code class="highlighter-rouge">kafka</code>， 阿里开源的<code class="highlighter-rouge">RocketMQ</code>， 以及使用较为广泛的<code class="highlighter-rouge">RabbiMQ</code>。 <code class="highlighter-rouge">Redis</code>虽然也可以做消息队列， 但是更多的是用来做缓存和其它工具使用。 但是随着Redis 5.0 版本的发布， Redis的功能越来越丰富， 也不排除在未来的某一天也能够占据消息队列的重要一席。</p>
+
+<!---more--->
+
+<h4 id="1-每种消息队列的特性以及适用场景">1. 每种消息队列的特性以及适用场景</h4>
+<p>待填坑， <code class="highlighter-rouge">kafka</code>尚未实际使用过， 所以不贸然的评价。</p>
+
+<h4 id="2-rabbitmq架构形式">2. RabbitMQ架构形式</h4>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-12%2017-01-57%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>与其它的消息队列有着明显不同的地方就是在<code class="highlighter-rouge">RabbitMQ</code>中有一个显式指定的组件： Exchange(交换机)。</p>
+
+<p>如上图所示， 生产者将消息发送至某一个Virtual Host的某一个交换机， 交换机根据Routing Key将消息路由到相应的队列中， 然后由消费者进行消费。 可以看到消费者其实可以只和队列打交道， 完全屏蔽掉交换机。</p>
+
+<p>那么Virtual Host， Exchange， Routing Key以及Queue又有什么作用呢？</p>
+
+<p>Virtual Host其实就是一个字符串， 可以<code class="highlighter-rouge">/</code>， <code class="highlighter-rouge">/test</code>等等， 是一种逻辑隔离的手段。 如同Redis的db0, db1一样， 每一个Virtual Host中可以有多个交换机和队列， 但是不允许重名。</p>
+
+<p>Exchang是<code class="highlighter-rouge">RabbitMQ</code>最为核心的组件， 从上图中可以看到交换机和队列是一种多对多的关系， 即一个交换机可以绑定多个队列， 一个队列也可以有多个交换机与其绑定。</p>
+
+<p>Routing Key就是交换机和队列的绑定关系， 本质上就是一个字符串。 但是可以使用通配符的方式与交换机配合来达到广播的效果， 这一点在交换机的类型中将会详细说明。</p>
+
+<p>Queue即为队列， 为消息实际存储的位置， 与<code class="highlighter-rouge">Redis</code>显著不同的是， 在<code class="highlighter-rouge">RabbitMQ</code>中的队列有自己的相关属性， 例如队列的过期时间， 是否持久化， 队列的最大长度等， 相关特性在队列一小节中也会详细说明。 此外， 队列是消费者直接连接并消费的地方。</p>
+
+<p>这些组件构成了<code class="highlighter-rouge">RabbitMQ</code>的核心构成， 我们在日常进行开发和维护时， 也是和这些组件打交道， 所以理清每个组件是做什么的以及组件之间的关系是非常重要的。</p>
+
+<h4 id="3-交换机">3. 交换机</h4>
+<p>在详细的解释交换机的种类之前， 首先看一下最基本的生产者代码：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SimpleProducer</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span><span class="o">{</span>
+        <span class="cm">/* 创建连接工厂, 并设置IP, 端口以及Virtual Host参数 */</span>
+        <span class="n">ConnectionFactory</span> <span class="n">connectionFactory</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ConnectionFactory</span><span class="o">();</span>
+        <span class="n">connectionFactory</span><span class="o">.</span><span class="na">setHost</span><span class="o">(</span><span class="s">"127.0.0.1"</span><span class="o">);</span>
+        <span class="n">connectionFactory</span><span class="o">.</span><span class="na">setPort</span><span class="o">(</span><span class="mi">5672</span><span class="o">);</span>
+        <span class="c1">// 设置VirtualHost为/test, 这里可以是任意值， 前提是该VirtualHost已被添加</span>
+        <span class="n">connectionFactory</span><span class="o">.</span><span class="na">setVirtualHost</span><span class="o">(</span><span class="s">"/test"</span><span class="o">);</span>
+
+        <span class="n">Connection</span> <span class="n">connection</span> <span class="o">=</span> <span class="n">connectionFactory</span><span class="o">.</span><span class="na">newConnection</span><span class="o">();</span>
+        <span class="n">Channel</span> <span class="n">channel</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="na">createChannel</span><span class="o">();</span>
+
+        <span class="cm">/* 交换机类型 */</span>
+        <span class="n">String</span> <span class="n">exchangeType</span> <span class="o">=</span> <span class="s">"direct"</span><span class="o">;</span>
+        <span class="cm">/* 交换机名称 */</span>
+        <span class="n">String</span> <span class="n">exchangeName</span> <span class="o">=</span> <span class="s">"test_exchange"</span><span class="o">;</span>
+
+        <span class="n">String</span> <span class="n">routingKey</span> <span class="o">=</span> <span class="s">"routeApp"</span><span class="o">;</span>
+        <span class="n">String</span> <span class="n">queueName</span> <span class="o">=</span> <span class="s">"test_queue"</span><span class="o">;</span>
+
+        <span class="cm">/* 声明交换机, 类型为direct, 名称为test_exchange */</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">exchangeDeclare</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="n">exchangeType</span><span class="o">);</span>
+
+        <span class="cm">/* 声明一个持久化的, 非独占的, 非自动删除且没有扩展参数的队列 */</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">queueDeclare</span><span class="o">(</span><span class="n">queueName</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+
+        <span class="cm">/* 将交换机和队列通过Routing Key进行绑定 */</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">queueBind</span><span class="o">(</span><span class="n">queueName</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="n">routingKey</span><span class="o">);</span>
+
+        <span class="cm">/* 发送消息时, 可以只指定交换机名称以及Routing Key */</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">basicPublish</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="n">routingKey</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="s">"hello"</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
+
+        <span class="n">channel</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+        <span class="n">connection</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>在我们声明了交换机和队列之后， 剩下的就是将交换机和队列通过Routing Key进行绑定， 在绑定完成之后， 就可以完全不管队列了， 因为通过交换机的名称以及Routing Key就能够找到所对应的队列。 在发送消息时， 我们也的确没有指定队列名称。</p>
+
+<h5 id="31-direct交换机">3.1 direct交换机</h5>
+<p><code class="highlighter-rouge">direct</code>交换机可以翻译成直接交换机， 当一个交换机为<code class="highlighter-rouge">direct</code>类型时， 消息至多会发送给一个队列。</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-14%2018-39-23%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>我们对<code class="highlighter-rouge">test_exchange</code>这个交换机和<code class="highlighter-rouge">test_queue</code>这个队列使用了<code class="highlighter-rouge">routeApp</code>这个Routing Key进行了绑定， 由于交换机是<code class="highlighter-rouge">direct</code>类型的， 那么如果我们在发送消息时， 指定的路由键不是<code class="highlighter-rouge">routeApp</code>， 并且该交换机下没有与之对应的路由键的话， 该消息就会被丢弃。</p>
+
+<p>也就是说， <code class="highlighter-rouge">direct</code>类型的交换机与Routing Key之间是一个完全绑定的关系， 在发送消息时所指定的路由键必须与之完全匹配才能够投递到队列中。</p>
+
+<h5 id="32-fanout交换机">3.2 fanout交换机</h5>
+<p><code class="highlighter-rouge">fanout</code>, 译为扇出， 那么<code class="highlighter-rouge">fanout</code>类型的交换机将会把消息路由到所有与之绑定的队列上， 相当于一种无条件的广播。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">String</span> <span class="n">exchangeType</span> <span class="o">=</span> <span class="s">"fanout"</span><span class="o">;</span>
+<span class="n">String</span> <span class="n">exchangeName</span> <span class="o">=</span> <span class="s">"test_exchange"</span><span class="o">;</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">exchangeDeclare</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="n">exchangeType</span><span class="o">);</span>
+
+<span class="cm">/* 声明3个队列 */</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueDeclare</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_01"</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueDeclare</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_02"</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueDeclare</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_03"</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+
+<span class="cm">/* 将fanout交换机和3个队列以不同的Routing Key进行绑定 */</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueBind</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_01"</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="s">"fake_01"</span><span class="o">);</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueBind</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_02"</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="s">"fake_02"</span><span class="o">);</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">queueBind</span><span class="o">(</span><span class="n">queueName</span> <span class="o">+</span> <span class="s">"_03"</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="s">"fake_03"</span><span class="o">);</span>
+
+<span class="cm">/* 向test_exchange发送消息, 并指定一个从未出现过的Routing Key */</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">basicPublish</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="s">"fake_key"</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="s">"hello"</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
+</code></pre></div></div>
+
+<p>在这里我们声明了3个队列， 并使用3种路由键将其与交换机进行绑定， 然后在发送消息时， 使用了一个非常随意的路由键， 消息依然能够以广播的形式路由到这3个队列中。</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center ](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-14%2019-10-05%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h5 id="33-topic交换机">3.3 topic交换机</h5>
+<p><code class="highlighter-rouge">topic</code>交换机与<code class="highlighter-rouge">fanout</code>交换机很类似， 只不过<code class="highlighter-rouge">topic</code>交换机是以通配符来进行路由键匹配， 而<code class="highlighter-rouge">fanout</code>类型的交换机所有的路由键都可通过。</p>
+
+<p>在进行交换机和队列绑定时， Routing Key可以传入一个模糊匹配词， 如<code class="highlighter-rouge">*</code>或者是<code class="highlighter-rouge">#</code>。 其中<code class="highlighter-rouge">*</code>表示匹配一个单词， <code class="highlighter-rouge">#</code>匹配任意单词(可以是零个)。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-17%2010-22-28%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如上图所示， 我们一共声明了4种队列， 并使用4种不同的Routing Key与其进行绑定， 通常我们称之为这种绑定的关系为Binding Key。 生产端在进行消息产出时会指定一个Routing Key和交换机名称， 那么在这个时候所有与usa相关的信息均会被路由到第一个队列中。 所有与asia相关的信息都会被路由到最后一个队列中， 所有的新闻消息将会被路由到第二个队列中， 所有的天气信息将会被路由到第三个队列中。 这样一来就完成了信息的不同维度的分类。</p>
+
+<p>对信息进行不同维度的分类是<code class="highlighter-rouge">topic</code>类型交换机的一个功能之一， 此外， 在死信队列这种特殊的交换机下， 通常也会用到模糊匹配的功能。</p>
+
+<p>以上就是<code class="highlighter-rouge">RabbitMQ</code>所提供的三种类型的交换机， 尽管来讲可能<code class="highlighter-rouge">direct</code>类型的交换机是使用最为广泛的， 但是每一种类型都是有其所适用的场景的。</p>
+
+<h5 id="34-声明交换机时的其它参数">3.4 声明交换机时的其它参数</h5>
+<p>在上面的demo中， 只是简单的使用交换机名称和交换机类型， 除此之外， 还有一些额外的有用的参数， 具有完整参数的函数如下：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="n">DeclareOk</span> <span class="nf">exchangeDeclare</span><span class="o">(</span><span class="n">String</span> <span class="n">exchange</span><span class="o">,</span>
+                                 <span class="n">String</span> <span class="n">type</span><span class="o">,</span>
+                                 <span class="kt">boolean</span> <span class="n">durable</span><span class="o">,</span>
+                                 <span class="kt">boolean</span> <span class="n">autoDelete</span><span class="o">,</span>
+                                 <span class="kt">boolean</span> <span class="n">internal</span><span class="o">,</span>
+                                 <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;</span> <span class="n">arguments</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span>
+</code></pre></div></div>
+
+<p>前两个自然就是交换机名称和交换机类型， <code class="highlighter-rouge">durable</code>是一个布尔类型的参数， 表示交换机是否持久化， 若为<code class="highlighter-rouge">true</code>， 则该交换机将会被保存至磁盘中。 若<code class="highlighter-rouge">RabbitMQ</code>重启， 则该部分数据不会丢失。 <code class="highlighter-rouge">autoDelete</code>表示是否自动删除， 当该交换机与之绑定的队列均与其解绑时， 该交换机将会被自动删除， 通常来讲都会将其设置为<code class="highlighter-rouge">false</code>。 <code class="highlighter-rouge">internal</code>表示是否用于<code class="highlighter-rouge">RabbitMQ</code>内部， <code class="highlighter-rouge">arguments</code>则是一些拓展参数。</p>
+
+<h4 id="4-队列">4. 队列</h4>
+<p>在<code class="highlighter-rouge">RabbitMQ</code>中， 队列是保存消息的唯一载体， 生产者所生产的消息经过交换机均会路由到相应的队列， 或者是在Routing Key不匹配的情况下将消息丢弃。 相比于交换机， 队列的类型就只有一种， 队列就是队列。 所以直接来看在声明队列时可以传递的参数：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="o">....</span><span class="na">DeclareOk</span> <span class="n">queueDeclare</span><span class="o">(</span><span class="n">String</span> <span class="n">queue</span><span class="o">,</span>
+                                  <span class="kt">boolean</span> <span class="n">durable</span><span class="o">,</span>
+                                  <span class="kt">boolean</span> <span class="n">exclusive</span><span class="o">,</span>
+                                  <span class="kt">boolean</span> <span class="n">autoDelete</span><span class="o">,</span>
+                                  <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;</span> <span class="n">arguments</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span>
+</code></pre></div></div>
+
+<p>参数的数量并不是很多， 但是都很重要。 前两个是队列的名称以及是否持久化， 不再赘述。</p>
+
+<p><code class="highlighter-rouge">exclusive</code>表示是否排他， 是一个很容易用错的一个参数。 <strong>如果一个队列被声明为排他队列， 那么该队列仅对首次声明它的连接可见， 并在连接断开时自动删除， 不管有没有指定其持久化</strong>。 所以说， 同一个连接下的不同<code class="highlighter-rouge">Channel</code>， 是能够对访问该队列的， 也就是说， 如果一个队列是排他队列， 那么只有声明方可以发送和接收信息。 通常会用于”自娱自乐”这种情况下， 也就是自己发送消息， 自己接收消息。</p>
+
+<p><code class="highlighter-rouge">autoDelete</code>与交换机参数的<code class="highlighter-rouge">autoDelete</code>基本相似， 译为是否自动删除。 当一个队列的所有连接均断开时， 这个队列才会被自动删除， 而不是在没有连接的情况下被删除(如果是这样的话， 那么在声明队列之后， 没有客户端连接， 难道就直接删除该队列吗？)， 这点需要注意。</p>
+
+<p><code class="highlighter-rouge">arguments</code>为拓展参数， 队列的拓展参数就比交换机的拓展参数要丰富的多。</p>
+
+<ul>
+  <li>x-message-ttl： 指定队列中所有消息在被路由到当前队列的存活时间。</li>
+  <li>x-expires： 指定当前队列在不活跃时的存活时间， 有些类似于Java线程池的线程存活时间。</li>
+  <li>x-max-length： 指定当前队列所能容纳的最大消息数量。</li>
+  <li>x-dead-letter-exchange： 用于指定队列中有死信产生时， 将消息投放至哪个交换机。</li>
+  <li>x-dead-letter-routing-key： 与上一个参数配合， 指定死信消息的Routing Key。</li>
+  <li>x-max-priority： 指定当前队列的最大优先级。</li>
+</ul>
+
+<p>这些参数在日常使用中经常会用到， 例如死信队列的相关参数和配置等。 死信队列的内容将会在下面进行描述。</p>
+
+<h4 id="5-消息">5. 消息</h4>
+<p>在介绍完<code class="highlighter-rouge">RabbitMQ</code>的交换机与队列之后， 那么剩下一个核心组件就是流转于这些组件的消息。 消息同样会有许多的属性， 例如优先级， 消息id， 过期时间等等。 一些常见的消息属性以及添加属性的方式如下：</p>
+
+<ul>
+  <li>deliveryMode： 消息是否持久化， 2为持久化， 1为非持久化</li>
+  <li>content_type： 消息内容的类型</li>
+  <li>content_encoding： 消息内容的编码格式</li>
+  <li>priority： 消息的优先级</li>
+  <li>expiration： 消息于队列中的存活时间， 可以对某一条消息特别指定</li>
+  <li>message_id： 消息id</li>
+  <li>timestamp：消息时间戳</li>
+</ul>
+
+<p>使用方式：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">AMQP</span><span class="o">.</span><span class="na">BasicProperties</span> <span class="n">properties</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AMQP</span><span class="o">.</span><span class="na">BasicProperties</span><span class="o">.</span><span class="na">Builder</span><span class="o">()</span>
+        <span class="o">.</span><span class="na">deliveryMode</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">expiration</span><span class="o">(</span><span class="s">"10000"</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">contentEncoding</span><span class="o">(</span><span class="s">"utf-8"</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+</code></pre></div></div>
+
+<h4 id="6-可靠消息投递">6. 可靠消息投递</h4>
+<p>虽然<code class="highlighter-rouge">RabbitMQ</code>能够最大程度上的保证消息的可靠性投递， 但是由于网络情况的复杂性， 我们不得不再设计一个系统， 用于99.9%的保证消息的准确送达于消费。</p>
+
+<p>这里给出两种常用的方式， 第一种方式实现较为简单， 但是并发性会有一些问题； 第二种方式要相对更加复杂一些， 但是有较好的并发性。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-12%2017-01-44%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如上图所示， 主要的实现方式就是添加一个<code class="highlighter-rouge">message table</code>以及一个定时任务。 在一条消息发送之前， 将该消息以及当前的时间进行入库， 并给定一个状态值(<code class="highlighter-rouge">status</code>)， 例如已发送但未确认为0， 消息经由客户端并返回了当前消息的ACK之后， 更新该消息的状态值。 定时任务每隔1分钟或者3分钟扫描一次该table， 筛选出超时的消息， 并告知Producer重发该消息。</p>
+
+<p>这里有一些细节需要注意， 发送消息的前提条件是业务数据以及消息入库正常。 生产端能够接收ACK， 那么就需要开启消息确认模式， 该模式将会在下文叙述。 此外， 重发消息一定要是定时任务通知Producer重发该消息， 因为对重发的消息也需要进行确认。</p>
+
+<p>这种实现方式相对来说比较简单， 对于一条消息， 我们可以使用16位的时间戳进行唯一标记， 并在DB中对该字段加上<code class="highlighter-rouge">unique</code>索引来加速查找。 这种模式在几百或者几千的QPS下能够运行良好， 但是如果并发超过该值， 那么第二种方式效率更高。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-12%2017-01-34%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>从图示来看， 主要是采用了一个延迟信息投递的方式， 并且采用了2组交换机。 Producer发送2条消息， 一条为即时发送， 一条为延迟发送， 当客户端成功接收即时消息之后， 向Exchange2交换机发送一个当前消息的确认信息， 第三方服务接收该消息并将该消息入库。 一定时间后， 例如1分钟后， 延迟消息抵达至Exchange2， 同样地， 第三方服务接收该消息判断该消息是否存在于<code class="highlighter-rouge">message table</code>中， 若不存在， 则通知Producer重发该消息。</p>
+
+<p>这种方式采用异步写库的方式来完成可靠消息的确认， 并且移除了定时脚本， 这样一来就省去了扫描<code class="highlighter-rouge">message table</code>部分区间的时间。 但是也带来了其它的复杂性， 例如延迟消息的实现， Exchange2的管理和维护等。</p>
+
+<h4 id="7-消息的ack与重回队列">7. 消息的ACK与重回队列</h4>
+<p>在上一小节的同步DB实现中， 需要用到消息的ACK。 消息的ACK分为2种， 自动确认和手动确认， 自动确认是指当消费者接收到了这条消息之后， 由<code class="highlighter-rouge">RabbitMQ</code>自动的回送ACK消息， 手动确认顾名思义就是需要显式的回送ACK消息。</p>
+
+<p>生产端需要开启确认模式， 主要是针对<code class="highlighter-rouge">Channel</code>而言的：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">channel</span><span class="o">.</span><span class="na">confirmSelect</span><span class="o">();</span>
+
+<span class="n">channel</span><span class="o">.</span><span class="na">addConfirmListener</span><span class="o">(</span><span class="k">new</span> <span class="n">ConfirmListener</span><span class="o">()</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleAck</span><span class="o">(</span><span class="kt">long</span> <span class="n">l</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">b</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="c1">// 其中l为deliveryTag, b为是否批量</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"------ACK------"</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleNack</span><span class="o">(</span><span class="kt">long</span> <span class="n">l</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">b</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"------NACK------"</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">});</span>
+</code></pre></div></div>
+
+<p>消费端在进行消费时， 通过传入布尔参数<code class="highlighter-rouge">b</code>来指定是否为自动签收， <code class="highlighter-rouge">true</code>为自动签收， <code class="highlighter-rouge">false</code>为手工签收。 当我们采用手工签收时， 在消费完消息之后， 需要显式地回复ACK：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">channel</span><span class="o">.</span><span class="na">basicAck</span><span class="o">(</span><span class="n">envelope</span><span class="o">.</span><span class="na">getDeliveryTag</span><span class="o">(),</span><span class="kc">false</span><span class="o">);</span>
+<span class="c1">// channel.basicNack();  回送一个NACK确认， 即否定确认</span>
+</code></pre></div></div>
+
+<p>可能有人会说既然已经有了ACK确认消息， 为什么还需要消息入库这种可靠性的手段。 因为ACK消息也会丢失， 所以只能作为可靠消息投递的一个组件使用， 而不能完全依赖ACK消息。 在<a href="https://smartkeyerror.com/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%9F%BA%E7%A1%80%E5%AD%A6%E4%B9%A0-01-%E9%80%9A%E4%BF%A1-TCP-UDP.html">通信(TCP/UDP)</a>这篇文章中有介绍到为什么TCP连接需要序列号， ACK包以及校验和， 定时器来确保数据分组的可靠传输。 可以看到这些内容都是非常相似的， 或者说理念就是完全相同的， 除非有了绝对的可靠传输链路， 否则这些内容是不会过时的。</p>
+
+<h4 id="8-消息的限流">8. 消息的限流</h4>
+<p>有时候消费端由于意外需要进行重启， 这个时候队列可能积压了大量的信息， 在没有限流的情况下重启消费端， 成百上千的消息一次性的涌入， 可能会造成服务器资源在短时间内用尽， 导致服务假死。 所以就需要有限流机制， 限流的设置也非常简单， 需要注意一点的就是此时<strong>必须使用手工签收</strong>。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* 自定义消费者类, 继承自DefaultConsumer, 并覆盖handleDelivery方法 */</span>
+<span class="kd">class</span> <span class="nc">MyConsumer</span> <span class="kd">extends</span> <span class="n">DefaultConsumer</span> <span class="o">{</span>
+
+    <span class="kd">public</span> <span class="nf">MyConsumer</span><span class="o">(</span><span class="n">Channel</span> <span class="n">channel</span><span class="o">)</span> <span class="o">{</span> <span class="kd">super</span><span class="o">(</span><span class="n">channel</span><span class="o">);</span> <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleDelivery</span><span class="o">(</span><span class="n">String</span> <span class="n">consumerTag</span><span class="o">,</span> <span class="n">Envelope</span> <span class="n">envelope</span><span class="o">,</span>
+                               <span class="n">AMQP</span><span class="o">.</span><span class="na">BasicProperties</span> <span class="n">properties</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[]</span> <span class="n">body</span><span class="o">)</span>
+            <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"recv message: "</span> <span class="o">+</span> <span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="n">body</span><span class="o">));</span>
+
+        <span class="c1">// 限流时必须手工回送ACK消息</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">basicAck</span><span class="o">(</span><span class="n">envelope</span><span class="o">.</span><span class="na">getDeliveryTag</span><span class="o">(),</span><span class="kc">false</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// 每次最多只能有60条消息进行消费</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">basicQos</span><span class="o">(</span><span class="mi">60</span><span class="o">);</span>
+
+<span class="c1">// 关闭自动签收， 并添加消费者</span>
+<span class="n">channel</span><span class="o">.</span><span class="na">basicConsume</span><span class="o">(</span><span class="n">QUEUE_NAME</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="k">new</span> <span class="n">MyConsumer</span><span class="o">(</span><span class="n">channel</span><span class="o">));</span>
+</code></pre></div></div>
+
+<h4 id="9-死信队列">9. 死信队列</h4>
+<p>与<code class="highlighter-rouge">Redis</code>一样， <code class="highlighter-rouge">RabbitMQ</code>提供了类似监听Key过期的机制， 只不过实现方式要稍微复杂一些。 在<code class="highlighter-rouge">Redis</code>中， 我们可以设置Key过期的发布订阅， 当Key过期时， 订阅方能够接受到该Key， 但是无法拿到Value， 这是我比较疑惑的地方， 如果能拿到Value， 那么这个功能就相当出色了。</p>
+
+<p>回到<code class="highlighter-rouge">RabbitMQ</code>， 死信队列其实是指当某一个消息在成为”死信”时， <code class="highlighter-rouge">RabbitMQ</code>会将该消息发送至所绑定的”死信交换机”中， 由该交换机路由至某一个队列。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-17%2015-43-23%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>所以说， 如果我们想要使用死信队列的话， 就需要有额外的交换机， Routing Key以及队列。 当然， 队列和Routing Key可以有多个， 完成死信消息的分拣功能。</p>
+
+<p>那么消息在什么情况下会变成死信呢？</p>
+
+<ul>
+  <li>消息被拒绝(basic.reject/basic.nack), 并且requeue为false</li>
+  <li>消息TTL过期</li>
+  <li>队列达到最大长度或队列空间已满</li>
+</ul>
+
+<p>在这些情况下队列中的消息将会成为死信， 如果在声明队列时添加了如下设置， 那么该队列就会成为死信队列。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;</span> <span class="n">arguments</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HashMap</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;();</span>
+<span class="n">arguments</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">"x-dead-letter-exchange"</span><span class="o">,</span> <span class="n">deadLetterExchange</span><span class="o">);</span>
+</code></pre></div></div>
+
+<p>说白了， 死信队列就是当某一个消息变成死信时， <code class="highlighter-rouge">RabbitMQ</code>将会根据我们的设置将该消息重新投递到所指定的交换机中。 通过使用死信队列， 我们就可以实现延迟发送的功能。</p>
+
+<h4 id="10-小结">10. 小结</h4>
+<p>在本篇文章中， 介绍了<code class="highlighter-rouge">RabbitMQ</code>消息中间件的基本使用以及一些高级功能， 例如消息的限流， 死信队列等。 在可靠消息投递的设计中充分的借鉴了TCP协议的可靠数据传输模型， 针对于并发这个因素制定了2种不同的解决方案。</p>
+
+<p>除此之外， 消息队列的高可用的拓扑结构以及运维相关的内容， 将会在后续文章中进行讨论。 最后附一张思维导图， 便于记忆与整理。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-17%2016-02-38%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>分布式系统基础学习(02)--应用间通信(gRPC)</title>
+	  <link>//service-communication</link>
+	  <author></author>
+	  <pubDate>2019-01-08T09:49:09+00:00</pubDate>
+	  <guid>//service-communication</guid>
+	  <description><![CDATA[
+	     <p>我始终认为， 随着语言和计算机技术的发展， 分布式系统才是互联网技术的未来。 而现在众多的分布式开源技术， 如<code class="highlighter-rouge">Zookeper</code>, <code class="highlighter-rouge">SpringCloud</code>等的蓬勃发展也证明这一点。 在分布式的系统中， A服务可能由Java编写， B服务可能由Python编写， C服务可能由PHP编写， 服务于服务之间的通信固然可以使用<code class="highlighter-rouge">HTTP</code>协议以<code class="highlighter-rouge">RESTful-API</code>的方式进行通信， 但是由于许多不必要的数据传输， 例如HTTP请求头， 会降低服务之间的通信速度， 在高并发的场景下极有可能成为系统瓶颈。 所以， 就有了RPC通信机制。</p>
+
+<!---more--->
+
+<h4 id="1-什么是rpc">1. 什么是RPC</h4>
+<p>RPC， 全称为 Romete Procedure Call， 远程过程调用， 实际上就是A机器调用B机器上的方法， B机器进行一系列的运算将结果返回给A机器。</p>
+
+<p>那么在这个过程中就涉及到Server服务器寻址， 服务器之间TCP连接的建立， 对象序列化与反序列化的过程， 以及方法寻址的问题。</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center ](https://www.cs.rutgers.edu/~pxk/417/notes/images/rpc-flow.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>上图来源于https://www.cs.rutgers.edu/~pxk/417/notes/03-rpc.html， 对RPC的内部过程展示的非常详细。 <code class="highlighter-rouge">stub</code>以及<code class="highlighter-rouge">skeleton</code>是对旧有的client和server的一种描述， 现在少有这种称呼， 对于提供方法的服务器， 称为server， 调用方统称为stub。</p>
+
+<p>假设A, B服务均由<code class="highlighter-rouge">Python</code>编写， 那么client传递参数给server， server经过计算之后返回结果即可， 在同平台下RPC的调用并没有很复杂。 但是如果跨平台呢？ 此时就需要有一个统一的描述语言来定义相关的数据类型， 达到多平台统一， 我们将其称为接口描述语言(Interface Description Language，IDL)， 其中， Google Protocol Buffers就是一种IDL。</p>
+
+<h4 id="2-protocol-buffers">2. Protocol Buffers</h4>
+<p>什么是Protocol Buffers？ 简单来讲， Protocol Buffers就是一种使具有一定组织结构的数据自动序列化的机制， 使用特殊的编译器对其进行编译之后， 可以跨平台使用。</p>
+
+<p>首先来看官网给出的demo， 基于proto3：</p>
+
+<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
+
+<span class="c1">// message为关键字， 用于定义结构体， 相当于C中的struct； Python, Java中的class
+</span><span class="kd">message</span> <span class="nc">SearchRequest</span> <span class="p">{</span>
+  <span class="c1">// field后面的数值， = 1并不表示值为1， 而是表示该字段的序号， 该序号在一个message中必须唯一
+</span>  <span class="kt">string</span> <span class="na">query</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="kt">int32</span> <span class="na">page_number</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="kt">int32</span> <span class="na">result_per_page</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">Result</span> <span class="p">{</span>
+  <span class="kt">string</span> <span class="na">url</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="kt">string</span> <span class="na">title</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="c1">// repeated， 允许字段重复0次或多次， 相当于一个列表
+</span>  <span class="k">repeated</span> <span class="kt">string</span> <span class="na">snippets</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">message</code>是<code class="highlighter-rouge">.proto</code>文件的关键字， 类似于其它语言中的<code class="highlighter-rouge">class</code>， 用于定义一个对象(结构体)。</p>
+
+<p>在proto3中移除了<code class="highlighter-rouge">required</code>和<code class="highlighter-rouge">optional</code>两个关键字， 仅保留了<code class="highlighter-rouge">repeated</code>， 用于表示列表。</p>
+
+<p>基本数据类型在Protocol Buffers中也有提供， 包括<code class="highlighter-rouge">double</code>, <code class="highlighter-rouge">float</code>, <code class="highlighter-rouge">int32</code>, <code class="highlighter-rouge">int64</code>, <code class="highlighter-rouge">bool</code>, <code class="highlighter-rouge">bytes</code>以及<code class="highlighter-rouge">string</code>， 同时<code class="highlighter-rouge">repeated</code>提供了列表结构， 以及<code class="highlighter-rouge">map&lt;K, V&gt;</code>所提供的字典结构。 在有了这些数据类型以及数据结构的支持， 我们就可以在多平台上进行通信了。</p>
+
+<p>更多的细节请参考官方文档： https://developers.google.com/protocol-buffers/docs/proto3</p>
+
+<h4 id="3-使用protocol-buffers编写一个demo">3. 使用Protocol Buffers编写一个demo</h4>
+<p>学习一项新技术最好的方法就是跟着官方文档跑一遍demo， 只不过这里官方的demo有些啰嗦， 所以就自己稍加改造了一下， 本质上的原理都是一样的。</p>
+
+<p>首先来看proto文件：</p>
+<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
+
+<span class="kn">package</span> <span class="nn">ProtoBuf</span><span class="p">;</span>
+
+<span class="kd">message</span> <span class="nc">Person</span> <span class="p">{</span>
+  <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="kt">int32</span> <span class="na">id</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="kt">string</span> <span class="na">email</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+
+  <span class="kd">enum</span> <span class="n">PhoneType</span> <span class="p">{</span>
+    <span class="na">MOBILE</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="na">HOME</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="na">WORK</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="kd">message</span> <span class="nc">PhoneNumber</span> <span class="p">{</span>
+    <span class="kt">string</span> <span class="na">number</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">PhoneType</span> <span class="na">type</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="k">repeated</span> <span class="n">PhoneNumber</span> <span class="na">phones</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">AddressBook</span> <span class="p">{</span>
+  <span class="k">repeated</span> <span class="n">Person</span> <span class="na">people</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>如果把这个Person转换成Json的话， 会更加的清晰， 也有助于我们查看：</p>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="s2">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"xx"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"id"</span><span class="p">:</span><span class="w"> </span><span class="err">xx</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"email"</span><span class="p">:</span><span class="w"> </span><span class="s2">"xx"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"phones"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="p">{</span><span class="s2">"number"</span><span class="p">:</span><span class="w"> </span><span class="s2">"xx"</span><span class="p">,</span><span class="w"> </span><span class="s2">"type"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span><span class="w">
+    </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>在定义完.proto文件之后， 我们需要使用<code class="highlighter-rouge">protoc</code>这个编译器对<code class="highlighter-rouge">addressbook.proto</code>文件进行编译， 让其自动的生成<code class="highlighter-rouge">Python</code>, <code class="highlighter-rouge">C++</code>, <code class="highlighter-rouge">Java</code>代码， 可以认为这份自动生成的代码就是<code class="highlighter-rouge">skeleton</code>。 由于我们要生成的是<code class="highlighter-rouge">Python</code>代码， 所以运行：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>protoc <span class="nt">-I</span><span class="o">=</span><span class="s2">"."</span> <span class="nt">--python_out</span><span class="o">=</span><span class="s2">"."</span> ./addressbook.proto
+</code></pre></div></div>
+<p>该命令将会在当前目录下生成<code class="highlighter-rouge">addressbook_pb2.py</code>， 里面写的是什么可以不用关心， 下面开始编写测试文件。 我们的测试是首先创建出一个<code class="highlighter-rouge">AddressBook</code>对象， 填充一个<code class="highlighter-rouge">Person</code>对象， 将其序列化后写入到一个文本文件中， 然后再读取该文本文件， 将其反序列化称为<code class="highlighter-rouge">Python</code>对象。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">ProtoBuf</span> <span class="kn">import</span> <span class="n">addressbook_pb2</span>
+
+<span class="n">address_book</span> <span class="o">=</span> <span class="n">addressbook_pb2</span><span class="o">.</span><span class="n">AddressBook</span><span class="p">()</span>
+<span class="c"># 添加一个person</span>
+<span class="n">person</span> <span class="o">=</span> <span class="n">address_book</span><span class="o">.</span><span class="n">people</span><span class="o">.</span><span class="n">add</span><span class="p">()</span>
+<span class="c"># 添加person属性</span>
+<span class="n">person</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"smart"</span>
+<span class="n">person</span><span class="o">.</span><span class="nb">id</span> <span class="o">=</span> <span class="mi">123</span>
+<span class="n">person</span><span class="o">.</span><span class="n">email</span> <span class="o">=</span> <span class="s">"smartkeyerror@gmail.com"</span>
+<span class="c"># person中添加一条phones, 并赋予属性</span>
+<span class="n">phone_number</span> <span class="o">=</span> <span class="n">person</span><span class="o">.</span><span class="n">phones</span><span class="o">.</span><span class="n">add</span><span class="p">()</span>
+<span class="n">phone_number</span><span class="o">.</span><span class="n">number</span> <span class="o">=</span> <span class="s">"1365656"</span>
+<span class="n">phone_number</span><span class="o">.</span><span class="nb">type</span> <span class="o">=</span> <span class="n">addressbook_pb2</span><span class="o">.</span><span class="n">Person</span><span class="o">.</span><span class="n">HOME</span>
+
+<span class="c"># 将序列化的二进制数据写入文件</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"temp.txt"</span><span class="p">,</span> <span class="s">"wb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">address_book</span><span class="o">.</span><span class="n">SerializeToString</span><span class="p">())</span>
+
+<span class="c"># 读取二进制文件</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"temp.txt"</span><span class="p">,</span> <span class="s">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+<span class="n">address_book</span> <span class="o">=</span> <span class="n">addressbook_pb2</span><span class="o">.</span><span class="n">AddressBook</span><span class="p">()</span>
+<span class="c"># 反序列化</span>
+<span class="n">address_book</span><span class="o">.</span><span class="n">ParseFromString</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+<span class="n">first_people</span> <span class="o">=</span> <span class="n">address_book</span><span class="o">.</span><span class="n">people</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s">"name: "</span><span class="p">,</span> <span class="n">first_people</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s">"id: "</span><span class="p">,</span> <span class="n">first_people</span><span class="o">.</span><span class="nb">id</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s">"email: "</span><span class="p">,</span> <span class="n">first_people</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s">"phone_number: "</span><span class="p">,</span> <span class="n">first_people</span><span class="o">.</span><span class="n">phones</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s">"phone_number_type"</span><span class="p">,</span> <span class="n">first_people</span><span class="o">.</span><span class="n">phones</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="nb">type</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>整个代码很简单， 没有什么很绕的地方， 如果<code class="highlighter-rouge">Java</code>程序想要读取该二进制文件并且反序列化称为一个<code class="highlighter-rouge">Java</code>对象该如何去做？ 首先使用<code class="highlighter-rouge">protoc</code>来生成<code class="highlighter-rouge">Java</code>相关的代码， 然后利用生成的代码按照官网指示去编写代码即可。 这样就完成了在多平台共享同一对象的作用。</p>
+
+<p>通过上面的例子我们对Protocol Buffers已经有了一个基本的认识， <code class="highlighter-rouge">.proto</code>文件就是一个结构定义文件， 利用<code class="highlighter-rouge">protoc</code>编译器可以生成<code class="highlighter-rouge">Python</code>, <code class="highlighter-rouge">Java</code>等语言代码， 依托于自动生成的代码， 我们可以将一个保存在文件中的二进制数据转换成<code class="highlighter-rouge">Python</code>对象， <code class="highlighter-rouge">Java</code>对象。 如果将该数据放到网络中， 就可以以对象的方式来进行不同平台间的通信了。 <code class="highlighter-rouge">gRPC</code>就是这样的一种工具。</p>
+
+<h4 id="4-grpc">4. gRPC</h4>
+<p>Protocol Buffers完成了不同语言之间的数据转换问题， 而<code class="highlighter-rouge">gRPC</code>则是使用Protocol Buffers进行不同服务间通信的RPC框架。 它帮我们建立了一个轻量且高效的<code class="highlighter-rouge">server</code>和<code class="highlighter-rouge">client</code>， 也就是说我们不必关心服务间怎么建立TCP连接， 怎么寻找方法调用， <code class="highlighter-rouge">gRPC</code>已经帮我们完成了这些功能。</p>
+
+<p>首先， 还是跑一遍官网的demo， 过程就不贴了， 直接贴官方所给出的实例代码， 首先当然是<code class="highlighter-rouge">.proto</code>文件：</p>
+
+<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
+
+<span class="kd">service</span> <span class="n">Greeter</span> <span class="p">{</span>
+  <span class="k">rpc</span> <span class="n">SayHello</span> <span class="p">(</span><span class="n">HelloRequest</span><span class="p">)</span> <span class="k">returns</span> <span class="p">(</span><span class="n">HelloReply</span><span class="p">)</span> <span class="p">{}</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">HelloRequest</span> <span class="p">{</span>
+  <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">HelloReply</span> <span class="p">{</span>
+  <span class="kt">string</span> <span class="kd">message</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>删除了一些与<code class="highlighter-rouge">Python</code>语言无关的代码， <code class="highlighter-rouge">service</code>指的就是远程调用的方法， 就像定义一个接口一样， 定义方法名称， 入参， 返回值类型以及一个空的方法体即可。 <code class="highlighter-rouge">message</code>的定义也比较简单， 可以看到方法的调用传入一个<code class="highlighter-rouge">HelloRequest</code>对象， 其中包含一个<code class="highlighter-rouge">name</code>字段； 返回一个<code class="highlighter-rouge">HelloReply</code>对象， 包含一个<code class="highlighter-rouge">message</code>字段。</p>
+
+<p>然后来分析<code class="highlighter-rouge">greeter_server.py</code>中的内容：</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">concurrent</span> <span class="kn">import</span> <span class="n">futures</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">grpc</span>
+
+<span class="kn">import</span> <span class="nn">helloworld_pb2</span>
+<span class="kn">import</span> <span class="nn">helloworld_pb2_grpc</span>
+
+<span class="n">_ONE_DAY_IN_SECONDS</span> <span class="o">=</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">24</span>
+
+
+<span class="k">class</span> <span class="nc">Greeter</span><span class="p">(</span><span class="n">helloworld_pb2_grpc</span><span class="o">.</span><span class="n">GreeterServicer</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">SayHello</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">helloworld_pb2</span><span class="o">.</span><span class="n">HelloReply</span><span class="p">(</span><span class="n">message</span><span class="o">=</span><span class="s">'Hello, </span><span class="si">%</span><span class="s">s!'</span> <span class="o">%</span> <span class="n">request</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">serve</span><span class="p">():</span>
+    <span class="n">server</span> <span class="o">=</span> <span class="n">grpc</span><span class="o">.</span><span class="n">server</span><span class="p">(</span><span class="n">futures</span><span class="o">.</span><span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
+    <span class="n">helloworld_pb2_grpc</span><span class="o">.</span><span class="n">add_GreeterServicer_to_server</span><span class="p">(</span><span class="n">Greeter</span><span class="p">(),</span> <span class="n">server</span><span class="p">)</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">add_insecure_port</span><span class="p">(</span><span class="s">'[::]:50051'</span><span class="p">)</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">_ONE_DAY_IN_SECONDS</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="n">server</span><span class="o">.</span><span class="n">stop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">'__main__'</span><span class="p">:</span>
+    <span class="n">serve</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>源代码还是值得看一看的， 对于<code class="highlighter-rouge">serve</code>方法， 首先是生成了包含10个线程的线程池， 并传入给了<code class="highlighter-rouge">grpc.server</code>方法。 非常缺略的过了一遍<code class="highlighter-rouge">grpc.server</code>方法， 应该是使用<code class="highlighter-rouge">Reactor</code>模型所实现的I/O多路复用模型， 至于底层是使用的<code class="highlighter-rouge">poll</code>还是<code class="highlighter-rouge">epoll</code>， 需要再详细的阅读， 这里的话知道这么一回事即可， 具体的源码分析先放一放。</p>
+
+<p>然后将<code class="highlighter-rouge">Greeter</code>对象和<code class="highlighter-rouge">server</code>对象传入给了<code class="highlighter-rouge">add_GreeterServicer_to_server</code>这个方法， 很明显是由<code class="highlighter-rouge">gRPC</code>所提供的， 这应该是一个通用方法， 然后绑定50051端口， 开启事件循环， 准备接受客户端的连接。</p>
+
+<p><code class="highlighter-rouge">Greeter</code>类继承了一个不知道是啥的类， 然后添加了一个在<code class="highlighter-rouge">.proto</code>中所定义的方法， 只不过这里比<code class="highlighter-rouge">.proto</code>文件多了一个参数， <code class="highlighter-rouge">context</code>， 这个参数有什么意义后面再讲。</p>
+
+<p>然后再来看客户端的代码：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+    <span class="k">with</span> <span class="n">grpc</span><span class="o">.</span><span class="n">insecure_channel</span><span class="p">(</span><span class="s">'localhost:50051'</span><span class="p">)</span> <span class="k">as</span> <span class="n">channel</span><span class="p">:</span>
+        <span class="n">stub</span> <span class="o">=</span> <span class="n">helloworld_pb2_grpc</span><span class="o">.</span><span class="n">GreeterStub</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">stub</span><span class="o">.</span><span class="n">SayHello</span><span class="p">(</span><span class="n">helloworld_pb2</span><span class="o">.</span><span class="n">HelloRequest</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">'you'</span><span class="p">))</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"Greeter client received: "</span> <span class="o">+</span> <span class="n">response</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>比较简单， 这里使用<code class="highlighter-rouge">with</code>来管理<code class="highlighter-rouge">channel</code>资源， 也就意味着在示例中是每调用一次方法都建立一个新的连接， 在实际使用中可以保持这个长连接， 有没有心跳机制还是需要看源码。 然后获取了一个<code class="highlighter-rouge">stub</code>对象， 直接调用了<code class="highlighter-rouge">SayHello</code>方法， 并实例化了一个<code class="highlighter-rouge">HelloRequest</code>对象作为参数传入， 打印调用结果。 远程过程调用就此结束。</p>
+
+<p>虽然官网给出的demo比较简单， 但是这的确是我们编写复杂逻辑的基础：</p>
+
+<p>1）定义<code class="highlighter-rouge">.proto</code>文件: 该文件包括client发送的对象以及server返回的对象， 以及服务名称和该服务下所对应的方法</p>
+
+<p>2）利用Google所提供<code class="highlighter-rouge">Python</code>类库生成<code class="highlighter-rouge">_pb2.py</code>以及<code class="highlighter-rouge">_pb2_grpc.py</code>文件， 前者为<code class="highlighter-rouge">.proto</code>文件所生成的数据结构文件， 后者服务于<code class="highlighter-rouge">gRPC</code>调用</p>
+
+<p>3）定义服务端代码：首先编写与<code class="highlighter-rouge">.proto</code>文件中<code class="highlighter-rouge">service</code>相同名称的类， 并继承<code class="highlighter-rouge">_pb2_grpc.py</code>中所对应的<code class="highlighter-rouge">servic</code>类， 然后实现定义好的函数</p>
+
+<p>4）启动服务端， 服务端为一个轻量级的<code class="highlighter-rouge">Reactor</code>模型， 根据服务器硬件条件定义线程池大小</p>
+
+<p>5）编写客户端调用代码</p>
+
+<h4 id="5-在生产环境中使用grpc">5. 在生产环境中使用gRPC</h4>
+<p>回顾一下我们使用<code class="highlighter-rouge">gRPC</code>框架的过程， 首先我们先得定义<code class="highlighter-rouge">.proto</code>文件， 编写函数调用的入参对象以及返回对象， 然后利用相关的编译工具生成<code class="highlighter-rouge">_pb2.py</code>以及<code class="highlighter-rouge">_pb2_grpc.py</code>文件， 前者为Protoco Buffers所需代码， 后者则为远程方法调用所用文件， 也就是说在client以及server中， 都需要这两个文件。</p>
+
+<p>那么问题就来了， 通常我们的client和server是两个不同的项目， 不会共用同一个代码仓库， 如果我的<code class="highlighter-rouge">.proto</code>文件位于<code class="highlighter-rouge">server</code>中， 此时修改了<code class="highlighter-rouge">.proto</code>文件， 重新编译并生成了代码， 这个时候client端也需要进行更新， 虽然直接把文件复制粘贴过去是可以解决的， 但是并不是很优雅。</p>
+
+<p>那么此时我们就可以使用<code class="highlighter-rouge">Git submodule</code>来管理公共子模块。 将<code class="highlighter-rouge">.proto</code>文件单独抽离成一个git项目， 然后在client和server端的仓库中使用该公共项目。</p>
+
+<p>关于<code class="highlighter-rouge">Git submodule</code>的更多内容请见文章<code class="highlighter-rouge">Git最佳实践</code>。</p>
+
+<h4 id="6-小结">6. 小结</h4>
+<p>在本篇文章中我们通过官方文档了解了<code class="highlighter-rouge">Protocol Buffers</code>以及<code class="highlighter-rouge">gRPC</code>的简单使用， 基本上这些内容也是我们在生产中使用最为频繁， 且核心的内容， 剩下的就是使用时的一些细节以及数据结构的设计。</p>
+
+<p>就我个人而言， 只有在需要高并发的场景下才会使用<code class="highlighter-rouge">gRPC</code>来进行远程调用， 普通场景下使用<code class="highlighter-rouge">RESTFul-API</code>来进行调用即可， 以获得最大的开发速度。</p>
+
+<p>然而<code class="highlighter-rouge">RPC</code>框架远不止<code class="highlighter-rouge">gRPC</code>， 市场上有相当多的选择， 具体的选择， 还是需要看团队对框架的熟悉程度以及具体的业务场景。</p>
+
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>分布式系统基础学习(01)--通信(TCP/UDP)</title>
+	  <link>//distributed-system-of-communication</link>
+	  <author></author>
+	  <pubDate>2019-01-03T09:49:09+00:00</pubDate>
+	  <guid>//distributed-system-of-communication</guid>
+	  <description><![CDATA[
+	     <p>分布式系统是一个很庞大的话题， 在我个人的知识版图中， 也仅仅只是对一小部分土地进行了开荒。 不管是分布式系统， 还是单机应用系统， 都是建立在互联网通信机制之上的。 而提到通信， 就不得不提到<code class="highlighter-rouge">TCP/UDP</code>这两个非常经典的协议。</p>
+
+<!---more--->
+
+<h4 id="1-为什么要学习tcp和udp">1. 为什么要学习TCP和UDP？</h4>
+<p>不管是科班出身还是自学出身的程序员， 或多或少的都会接触过这两个协议。 曾经我一度认为这玩意儿的底层原理有什么用？ 我直接使用语言给我封装好的<code class="highlighter-rouge">socket</code>接口或者是<code class="highlighter-rouge">http</code>协议不是更加方便吗， 了解了其原理又能怎样， 难道还能再实现一个相关协议出来吗？</p>
+
+<p>的确， 操作系统和框架已经将很多的细节隐藏了起来， 只为我们暴露非常简易的接口用于使用， 例如<code class="highlighter-rouge">socket</code>。 通过<code class="highlighter-rouge">socket</code>我们可以非常方便的建立TCP连接或者是UDP连接， 数据包的传输和解析也被隐藏， 使我们更加的专注于业务代码的编写。</p>
+
+<p>在绝大多数场景中， 我们根本不需要去了解其中的细节， 拿过来直接用就好了。 但是在高并发的系统中， 一个很重要的调优手段就是优化服务器的TCP连接， 在这其中有诸多参数我们可以进行配置， 有些参数不能被修改， 有的参数能够提升服务器的性能， 这个时候， 学习原理的价值也就体现出来了。</p>
+
+<p>我一直认为， <strong>优化==学习原理</strong>， 当我们将原理掌握之后， 对一行代码， 或者一个系统进行优化时， 就会游刃有余。</p>
+
+<h4 id="2-分层模型">2. 分层模型</h4>
+<p>虽然<code class="highlighter-rouge">TCP/UDP</code>协议属于传输层协议， 但是我们仍然需要以全局的眼光来看待。 网络分层有时会被分为5层， 有时会被分成7层， 后者是对5层模型的一个拓展， 本质上说的都是一个东西。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-05%2014-53-36%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>在这里以5层分层为例， 上图略去了物理层， 也就是光钎， 双绞线的比特传输， 这一层更偏向于物理硬件。 信息在互联网中传输是以数据包的形式进行的， 在传输时你发送一个包， 我接受一个包。</p>
+
+<p>最开始的报文由应用层组成， 里面包含所要发送的信息， 该包从上往下， 依次经过运输层， 网络层以及链路层的封装， 最终组成一个完整的数据包。 真实的组包过程要比上图复杂许多， 这个给出一个大致的利于理解的组包模型。</p>
+
+<h4 id="3--udp协议">3.  UDP协议</h4>
+<p>柿子挑软的捏， 相较于TCP协议， UDP协议更加的简单， 纯粹， 所以首先从UDP协议开始。</p>
+
+<p>UDP协议是一种不可靠的、无连接的传输层协议， 该协议只实现了传输层所要求的最低实现， 即进程到进程的数据交付和差错检查。 UDP协议只负责将数据报发送至远程， 不保证数据传输的有序性， 我们粗略的认为UDP协议就是直接和IP协议打交道， 自己并没有做什么额外的工作。</p>
+
+<h5 id="31-udp报文段结构">3.1 UDP报文段结构</h5>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center ](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-05%2016-32-04%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>UDP报文段比较简单， 头部一共仅包含4个字段， 包括源端口号， 目的端口号， UDP包总长以及校验和， 其中校验和就是UDP的差错检查。</p>
+
+<p>其中伪头部是UDP报文经过IP协议封装之后所添加的头部， 包括的内容如上图。 之所以要加一个伪头部， 是因为UDP在做校验时需要这些数据。</p>
+
+<h5 id="32-udp校验和">3.2 UDP校验和</h5>
+<p>我们通过抓包的方式来实际的看一下UDP校验和到时是什么， 首选写一个非常简单的代码， 能够让我们抓到UDP包即可：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_DGRAM</span><span class="p">)</span>
+<span class="n">message</span> <span class="o">=</span> <span class="n">b</span><span class="s">'Hello~'</span>
+<span class="n">client</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="p">(</span><span class="s">"111.111.122.122"</span><span class="p">,</span> <span class="mi">7070</span><span class="p">))</span>
+<span class="n">modified_message</span><span class="p">,</span> <span class="n">server_address</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">(</span><span class="mi">4096</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">modified_message</span><span class="p">)</span>
+<span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>通过<code class="highlighter-rouge">wireshark</code>对该数据的发送进行抓包：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/wireshark_UDP.png" alt="" /></p>
+
+<p>在<code class="highlighter-rouge">wireshark</code>的界面中， 可以非常清晰的看到应用层数据包， UDP包， IP包以及以太网包的内容和每一层的封装过程， 与上图的4层模型是可以对应起来的。</p>
+
+<p>将抓包所得的数据填充至上图中， 可以得到：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-05%2016-45-07%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>然后刨去校验和(6ee5)， 将剩余的9个数据进行循环加法， 并对结果进行按位取反即可， 所得到的结果与UDP校验和进行对比， 若不相同， 则说明该包已经遭到损坏， 直接丢弃。</p>
+
+<p>事实上， 当校验失败的时候， UDP协议对差错的恢复根本无能为力， 因为是无连接的协议， 所以不能通知发送方再发送一次， 只能将包丢弃。</p>
+
+<h5 id="33-为何使用udp协议">3.3 为何使用UDP协议</h5>
+<p>在实际的体验了UDP协议的封包过程之后， 大致可以理解为什么UDP协议是不可靠的， 因为它对已损坏的包只能采取丢弃行为， 那么在客户端看来， 就切切实实的丢失了数据。</p>
+
+<p>但是由于无连接的特性， 使得UDP协议要比面向连接的TCP协议拥有更快的数据传输。 这里的更快是指UDP协议不需要建立连接， 省去了这个过程。 此外UDP协议还提供广播服务， 可以用于内网的多播服务， 效率要比TCP协议更高。</p>
+
+<p>基于上面的特性， DNS协议就是基于UDP协议所实现的， 这样一来就能够尽可能快的返回某个域名的IP地址。</p>
+
+<h4 id="4-可靠数据传输">4. 可靠数据传输</h4>
+<p>TCP协议是面向连接的、可靠的、具有拥塞机制的传输协议， 是目前使用最为广泛的传输层协议。 更极端的来讲， 99%的互联网应用都是由TCP协议所构成的。 TCP协议伟大的地方就在于它在不可靠的通信链路上实现了可靠的数据传输， 这也是TCP协议理解起来最为困难的地方。</p>
+
+<p>我在回答<code class="highlighter-rouge">TCP连接为什么是可靠的</code>这个问题上花了很长的时间， 也找了很多资料， 没有什么特别好的博客把这个问题讲的非常清楚和完整。 在不断的阅读<code class="highlighter-rouge">计算机网络-自顶向下方法</code>的<code class="highlighter-rouge">可靠数据传输原理</code>这一小节之后， 算是有一些理解。 所以这一小节主要是对书本上内容的一个解读和图例的展示， 图例会以我所理解的方式重新进行绘制。 对这部分内容不感兴趣或者有些难以理解的小伙伴儿可以跳过这一小节， 直接看下面的内容。</p>
+
+<h4 id="41-可靠通信链路">4.1 可靠通信链路</h4>
+<p>如果我们的通信链路是非常可靠的， 不存在丢包或者是字节损坏的问题， 那么这个时候发送方只管发送， 接收方只管接受。 在这种状态下， 发送方知道自己的包一定会被接收方接受， 接收方也知道自己接受到的信息一定是无损的。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2010-03-46%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<h5 id="42-具有字节损坏的通信链路">4.2 具有字节损坏的通信链路</h5>
+<p>完全可靠的通信链路在现实生活中是不存在的， 我们将通信链路的不可靠性一点一点向前推进， 在这里， 我们假定通信链路会对包的字节造成损坏， 但是不会有丢包的情况。</p>
+
+<p>在这个条件下， 我们可以定义一个ACK包和NAK包。 当接受方接受到完整无错的数据时， 会给发送方一个ACK包， 当接受的包出现了损坏时， 回给发送方一个NAK包。 发送方在接收到了NAK包之后， 就知道刚才发的包出错了， 进行一次重传。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2010-15-17%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>在这种解决方案下， 发送方只有在接受到了前一个包的NAK或者是NAK包之后， 才会对下一个数据包进行发送(如果是NAK则对上一个包进行重传)， 这个我们称之为<strong>停等协议</strong>， 发送方完全停止工作， 等待接收接收方所发送的确认包。</p>
+
+<p>比较遗憾的是， 虽然这个解决方案看起来能够work， 但是这是建立在ACK， NAK包不会遭到损坏的条件下。 确认包也是通过通信链路发送的， 那么就有可能遭受损坏。</p>
+
+<p>在网络数据传输时， 我们无法对一个数据包进行标记， 如果要标记一个数据包， 只能在包内部的某一个位置进行标记。 通常来讲ACK标记为1， NAK包标记为0。 当ACK包在传输时， 数值1被损坏， 变成了2， 那么这个时候发送方就傻眼儿了， 这不按套路出牌啊， 给我个2是什么鬼， 2是个啥？ 那我是不管呢， 还是重新发一个包过去？ 重新发一个包会不会造成数据重复？</p>
+
+<p>在上面的分析我们可看到， 发送方在接受到了收到损坏的确认包之后， 如果进行重新发送， 很有可能造成数据重复的问题， 为了解决这个， 我们可以对发送的每一个包进行编号。 这样一来如果发送方在接受到了一个收到损坏的确认包并进行重传时， 接收方就能够知道这个包是重传的了， 如果该序号的包自己已经处理过了， 那么直接回一个ACK包就行， 不会造成数据重复。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2010-46-28%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>那么这个时候ACK或者是NAK包收到损坏的问题就解决了， 反正发送方收到了损坏的确认包， 就直接重传刚才发送的包就好了， 接收方会对数据是否重复进行处理。</p>
+
+<p>这个解决方案还是有一个问题， 就是发送方必须要收到刚才数据包的确认包之后才能发送下一个新的数据包， 因为ACK包没有加上数据包的编号， 就只能通过这种串行的处理来保证这个ACK包是用来确认刚才所发送的数据包的。 所以我们再在ACK包中放一个包的编号。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2011-08-36%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>在这个版本中我们对ACK包和NAK包均进行编号， 这样一来发送方就有能力同时发送多个数据包了。 在此之外， 我们还可以对NAK包进行一下改进。</p>
+
+<p>当我们收到了编号10的数据包并校验失败之后， 不再发送NAK包， 而是再发送一个编号为9的ACK包， 这样一来发送方也能够知道10号包需要重发一次。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2011-14-01%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>到了最后一个版本， 我们已经能够比较好的处理在通信链路上出现的字节丢失问题了， 主要手段就是重传整个数据包， 并通过对数据包进行编号的方法， 解决ACK包不可靠以及接收方所出现的消息重复问题。</p>
+
+<h5 id="43-具有丢包的通信链路">4.3 具有丢包的通信链路</h5>
+<p>这一次通信链路不仅会使得字节遭到损坏， 并且比较过分， 数据包整个都没有了， 简单分析一下这个过程。</p>
+
+<p>发送方发送一个编号为15的数据包， 不幸的是， 这个包在传输时不小心丢了， 接收方没有接到这个数据包， 自然也不会回送一个编号为15的ACK包。 发送方等啊等， 迟迟没有收到编号为15的ACK包， 所以这个时候我们需要一个倒计时定时器。</p>
+
+<p>当发送方在一定时间内没有收到某个特定编号的ACK包时， 对该数据包进行重传。 所以， 发送方定时器要做这些事情：</p>
+<ol>
+  <li>每次发送一个数据包时(包括重传的包)， 启动一个定时器。</li>
+  <li>当定时器运行到终点时， 重发该数据包； 当定时器未结束便收到了ACK包， 则终止该计时器。</li>
+</ol>
+
+<p>那么到这里， 我们通过使用校验和， 包编号， 定时器， 肯定确认(单个ACK)和否定确认(重复ACK)建立了一个能够在不可靠信道上进行可靠数据传输的机制， 不管通信信道会造成字节损坏还是丢包， 该机制都能够正常应对。 在这里总结一个每个小技术的作用。</p>
+
+<ul>
+  <li>校验和： 用于判断数据包是否发生了字节丢失。</li>
+  <li>包编号： 接下来， 我们将编程称之为<strong>序号</strong>， 序号的作用有2个， 一是使得发送方能够同时发送多个数据包， 另一个作用就是解决数据重复的问题。</li>
+  <li>定时器： 当发生丢包时， 发送方能够对丢失的包进行重传。</li>
+  <li>肯定确认： 包含一个序号的ACK包， 用于确认某序号的数据包被成功接收。</li>
+  <li>否定确认： 一个重复的ACK包， 告知数据包验证失败。</li>
+</ul>
+
+<h5 id="44-具有更高效率的传输协议">4.4 具有更高效率的传输协议</h5>
+<p>在4.3小结中， 我们得到了具有可靠传输的最终版本， 也就是添加定时器的版本。 但是这个版本仍然是使用的停等协议， 一次只能发送一个数据包， 收到ACK之后发送第二个， 效率实在是太低了。 在我们为包添加了序号之后， 其实是可以一次传输多个数据包的。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2013-47-51%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如上图所示， 一次性的发送了5个数据包。 其中13号数据包接收方返回的ACK序号为12， 说明13号包校验失败， 重新发送13号数据包。 接收方在发送14号数据包的ACK时意外丢失， 发送发在接收14号ACK包发生超时， 对14号数据包进行超时重传。 该模型已经比较的接近真实TCP协议了。</p>
+
+<h4 id="5-tcp协议">5. TCP协议</h4>
+<p>TCP协议是一种面向连接的， 可靠的， 具有拥塞机制的传输层协议， 相较于UDP协议， TCP协议能够保证数据包的有序性以及可靠性， 即使在使用不可靠的底层通信链路传输数据的情况下， TCP协议依然能够保证数据的完整性。 基于这些特性， 也就决定了TCP协议在传输层的统治地位。</p>
+
+<h5 id="51-tcp报文段结构">5.1 TCP报文段结构</h5>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2015-01-59%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>这里对其进行一个基本的划分：</p>
+<ol>
+  <li>序号和确认号是TCP头部最为重要的两个数据， 和校验和一起提供可靠数据传输</li>
+  <li>RST, SYN, FIN主要用于连接的建立与关闭， 在三次握手和四次挥手中将会发挥作用。 ACK用于确认接收方已成功接收数据， 这4个数据均只占一个bit。</li>
+  <li>接收窗口是TCP协议所提供的拥塞机制的具体体现， 稍后会提到。</li>
+  <li>URG, PSH以及紧急数据指针似乎在实际中并没有用到， 所以直接划掉， 不管这些。</li>
+</ol>
+
+<h5 id="52-三次握手">5.2 三次握手</h5>
+<p>既然TCP协议是面向连接的传输协议， 那么就必然会有通道连接的过程， 并且该过程必须可靠， 所以是三次握手， 而不是两次握手。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2015-32-14%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>SYN， 全称为<code class="highlighter-rouge">Synchronized Sequence Number</code>， 同步序列编号， 为三次握手发起的信号， 所有的握手都是以SYN为起点的。 需要特别注意的是， SYN， ACK等都是标志位， 只占一个bit。 发起连接的客户端会随机的选取一个序列号， 这个我们写为<code class="highlighter-rouge">client_isn</code>， 在上图中写为0是因为大多数的客户端起始序列号都是0， 并不代表起始序列号一定是0。</p>
+
+<p>当服务端接收到SYN标志位的包以后， 也随机的生成一个序列号， 写为<code class="highlighter-rouge">server_isn</code>。 与发起方一样， 大多数接收方的其实序列号也为0。 确认号(Acknowledge Number)的生成规则是将收到的序列号加1， 所以这里的值为1， 并将ACK标志位置为1， 返回给发送方。</p>
+
+<p>发送方接收到了这个包之后得回一个ACK包， 这是发送方发的第2个包， 由于前一个SYN包所发送的数据为0字节， 所以此时的序号直接加1， 确认号为接收到的序列号加1， 所以返回的Seq和确认号均为1。</p>
+
+<p>更加通用的三次握手图示：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2015-52-02%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>一定要区分ACK标志位和ACK确认号， 这两个不是同一个东西。 ACK标志位仅仅只是一个标志， 取值只有0和1； ACK确认号才是可靠传输的关键， 只不过在实际情况中并没有直接将收到的包序号返回， 在握手阶段由于SYN包和AYNACK包不会携带具体信息， 所以说确认号只会进行加1操作。 而在正常的数据传输过程中， ACK确认号为数据包的序号+数据字节数。</p>
+
+<h5 id="53-拥塞机制">5.3 拥塞机制</h5>
+<p>TCP协议要比UDP协议更加”智能”一些， 当接收方所能够接收的信息有限时， TCP会降低数据包的发送速率， 使得接收方不会因为大量数据的到来而被淹没。</p>
+
+<p>拥塞机制是一个很大的话题， 再加上目前能力有限， 所以在这一小节中只会对滑动窗口进行一个简单的介绍。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-07%2014-26-13%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>假设在三次握手时， 通过AYNACK包得知接收方的窗口大小为4， 那么发送方每一次最多发送4个数据分组。</p>
+
+<p>如上图所示， 其中7， 8编号为已经发送并收到确认号的分组， 9， 10， 11， 12号分组为即将发送的分组。 当这4个分组发送出去之后， 发送方不会再发送13号分组(窗口大小限制)， 除非收到了9号分组的ACK。 这个假设我们的每个分组大小均为1， 所以9号包将会返回一个ACK=10。 9号包返回之后， 13号包发送， 10号包返回， 14号包发送。</p>
+
+<p>在发送分组以及接收分组的ACK包的过程中， 窗口不断的向前移动， 所以称之为滑动窗口。 这是一个非常简易的图例， 实际上， 在接收方， 同样也有接收窗口。</p>
+
+<p>窗口大小在三次握手阶段就得到了确认， 包括双方的窗口大小。</p>
+
+<h5 id="54-四次挥手">5.4 四次挥手</h5>
+<p>四次挥手要比三次握手稍微复杂一些， 原因也很简单。 想象一下你过年从外婆家离开， 外婆和你肯定要絮叨一下， 并且还会给你塞点儿东西才放你走。 四次挥手的过程与这个差不多。</p>
+
+<p>四次挥手的图例以及过程有一个博客我觉得讲的非常好， 还做了动图进行展示， 虽然平台为CSDN。</p>
+
+<blockquote>
+  <p>https://blog.csdn.net/qzcsu/article/details/72861891</p>
+</blockquote>
+
+<p>扪心自问我没办法做的这么好， 值得学习， 所以这一块儿的内容请移步该作者博客。</p>
+
+<h4 id="6-小结">6. 小结</h4>
+<p>我认为在网络协议中， 更为重要的是<strong>理解TCP连接为什么是可靠的</strong>， 为了保证可靠性和性能， TCP协议有哪些具体的实现， 这些思想在日常的编程过程非常值得借鉴。</p>
+
+
+	  ]]></description>
+	</item>
+
+
+</channel>
+</rss>

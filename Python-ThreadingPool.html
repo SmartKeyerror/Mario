@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Java并发编程(05)--Python线程池源码剖析</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Python-ThreadingPool" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java并发编程(05)--Python线程池源码剖析" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//Python-ThreadingPool" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Java并发编程(05)--Python线程池源码剖析" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Python-ThreadingPool" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Java并发编程(05)--Python线程池源码剖析",
+    "url": "https://smartkeyerror.com//Python-ThreadingPool",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Java并发编程(05)--Python线程池源码剖析</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-12-24">24 Dec 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/并发编程'>并发编程</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>本来是一个对<code class="highlighter-rouge">Java</code>并发编程的一个学习和总结专题， 虽然<code class="highlighter-rouge">Python</code>有<code class="highlighter-rouge">GIL</code>的存在， 但不能否认其线程池的实现非常的简洁而优雅， 此外温故而知新， 通过理解其它语言的线程池也能够加深我们对<code class="highlighter-rouge">Java</code>线程池的理解。</p>
+
+<!---more--->
+
+<h4 id="1-简单使用">1. 简单使用</h4>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">from</span> <span class="n">concurrent</span><span class="o">.</span><span class="na">futures</span> <span class="kn">import</span> <span class="nn">ThreadPoolExecutor</span>
+
+
+<span class="n">def</span> <span class="nf">do_something</span><span class="o">(*</span><span class="n">args</span><span class="o">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="o">):</span>
+    <span class="n">print</span><span class="o">(</span><span class="s">"*****"</span><span class="o">)</span>
+
+<span class="n">def</span> <span class="nf">start</span><span class="o">(*</span><span class="n">args</span><span class="o">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="o">):</span>
+    <span class="n">with</span> <span class="nf">ThreadPoolExecutor</span><span class="o">(</span><span class="mi">10</span><span class="o">)</span> <span class="n">as</span> <span class="nl">executor:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="n">in</span> <span class="nf">range</span><span class="o">(</span><span class="mi">20</span><span class="o">):</span>
+            <span class="n">executor</span><span class="o">.</span><span class="na">submit</span><span class="o">(</span><span class="n">do_something</span><span class="o">,</span> <span class="o">*</span><span class="n">args</span><span class="o">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="o">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="o">:</span>
+    <span class="n">start</span><span class="o">()</span>
+</code></pre></div></div>
+
+<p>在<code class="highlighter-rouge">Python</code>中使用线程池非常的简单， <code class="highlighter-rouge">ThreadPoolExecutor</code>只接收<code class="highlighter-rouge">max_workers</code>和<code class="highlighter-rouge">thread_name_prefix</code>这两个<code class="highlighter-rouge">__init__</code>参数， 其余的内容<code class="highlighter-rouge">Python</code>都为我们准备好了， 直接使用即可。</p>
+
+<p>并且由于<code class="highlighter-rouge">ThreadPoolExecutor</code>实现了<code class="highlighter-rouge">__enter__</code>和<code class="highlighter-rouge">__exit__</code>方法， 使得我们可以使用上下文管理器来自动管理线程池的关闭， 而不必担心资源没有被释放的问题。</p>
+
+<h4 id="2-__init__方法剖析">2. <code class="highlighter-rouge">__init__</code>方法剖析</h4>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_workers</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">thread_name_prefix</span><span class="o">=</span><span class="s">''</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">max_workers</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">max_workers</span> <span class="o">=</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="ow">or</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">5</span>
+    <span class="k">if</span> <span class="n">max_workers</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="nb">ValueError</span><span class="p">(</span><span class="s">"max_workers must be greater than 0"</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_max_workers</span> <span class="o">=</span> <span class="n">max_workers</span>
+    <span class="c"># 工作队列， 默认是无界的</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_work_queue</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+    <span class="c"># 保存线程的集合</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_threads</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_thread_name_prefix</span> <span class="o">=</span> <span class="p">(</span><span class="n">thread_name_prefix</span> <span class="ow">or</span>
+                                <span class="p">(</span><span class="s">"ThreadPoolExecutor-</span><span class="si">%</span><span class="s">d"</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_counter</span><span class="p">()))</span>
+</code></pre></div></div>
+
+<p>首先是对<code class="highlighter-rouge">max_workers</code>参数进行判断以及赋值， 当不传该参数时， 默认会给5倍的CPU数量或者5个工作线程。 这里的工作队列使用了<code class="highlighter-rouge">queue.Queue</code>， 一个无界且线程安全的队列， 然后定义了成员锁变量以及其它参数。</p>
+
+<h4 id="3-submit方法剖析">3. <code class="highlighter-rouge">submit</code>方法剖析</h4>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">submit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown_lock</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="nb">RuntimeError</span><span class="p">(</span><span class="s">'cannot schedule new futures after shutdown'</span><span class="p">)</span>
+
+        <span class="n">f</span> <span class="o">=</span> <span class="n">_base</span><span class="o">.</span><span class="n">Future</span><span class="p">()</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">_WorkItem</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_work_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_adjust_thread_count</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">f</span>
+
+<span class="k">def</span> <span class="nf">_adjust_thread_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">weakref_cb</span><span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_work_queue</span><span class="p">):</span>
+        <span class="n">q</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+    <span class="n">num_threads</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_threads</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">num_threads</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_workers</span><span class="p">:</span>
+        <span class="n">thread_name</span> <span class="o">=</span> <span class="s">'</span><span class="si">%</span><span class="s">s_</span><span class="si">%</span><span class="s">d'</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_thread_name_prefix</span> <span class="ow">or</span> <span class="bp">self</span><span class="p">,</span>
+                                 <span class="n">num_threads</span><span class="p">)</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">thread_name</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">_worker</span><span class="p">,</span>
+                             <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weakref_cb</span><span class="p">),</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">_work_queue</span><span class="p">))</span>
+        <span class="n">t</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>  <span class="c"># 守护线程</span>
+        <span class="n">t</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_threads</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>  <span class="c"># 将该线程置于集合中</span>
+        <span class="n">_threads_queues</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_work_queue</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">submit</code>方法可以认为是<code class="highlighter-rouge">ThreadPoolExecutor</code>的核心方法， 该方法接收一个函数对象以及该函数的参数， 将该函数包装成一个<code class="highlighter-rouge">_WorkItem</code>对象。 该对象做的事情其实也很简单， 执行任务函数， 并将结果赋予到<code class="highlighter-rouge">Future</code>对象的<code class="highlighter-rouge">_result</code>私有属性中。 将包装对象放置于任务队列中， 然后判断是否需要开启新的线程来执行刚才所提交的任务。 当当前的线程数量小于最大线程数时， 开启一个新的守护线程去执行<code class="highlighter-rouge">_worker</code>函数。</p>
+
+<p>那么<code class="highlighter-rouge">_worker</code>应该就是一个循环， 不断的从工作队列中取任务并执行， 源码也证实了这一点：</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">_worker</span><span class="p">(</span><span class="n">executor_reference</span><span class="p">,</span> <span class="n">work_queue</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="c"># 以阻塞方式不断的取任务</span>
+            <span class="n">work_item</span> <span class="o">=</span> <span class="n">work_queue</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">work_item</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="c"># 执行该任务， 并将结果置于Future对象中</span>
+                <span class="n">work_item</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+                <span class="c"># Delete references to object. See issue16284</span>
+                <span class="k">del</span> <span class="n">work_item</span>
+                <span class="k">continue</span>
+            <span class="n">executor</span> <span class="o">=</span> <span class="n">executor_reference</span><span class="p">()</span>  <span class="c"># executor是一个弱引用对象</span>
+            <span class="k">if</span> <span class="n">_shutdown</span> <span class="ow">or</span> <span class="n">executor</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">executor</span><span class="o">.</span><span class="n">_shutdown</span><span class="p">:</span>
+                <span class="c"># Notice other workers</span>
+                <span class="c"># 以一种链式的方式通知其它工作线程结束</span>
+                <span class="n">work_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+                <span class="k">return</span>
+            <span class="k">del</span> <span class="n">executor</span>
+    <span class="k">except</span> <span class="nb">BaseException</span><span class="p">:</span>
+        <span class="n">_base</span><span class="o">.</span><span class="n">LOGGER</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="s">'Exception in worker'</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>值得探究的是当<code class="highlighter-rouge">_shutdown</code>为真或者其它标志着线程池已经关闭的变量为真时， 代码向工作队列里面儿丢了一个<code class="highlighter-rouge">None</code>值， 为什么？ 假设我们现在有10个工作线程， 其中一部分在执行任务， 另一部分休眠等待任务获取， 此时我们关闭该线程池， 会发生什么？</p>
+
+<p>下面的<code class="highlighter-rouge">shutdown</code>方法贴出了关闭线程池时所做的事情， 因为<code class="highlighter-rouge">work_queue.get()</code>是一种抢占式的， 谁先拿到锁谁获得到任务， 所以10个工作线程其中一个拿到了<code class="highlighter-rouge">None</code>, 知道了线程池被关闭， 在关闭自己之前得通知其它兄弟关闭自己， 所以往队列中丢一个<code class="highlighter-rouge">None</code>值。 那么这样一来， 每个线程结束自己之前都通知其它兄弟线程该溜了， 到最后所有的线程都能平滑的关闭。</p>
+
+<h4 id="3-shutdown方法剖析">3. <code class="highlighter-rouge">shutdown</code>方法剖析</h4>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="c"># 首先获取显示锁， 避免有新的任务继续添加</span>
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown_lock</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_work_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+    <span class="c"># 如果wait为True， 则该方法等待所有的任务执行完毕之后才返回</span>
+    <span class="k">if</span> <span class="n">wait</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_threads</span><span class="p">:</span>
+            <span class="n">t</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+</code></pre></div></div>
+<p><code class="highlighter-rouge">Python</code>的<code class="highlighter-rouge">shutdown</code>主要做了两件事： 重置<code class="highlighter-rouge">_shutdown</code>变量， 以及向工作队列中添加一个<code class="highlighter-rouge">None</code>值。 添加<code class="highlighter-rouge">None</code>值的意义在于使得<code class="highlighter-rouge">_worker</code>方法中的<code class="highlighter-rouge">work_queue.get(block=True)</code>从阻塞状态中被唤醒， 得以继续向下执行， 由于取出来的任务为None， 并且此时<code class="highlighter-rouge">_shutdown</code>为<code class="highlighter-rouge">True</code>， 那么该工作线程自然而然的就退出了。</p>
+
+<p>到这里其实任务的创建与添加， 线程池内部原理以及线程池的关闭就完成了， 剩下的就是一些高级的内容， 例如线程池的<code class="highlighter-rouge">map</code>方法以及<code class="highlighter-rouge">Future</code>对象的内部组成， 接下来这两个内容。</p>
+
+<h4 id="4-executormap方法剖析">4. <code class="highlighter-rouge">Executor.map</code>方法剖析</h4>
+<p><code class="highlighter-rouge">ThreadPoolExecutor</code>继承于<code class="highlighter-rouge">Executor</code>类， 重写了<code class="highlighter-rouge">submit</code>以及<code class="highlighter-rouge">shutdown</code>方法， 并添加了一些其余的核心函数， 而<code class="highlighter-rouge">map</code>方法则是定义在<code class="highlighter-rouge">Executor</code>对象中的:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="o">*</span><span class="n">iterables</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">timeout</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">'timeout'</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">end_time</span> <span class="o">=</span> <span class="n">timeout</span> <span class="o">+</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="n">fs</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="k">for</span> <span class="n">args</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">izip</span><span class="p">(</span><span class="o">*</span><span class="n">iterables</span><span class="p">)]</span>
+
+    <span class="k">def</span> <span class="nf">result_iterator</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">future</span> <span class="ow">in</span> <span class="n">fs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">(</span><span class="n">end_time</span> <span class="o">-</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">future</span> <span class="ow">in</span> <span class="n">fs</span><span class="p">:</span>
+                <span class="n">future</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">result_iterator</span><span class="p">()</span>
+</code></pre></div></div>
+<p>首先是获取<code class="highlighter-rouge">timeout</code>参数， 单位为秒， 用于设置该任务的最大执行时间。 当任务执行超过了该时间， 方法将会抛出<code class="highlighter-rouge">TimeoutError</code>。 <code class="highlighter-rouge">izip</code>方法有些类似于<code class="highlighter-rouge">zip</code>方法， 将两个或者多个迭代对象进行组合， 并返回一个迭代器：</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">izip</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="n">b</span> <span class="o">=</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+<span class="p">[</span><span class="n">output</span><span class="p">]:</span>
+<span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>总之， <code class="highlighter-rouge">submit</code>方法返回一个<code class="highlighter-rouge">Future</code>对象， 那么<code class="highlighter-rouge">fs</code>这个列表中也就保存着所有任务的<code class="highlighter-rouge">Future</code>对象。 <code class="highlighter-rouge">result_iterator</code>是个闭包， 本质上是实现的一个生成器， 该生成器中即为任务执行的结果。</p>
+
+<p><code class="highlighter-rouge">map</code>的调用方式其实比较简单， 用于执行任务列表：</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="nb">map</span><span class="p">(</span><span class="n">do_something</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p>需要注意的是， <code class="highlighter-rouge">executor.map</code>方法是阻塞的， 只有在所有的任务执行完毕之后才会返回最终的结果， 但是是以多线程的方式进行执行。</p>
+
+<h4 id="5-submit与map方法的对比">5. <code class="highlighter-rouge">submit</code>与<code class="highlighter-rouge">map</code>方法的对比</h4>
+<p>在<code class="highlighter-rouge">map</code>方法中， 实际上是调用了<code class="highlighter-rouge">submit</code>方法， 并获取结果形成一个生成器返回， 此时生成器中为执行结果。 而<code class="highlighter-rouge">submit</code>方法立即返回一个<code class="highlighter-rouge">Future</code>对象， 但是结果的获取仍然阻塞， 并且我们需要自己维护一个任务结果队列， 然后进行结果的获取。</p>
+
+<p>这样一来两者直接的区别就非常清晰了：粗略的来讲， <code class="highlighter-rouge">submit</code>方法适用于不需要返回结果的任务， <code class="highlighter-rouge">map</code>方法适用于需要返回结果的任务。 然而现实并没有那么简单, <code class="highlighter-rouge">submit</code>更加灵活， 能够对每一个任务进行状态查看和取消， 而<code class="highlighter-rouge">map</code>方法更像一个黑盒子， 无法查看任务执行的过程。</p>
+
+<p>还是那句话， 选哪个， 看具体的业务场景和需求。 但是为了避免”手里是锤子， 看什么都是钉子”的现象发生， 两种方法都需要掌握。</p>
+
+<h4 id="6-future对象">6. Future对象</h4>
+<p>在了解<code class="highlighter-rouge">Future</code>对象的代码之前， 首先需要理解<code class="highlighter-rouge">Condition</code>对象。</p>
+
+<h5 id="61-condition">6.1 Condition</h5>
+<p><code class="highlighter-rouge">Condition</code>对象提供了对复杂线程同步问题的支持， 同时<code class="highlighter-rouge">Condition</code>又被称为”条件锁”或者”条件变量”， 除了提供像<code class="highlighter-rouge">Lock</code>一样的<code class="highlighter-rouge">acquire</code>以及<code class="highlighter-rouge">release</code>这些常规的锁方法之外， 还提供了<code class="highlighter-rouge">wait</code>以及<code class="highlighter-rouge">notify</code>方法。</p>
+
+<p>当线程acquire一个条件变量， 当条件变量不满足条件的时候， 则进行wait操作； 当条件满足时， 进行处理并改变一些其它的条件， 使用notify方法通知其它的线程(兄dei， 你的条件满足了， 不要再等待了， Go!)。 当我们不断的重复这个过程时， 就能够达到复杂问题的同步化。</p>
+
+<p>并且<code class="highlighter-rouge">Condition</code>对象的中的锁是可重入的， 即可以连续的调用<code class="highlighter-rouge">Condition.acquire</code>方法</p>
+
+<h5 id="62-future对象方法">6.2 Future对象方法</h5>
+<p>纵观整个的<code class="highlighter-rouge">Future</code>对象代码， 方法比较简单， 主要就是<code class="highlighter-rouge">set_result</code>以及<code class="highlighter-rouge">set_exception_info</code>， 其余的就是对<code class="highlighter-rouge">Condition</code>的加锁， 解锁以及notify。 因为时间的关系， 所以没有对该对象进行<code class="highlighter-rouge">DEBUG</code>调试， 那么每个锁为什么这么加， 为什么需要调用<code class="highlighter-rouge">notify_all</code>方法， 目前仍然不是很清楚。</p>
+
+<p>另外需要注意的是， 当我们调用<code class="highlighter-rouge">ThreadPoolExecutor.submit</code>方法并接收了一个<code class="highlighter-rouge">Future</code>对象时， 如果此时任务已经开始执行，那么该任务是不可被取消的。 只有任务在<code class="highlighter-rouge">PENDING</code>时， 任务才有可能被取消执行， 这一点需要特别注意。</p>
+
+<h4 id="7-使用线程池">7. 使用线程池</h4>
+<p>在上面大致了解释了一下<code class="highlighter-rouge">ThreadPoolExecutor</code>的源码， 看源码是为了更好的使用， 那么将源码所分析的信息进行整理， 就能够得到很清晰的使用经验。</p>
+
+<p>1）执行I/O密集型任务，并以异步的方式进行执行(任务添加完成之后直接去干别的事情)。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">executor</span> <span class="o">=</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span>
+    <span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">do_something</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="n">executor</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>2）需要等待结果的产生， 并使用执行的结果去做下面的事情</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 那么在这种情况下， 就可以使用with语句块， 并结合map方法直接获取结果</span>
+
+<span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+    <span class="c"># 阻塞直到所有结果返回</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">executor</span><span class="o">.</span><span class="nb">map</span><span class="p">(</span><span class="n">do_something</span><span class="p">,</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">)]))</span>
+</code></pre></div></div>
+
+<p>3）既希望使用<code class="highlighter-rouge">with</code>， 又想以异步的方式执行， 此时我们可以继承<code class="highlighter-rouge">ThreadPoolExecutor</code>， 改写其<code class="highlighter-rouge">__exit__</code>方法</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">SynchronousThreadPoolExecutor</span><span class="p">(</span><span class="n">ThreadPoolExecutor</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">False</span>
+</code></pre></div></div>
+
+<p>4）线程池的创建和线程的创建需要花费时间， 所以希望以单例的方式在整个系统中运行。 此时可以使用类的单例模式， 也可以使用<code class="highlighter-rouge">import</code>的方式， <code class="highlighter-rouge">Python</code>中的单例实现方式有多种， 比较灵活， 熟悉哪个用哪个</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># utils.py</span>
+<span class="n">thread_pool</span> <span class="o">=</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="c"># client.py</span>
+<span class="kn">from</span> <span class="nn">utils</span> <span class="kn">import</span> <span class="n">thread_pool</span>
+
+<span class="c"># 或者使用__new__实现单例</span>
+<span class="n">lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+
+<span class="k">class</span> <span class="nc">SingletonThreadPool</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">pool</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="s">"pool"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">pool</span><span class="p">:</span>
+            <span class="c"># 采用双重校验锁, 确保单一实例的初始化以及提高并发量</span>
+            <span class="k">with</span> <span class="n">lock</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s">"pool"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">pool</span><span class="p">:</span>
+                    <span class="n">thread_pool</span> <span class="o">=</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+                    <span class="n">cls</span><span class="o">.</span><span class="n">pool</span><span class="p">[</span><span class="s">"pool"</span><span class="p">]</span> <span class="o">=</span> <span class="n">thread_pool</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">pool</span><span class="p">[</span><span class="s">"pool"</span><span class="p">]</span>
+</code></pre></div></div>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Java并发编程(05)--Python线程池源码剖析&amp;url=https://smartkeyerror.comPython-ThreadingPool"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comPython-ThreadingPool"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comPython-ThreadingPool"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/AbstractQueuedSynchronizer">
+            <section class="post">
+                <h2>Java并发编程(06)--AbstractQueuedSynchronizer</h2>
+                <p>在整理下一篇文章， 有关锁的知识之前， 有一个无论如何都绕不开的话题：AbstractQueuedSynchronizer， 队列同步器， 通常简称AQS。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Java-ThreadingPool">
+            <section class="post">
+                <h2>Java并发编程(04)--线程池</h2>
+                <p>抛开Java自己封装的newFixedThreadPool, newCachedThreadPool等工厂线程池方法， 最核心的就是ThreadPoolExecutor的配置， 包括线程池的大小， 工作队列， 空闲线程存活时间以及饱和策略。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

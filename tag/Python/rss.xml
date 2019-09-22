@@ -1,0 +1,492 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+   
+      <title>smartkeyerror.com/</title>
+   
+   <link>https://smartkeyerror.com</link>
+   <description></description>
+   <language>en-uk</language>
+   <managingEditor> </managingEditor>
+   <atom:link href="rss" rel="self" type="application/rss+xml" />
+   
+	<item>
+	  <title>一文理解Flask Web开发</title>
+	  <link>//Flask-Web</link>
+	  <author></author>
+	  <pubDate>2019-03-31T09:49:09+00:00</pubDate>
+	  <guid>//Flask-Web</guid>
+	  <description><![CDATA[
+	     <p>Flask作为Python语言中最为轻量的Web框架， 由于其核心内容的简洁以及良好的可拓展性， 一直受到广泛的开发者所喜爱。 对比于Django， Flask并没有”我给你的就是最好的， 别管那么多， 拿着用就好”的思想， 而是让开发者自己做出选择， 自己设计开发一个组件， 或者挑选一个你喜欢的第三方库。</p>
+
+<!---more--->
+
+<h4 id="1-标准web开发流程">1. 标准Web开发流程</h4>
+<p>不管开发人员使用什么样的语言， Python也好， Java也好， 又或者什么样的Web框架， 从宏观上来看， 它们的开发流程都是基本相同的。</p>
+
+<p>当服务器收到一个请求时， 首先做的就是对HTTP请求中的参数进行解析， 包括请求的URL， 请求方法， 参数以及Cookie等参数， 将其置于框架的一个内部数据结构中， 便于后续的使用。 在处理完请求参数后， 会在请求正式进入视图函数之前做一些额外处理， 例如验证CSRF-Token， 验证用户Cookie是否合法， 请求的IP是否处于白名单中， 如果验证信息未通过， 则直接返回相应的HTTP状态码以及相关信息， 增强网站的安全性。 在所有的验证通过之后， Web框架根据URL找到对应的视图函数并进行处理， 在处理过程中可能会涉及数据库， Redis以及消息队列的使用， 并很可能存在异步任务的触发。</p>
+
+<p>在视图函数处理过程中， 很有可能因为某些操作而导致异常的产生， 此时Web应用应该判断异常产生的由来， 并进行统一的异常处理。 不管是数据库连接异常， 还是用户表单验证未通过， 都应该给出一个统一的应答， 这样便于前端的数据处理， 也能够让用户知道到底发生了什么。</p>
+
+<p>很多时候为了便于开发人员的错误筛查， 都会在请求返回时添加日志的输出， 包括请求的URL， 请求方法， 参数， 服务器处理该请求的总时间， 请求响应状态码等信息。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/Flask/%E6%A0%87%E5%87%86Web%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B.png" alt="" /></p>
+
+<h4 id="2-一个最简单的flask-demo">2. 一个最简单的Flask Demo</h4>
+<p>在了解了一般性的标准Web开发流程之后， 接下来就是使用Flask来完整构建这个流程。 项目是由简入繁的， 博客也同样如此。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>                                 <span class="c"># ①</span>
+
+<span class="n">app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s">"/api/hello"</span><span class="p">)</span>                              <span class="c"># ②</span>
+<span class="k">def</span> <span class="nf">hello</span><span class="p">():</span>
+    <span class="k">return</span> <span class="s">"Hello World~"</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s">"127.0.0.1"</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>  <span class="c"># ③</span>
+</code></pre></div></div>
+
+<p>①: 通过传入当前<code class="highlighter-rouge">.py</code>文件的名称构建Flask核心对象， 此时app对象就有了Flask所有的核心功能， 包括添加视图函数， 添加额外的处理函数等。</p>
+
+<p>②: 通过app对象的<code class="highlighter-rouge">route</code>方法， 使用语法糖对视图函数进行了装饰， 并传入<code class="highlighter-rouge">/api/hello</code>这个URI作为参数。 简单的理解就是当我们请求<code class="highlighter-rouge">/api/hello</code>路径时， 请求会使用<code class="highlighter-rouge">hello</code>函数作为视图函数进行处理。</p>
+
+<p>③: 运行Flask框架， 并绑定本地<code class="highlighter-rouge">127.0.0.1:8080</code>， 以调试模式运行。</p>
+
+<p>不管是路由注册， 还是以本地运行Flask， 都需要Flask核心对象的参与， 在Demo中也就是app对象。 在大型的Flask应用中， 同样如此， Flask核心对象将会作为中间枢纽， 由各种组件向其进行注册。</p>
+
+<h4 id="3-blueprint">3. Blueprint</h4>
+<p>对于一个中型应用而言， 通常会对各种接口进行业务上的分类。 例如一个商城， 会有user模块， product模块， order模块， coupon模块等等。 除了这些业务需要， 还有一些内部调用的接口， 比如用户分析， 订单分析等。 如果将这些接口都写在同一个文件中， 可以预见的是， 文件长度将会达到上万行。</p>
+
+<p>所以， 不管我们使用什么样的标准来对接口进行分类， 分类都是必须要做的。 在解释Flask蓝图之前， 以Django为例， 这样更加便于理解。</p>
+
+<p>在Django中， 模块的区分是采用app来实现的。 用户Cookie的处理是一个app， 订单是一个app， 商品相关的接口也将组成一个app。 Django在<code class="highlighter-rouge">settings.py</code>中提供了<code class="highlighter-rouge">INSTALLED_APPS</code>来帮我们自动地管理这些app， 当我们使用<code class="highlighter-rouge">django-admin startapp app_name</code>来创建一个app时， 实际上是创建了一个python package， 而在Django中， 正是通过管理python package来完成对app的管理。</p>
+
+<p>我们只需要将package的名称添加至<code class="highlighter-rouge">INSTALLED_APPS</code>列表中即可， 剩下的模块查找工作由Django处理。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">INSTALLED_APPS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s">'django.contrib.admin'</span><span class="p">,</span>
+    <span class="s">'django.contrib.auth'</span><span class="p">,</span>
+    <span class="o">...</span>
+    <span class="s">'user'</span><span class="p">,</span>
+    <span class="s">'order'</span><span class="p">,</span>
+    <span class="s">'product'</span><span class="p">,</span>
+    <span class="s">'cupon'</span>
+<span class="p">]</span>
+</code></pre></div></div>
+
+<p>而在Flask中， 虽然也提供了类似的机制， 但是其实现方式远没有Django这么直观， 相反的， 这也是Flask中比较难以理解的部分。</p>
+
+<p>Blueprint就是Flask中协助我们将接口拆分成不同app的工具， 并由Flask核心对象完成对这些app的收集。 <strong>在Flask中， 并不是使用package这一粒度进行管理， 而是单一的<code class="highlighter-rouge">py</code>文件</strong>。 正是因为粒度从package缩小至了单独的<code class="highlighter-rouge">py</code>文件， 所以Blueprint的使用才看起来很复杂。</p>
+
+<p>在有了这一基本的理解之后， 使用Blueprint就非常的简单了。 假如在<code class="highlighter-rouge">user</code>模块中， 有两个视图函数文件， 分别命令为<code class="highlighter-rouge">auth.py</code>和<code class="highlighter-rouge">info.py</code>， 其文件组织如下:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">—</span> <span class="n">user</span>
+ <span class="o">|--</span> <span class="n">__init__</span><span class="o">.</span><span class="n">py</span>
+ <span class="o">|--</span> <span class="n">auth</span><span class="o">.</span><span class="n">py</span>
+ <span class="o">|--</span> <span class="n">info</span><span class="o">.</span><span class="n">py</span>
+</code></pre></div></div>
+
+<p>在<code class="highlighter-rouge">auth.py</code>以及<code class="highlighter-rouge">info.py</code>中均包含了一些视图函数， 由于我们对接口进行的功能拆分， 所以此时Flask核心对象就需要由Blueprint对象代替:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># auth.py</span>
+
+<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Blueprint</span>
+
+<span class="n">bp</span> <span class="o">=</span> <span class="n">Blueprint</span><span class="p">(</span><span class="s">"auth"</span><span class="p">,</span> <span class="n">__name__</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="s">"/api/auth"</span><span class="p">)</span>
+
+<span class="n">bp</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s">"/login"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s">"POST"</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">login</span><span class="p">():</span>
+    <span class="o">...</span>
+
+<span class="n">bp</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s">"/logout"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s">"GET"</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">logout</span><span class="p">():</span>
+    <span class="o">...</span>
+</code></pre></div></div>
+
+<p>同样地， 对<code class="highlighter-rouge">info.py</code>如法炮制:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># info.py</span>
+
+<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Blueprint</span>
+
+<span class="n">bp</span> <span class="o">=</span> <span class="n">Blueprint</span><span class="p">(</span><span class="s">"info"</span><span class="p">,</span> <span class="n">__name__</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="s">"/api/info"</span><span class="p">)</span>
+
+<span class="n">bp</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s">"/nick_name"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s">"GET"</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">get_nick_name</span><span class="p">():</span>
+    <span class="o">...</span>
+</code></pre></div></div>
+
+<p>现在对<code class="highlighter-rouge">user.py</code>和<code class="highlighter-rouge">info.py</code>进行了Blueprint方式地重写， 那么如何将其与Flask核心对象产生挂接? 答案是在user模块的<code class="highlighter-rouge">__init__.py</code>中对其进行注册:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># user.__init__.py</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">auth</span><span class="p">,</span> <span class="n">info</span>
+
+<span class="k">def</span> <span class="nf">register_user</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">register_blueprint</span><span class="p">(</span><span class="n">auth</span><span class="o">.</span><span class="n">bp</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">register_blueprint</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">bp</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>此后， 只需要在创建Flask核心对象的文件中将<code class="highlighter-rouge">register_user</code>函数导入， 并传入核心对象进行调用即可。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># app.py</span>
+
+<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span>
+
+<span class="kn">from</span> <span class="nn">myFlaskDemo.user</span> <span class="kn">import</span> <span class="n">register_user</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+<span class="n">register_user</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>无论有多少个<code class="highlighter-rouge">app</code>， 都可以通过这样的方式将其注册进Flask核心对象之中， 只不过因为Blueprint是对单一的<code class="highlighter-rouge">py</code>文件进行管理的， 所以就需要比Django做更多的工作来完成这件事情， 其本质上， 都是让Flask核心对象发现这些视图函数而已。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/Flask/Blueprint%E5%AE%9E%E9%99%85%E4%BD%9C%E7%94%A8.png" alt="" /></p>
+
+<h4 id="4-请求的参数处理">4. 请求的参数处理</h4>
+<p>在使用<code class="highlighter-rouge">POST</code>方法进行请求时， 通常是使用JSON的方式进行参数传递， 那么如果我们想要取出相应的数据的话， 就势必需要对JSON数据进行<code class="highlighter-rouge">json.loads</code>操作， 转换成Python字典。 这个过程每个处理<code class="highlighter-rouge">POST</code>请求的视图函数都需要进行， 非常的麻烦， 所以我们需要想办法在请求进入视图函数之前就将数据保存在某一个地方。</p>
+
+<p>这个时候就需要用到<code class="highlighter-rouge">before_request</code>这个函数， 同样是由Flask核心对象所提供。 <code class="highlighter-rouge">before_request</code>接收一个函数， 并在每次请求到达视图函数之前执行它。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span><span class="p">,</span> <span class="n">request</span>
+<span class="kn">from</span> <span class="nn">werkzeug.datastructures</span> <span class="kn">import</span> <span class="n">ImmutableMultiDict</span><span class="p">,</span> <span class="n">CombinedMultiDict</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">get_request_params_from_json</span><span class="p">():</span>
+    <span class="n">json_data</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">get_json</span><span class="p">(</span><span class="n">silent</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">json_data</span> <span class="o">=</span> <span class="n">ImmutableMultiDict</span><span class="p">(</span><span class="n">json_data</span><span class="p">)</span>
+    <span class="n">request</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">CombinedMultiDict</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="p">[</span><span class="n">json_data</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="p">]))</span>
+
+<span class="n">app</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">get_request_params_from_json</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h4 id="5-约定返回格式">5. 约定返回格式</h4>
+<p>数据返回格式的统一与否是检验一个Web API是否合格的最低标准， 这是一个对前端， 自己以及同事都有利的东西， 所以目前已经成为了一种标准。</p>
+
+<p>就目前来说， 用的最多的格式就是<code class="highlighter-rouge">code, message, data</code>， 即:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="s2">"code"</span><span class="p">:</span><span class="w"> </span><span class="err">成功码</span><span class="w"> </span><span class="err">or</span><span class="w"> </span><span class="err">错误码</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"message"</span><span class="p">:</span><span class="w"> </span><span class="err">错误信息</span><span class="w"> </span><span class="err">or</span><span class="w"> </span><span class="err">''</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"data"</span><span class="p">:</span><span class="w"> </span><span class="err">...</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>以<code class="highlighter-rouge">RESTful API</code>而言， 通过HTTP响应的状态码来判断当前访问的结果， 但是呢， 部分的前端程序员对此非常不感冒， 觉得处理HTTP-code相当麻烦。 所有的请求， 不管是表单验证我失败， 还是用户未登录而访问受保护的资源， 这些情况统统给我返回200， 然后在<code class="highlighter-rouge">message</code>字段中标明原因。</p>
+
+<p>很多时候系统出现的问题， 真的就不是技术问题， 而是眼界问题。 通常我们需要定义两个函数， <code class="highlighter-rouge">success</code>以及<code class="highlighter-rouge">fail</code>函数， 接收<code class="highlighter-rouge">code, message, data</code>参数， 调用方根据情况进行参数传递即可:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">success</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="p">{</span><span class="s">'code'</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span> <span class="s">'message'</span><span class="p">:</span> <span class="s">''</span><span class="p">,</span> <span class="s">'data'</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">resp</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">http_code</span><span class="p">,</span> <span class="n">mimetype</span><span class="o">=</span><span class="s">'application/json'</span><span class="p">})</span>
+
+<span class="k">def</span> <span class="nf">fail</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="p">{</span><span class="s">'code'</span><span class="p">:</span> <span class="n">code</span><span class="p">,</span> <span class="s">'message'</span><span class="p">:</span> <span class="n">message</span><span class="p">,</span> <span class="s">'data'</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
+</code></pre></div></div>
+
+<h4 id="6-请求日志的记录">6. 请求日志的记录</h4>
+<p>这部分内容是我认为最有价值的一小节， 无数个被产品打断的瞬间， 告知某个用户的某次操作异常， 而又没有准确日志的记录， 无从排查的教训。 所以在写这部分内容时， 坐在轮椅上的我格外激动…</p>
+
+<p>血一样的教训告诉我， 日志记录一定要全面， 谁请求了哪个URL， 请求方法是什么， 请求参数是什么， 请求响应时间多多少， 这些通通都要记录， 少一个都不行。</p>
+
+<p>下面给出一个示例:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">record_request_log</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">now_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">request_start_time</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s">'request_start_time'</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+    <span class="n">user_id</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s">'user_id'</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="n">format_str</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s">'</span><span class="si">%(remote_addr)</span><span class="s">s request: [</span><span class="si">%(status)</span><span class="s">s] </span><span class="si">%(method)</span><span class="s">s, url: </span><span class="si">%(url)</span><span class="s">s, '</span>
+        <span class="s">'args: </span><span class="si">%(args)</span><span class="s">s, json: </span><span class="si">%(json)</span><span class="s">s, '</span>
+        <span class="s">'request_start_time: </span><span class="si">%(request_start_time)</span><span class="s">s, response_time: </span><span class="si">%(response_time)</span><span class="s">s, '</span>
+        <span class="s">'user_id: </span><span class="si">%(user_id)</span><span class="s">s, '</span>
+    <span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">remote_addr</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">remote_addr</span><span class="p">,</span>
+        <span class="n">status</span><span class="o">=</span><span class="n">response</span><span class="o">.</span><span class="n">status</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+        <span class="n">url</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">,</span>
+        <span class="n">args</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">get_json</span><span class="p">(</span><span class="n">silent</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
+        <span class="n">request_start_time</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">"</span><span class="si">%</span><span class="s">Y-</span><span class="si">%</span><span class="s">m-</span><span class="si">%</span><span class="s">d </span><span class="si">%</span><span class="s">H:</span><span class="si">%</span><span class="s">M:</span><span class="si">%</span><span class="s">S"</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">localtime</span><span class="p">())),</span>
+        <span class="n">response_time</span> <span class="o">=</span> <span class="n">now_time</span> <span class="o">-</span> <span class="n">request_start_time</span> <span class="k">if</span> <span class="n">request_start_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="s">""</span>
+        <span class="n">user_id</span><span class="o">=</span><span class="n">user_id</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">'response'</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">format_str</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">response</span>
+
+<span class="n">app</span><span class="o">.</span><span class="n">after_request</span><span class="p">(</span><span class="n">record_request_log</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>同时， 为了让日志的记录更加完整， 例如ERROR日志记录到文件， 或者是通过Kafka发送给ELK日志分析平台， 所以需要对日志的格式进行额外的配置:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># log_config.py</span>
+
+<span class="n">DEFAULT_LOGGING_CONFIGS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">'version'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s">'disable_existing_loggers'</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="s">'formatters'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">'standard'</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">'format'</span><span class="p">:</span> <span class="s">'</span><span class="si">%(asctime)</span><span class="s">s [</span><span class="si">%(threadName)</span><span class="s">s] [</span><span class="si">%(name)</span><span class="s">s:</span><span class="si">%(funcName)</span><span class="s">s] '</span>
+                      <span class="s">'[line:</span><span class="si">%(lineno)</span><span class="s">d] [</span><span class="si">%(levelname)</span><span class="s">s]- </span><span class="si">%(message)</span><span class="s">s'</span><span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s">'handlers'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">'error'</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">'level'</span><span class="p">:</span> <span class="s">'ERROR'</span><span class="p">,</span>
+            <span class="s">'class'</span><span class="p">:</span> <span class="s">'logging.handlers.RotatingFileHandler'</span><span class="p">,</span>
+            <span class="s">'filename'</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s">'log'</span><span class="p">,</span> <span class="s">'error.log'</span><span class="p">),</span>
+            <span class="s">'maxBytes'</span><span class="p">:</span> <span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="o">*</span><span class="mi">5</span><span class="p">,</span>
+            <span class="s">'backupCount'</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+            <span class="s">'formatter'</span><span class="p">:</span> <span class="s">'standard'</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s">'console'</span><span class="p">:{</span>
+            <span class="s">'level'</span><span class="p">:</span> <span class="s">'INFO'</span><span class="p">,</span>
+            <span class="s">'class'</span><span class="p">:</span> <span class="s">'logging.StreamHandler'</span><span class="p">,</span>
+            <span class="s">'formatter'</span><span class="p">:</span> <span class="s">'standard'</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="s">'loggers'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">'root'</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">'handlers'</span><span class="p">:</span> <span class="p">[</span><span class="s">'error'</span><span class="p">,</span> <span class="s">'console'</span><span class="p">],</span>
+            <span class="s">'level'</span><span class="p">:</span> <span class="s">'INFO'</span><span class="p">,</span>
+            <span class="s">'propagate'</span><span class="p">:</span> <span class="bp">False</span>
+        <span class="p">},</span>
+        <span class="s">'response'</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">'handlers'</span><span class="p">:</span> <span class="p">[</span><span class="s">'error'</span><span class="p">,</span> <span class="s">'console'</span><span class="p">],</span>
+            <span class="s">'level'</span><span class="p">:</span> <span class="s">'INFO'</span><span class="p">,</span>
+            <span class="s">'propagate'</span><span class="p">:</span> <span class="bp">False</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c"># app.py</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">logging.config</span>
+
+<span class="k">def</span> <span class="nf">create_app</span><span class="p">():</span>
+    <span class="o">...</span>
+
+    <span class="n">init_log</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">app</span>
+
+<span class="k">def</span> <span class="nf">init_log</span><span class="p">():</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">dictConfig</span><span class="p">(</span><span class="n">DEFAULT_LOGGING_CONFIGS</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h4 id="7-flask中的应用上下文与请求上下文">7. Flask中的应用上下文与请求上下文</h4>
+<p>在<code class="highlighter-rouge">AppContext</code>以及<code class="highlighter-rouge">RequestContext</code>中， 使用最多的仍然是<code class="highlighter-rouge">RequestContext</code>， 意思为请求上下文。 那么请求上下文是个什么东西?</p>
+
+<p>在SpringBoot以及Django框架中， request对象是通过函数参数进行传递的， 比如在Django中， 通常会有这样的代码:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">SomeUsefulAPIView</span><span class="p">(</span><span class="n">APIView</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span><span class="err">；</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">data</span>
+        <span class="o">...</span>
+</code></pre></div></div>
+
+<p>然而在Flask中， 却不是这样的:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">flask_restful</span> <span class="kn">import</span> <span class="n">Resource</span>
+<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">request</span>
+
+<span class="k">class</span> <span class="nc">SomeUsefulAPIView</span><span class="p">(</span><span class="n">Resource</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>request对象是通过import进行导入的， 而不是通过参数进行传递的， 这里其实就是请求上下文的表现形式。 在当前的请求线程中， Flask会保存request对象， 并能够在任意文件中通过导入的方式进行使用， 其底层依赖于werkzeug第三方库的<code class="highlighter-rouge">LocalStack</code>。</p>
+
+<p>更进一步地， <code class="highlighter-rouge">LocalStack</code>封装底层的<code class="highlighter-rouge">Local</code>实现， 而<code class="highlighter-rouge">Local</code>对象， 其实就是一个大字典。 首先来看现象:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">from</span> <span class="nn">werkzeug.local</span> <span class="kn">import</span> <span class="n">Local</span>
+
+<span class="n">foo</span> <span class="o">=</span> <span class="n">Local</span><span class="p">()</span>
+
+<span class="n">foo</span><span class="o">.</span><span class="n">bar</span> <span class="o">=</span> <span class="mi">15</span>
+
+<span class="k">def</span> <span class="nf">another_threading</span><span class="p">():</span>
+    <span class="c"># 开启线程对foo对象的属性进行修改</span>
+    <span class="n">foo</span><span class="o">.</span><span class="n">bar</span> <span class="o">=</span> <span class="mi">20</span>
+
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="c"># 确保主线程打印出变量</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s">"another_thread: {}"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">foo</span><span class="o">.</span><span class="n">bar</span><span class="p">))</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">another_threading</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">())</span>
+    <span class="n">t</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c"># 确保t线程执行完毕</span>
+    <span class="c"># 打印主线程变量值</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"main thread: {}"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">foo</span><span class="o">.</span><span class="n">bar</span><span class="p">))</span>  <span class="c"># 15</span>
+    <span class="n">foo</span><span class="o">.</span><span class="n">bar</span> <span class="o">=</span> <span class="mi">25</span>
+</code></pre></div></div>
+
+<p>可以看到， 在主线程中， <code class="highlighter-rouge">foo.bar</code>的值并没有受到另外一个线程的影响， 而在t线程中， 也没有受到主线程的影响， 这就是<code class="highlighter-rouge">Local</code>对象的作用: 同一个对象， 在不同的线程中拥有完全独立自主权， 并且其值不会受到其它线程的影响。</p>
+
+<p>现在来看<code class="highlighter-rouge">Local</code>类的源码， 主要是使用Python类字典的功能， 重写<code class="highlighter-rouge">__getattr__</code>以及<code class="highlighter-rouge">__setattr__</code>方法:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Local</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s">"__storage__"</span><span class="p">,</span> <span class="s">"__ident_func__"</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">object</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">"__storage__"</span><span class="p">,</span> <span class="p">{})</span>  <span class="c"># 初始化__storage__变量为字典结构</span>
+        <span class="nb">object</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">"__ident_func__"</span><span class="p">,</span> <span class="n">get_ident</span><span class="p">)</span>
+        <span class="c"># get_ident为Python内置的函数， 其作用为获取当前线程的线程id</span>
+
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__storage__</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">__ident_func__</span><span class="p">()][</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">except</span> <span class="nb">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="nb">AttributeError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">ident</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ident_func__</span><span class="p">()</span>  <span class="c"># 函数调用， 获取id值</span>
+        <span class="n">storage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__storage__</span>  <span class="c"># storage其实就是一个dict</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c"># 适用于 {"140672512972544": {"bar": "25"}}的结构</span>
+            <span class="n">storage</span><span class="p">[</span><span class="n">ident</span><span class="p">][</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">except</span> <span class="nb">KeyError</span><span class="p">:</span>
+            <span class="n">storage</span><span class="p">[</span><span class="n">ident</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">value</span><span class="p">}</span>
+</code></pre></div></div>
+
+<p>所以说， 在上面的测试代码中， <code class="highlighter-rouge">storage</code>变量的内容为:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span>
+    <span class="s">"线程id-1"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">"foo"</span><span class="p">:</span> <span class="mi">25</span>
+    <span class="p">},</span>
+    <span class="s">"线程id-2"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">"foo"</span><span class="p">:</span> <span class="mi">20</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>那么<code class="highlighter-rouge">LocalStack</code>就很好理解了， 这是一个先进后出的栈结构， 并且栈内容在不同的线程中也是不同的。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/1526973096301.png" alt="" /></p>
+
+<p>如上图所示， 每一个请求在进入时， 都会将request对象压入当前线程的栈中， 那么在该请求的生命周期内， 任意地方都可以将该对象从栈中获取， 并且保证在当前线程中， request请求对象不会被其它线程对象所污染。</p>
+
+<p>所以， 基于此特性， Flask只能使用多线程+协程的方式进行部署， 而不能使用以epoll为底层实现的Reactor模型部署。 所以从这方面来讲的话， 使用Flask解决C10K的问题几乎不能实现。</p>
+
+<h4 id="8-flask-aop的使用">8. Flask AOP的使用</h4>
+<p>经常听到别人搞Java的说SpringBoot的AOP多么多么NB， 多么多么厉害， 然而写Python的却是微微一笑， 这东西我们都用烂了。</p>
+
+<p>AOP， 全称Aspect Oriented Programming， 面向切面编程， 在Python中， 装饰器就是一个最佳的面向切面编程的实现。 面向切面编程的含义就是抽离相似逻辑， 将相似的逻辑进行封装并复用， 说白了， 其实就是函数的调用:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">aspect_function</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"在f函数调用之前要做的事情"</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">f</span><span class="p">()</span>  <span class="c"># 调用函数</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"在f函数调用之后要做的事情"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"调用f函数时出现异常时的处理逻辑"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">aspect_function</code>函数接收一个函数对象， 并且在其调用之前， 调用之后以及调用出现异常时均作出相同的操作， 那么这些内容其实就是一个切面， 一个所有<code class="highlighter-rouge">f</code>函数调用之前， 之后都需要做的事情。</p>
+
+<p>上面的例子稍加改动， 就是一个装饰器， 可以通过语法糖的形式来实现复用。 不管是在Django的全局异常处理， 还是在Flask中， 模型都是这样的。</p>
+
+<p>AOP在Web框架中最常见的场景就是全局异常处理。 在视图函数中， 经常会有一些意想不到的异常抛出， 如果直接返回给用户500的话会很不友好， 所以尽量的将异常使用日志的方式记录下来， 并且返回给用户可读的内容。 而针对每一个视图函数都写一个大大的<code class="highlighter-rouge">try..except</code>太累了， 此时就有了<code class="highlighter-rouge">errorhandler</code>函数。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">setup_error_handler</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+
+    <span class="nd">@app.errorhandler</span><span class="p">(</span><span class="nb">Exception</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">error_exception</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"Wrong"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">"Some wrong happened"</span>
+
+<span class="n">setup_error_handler</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>一个最简单的全局异常处理就此诞生， 并且由于我们传入了所有异常的爹， 即<code class="highlighter-rouge">Exception</code>类， 所以所有的Python异常都能够捕捉， 再结合前面的统一返回格式， 初步的全局异常处理就成型了。</p>
+
+<h4 id="9-flask-migrate的使用">9. Flask-migrate的使用</h4>
+<p>在日常的业务开发中， 数据库的模型不可能一成不变， 总会有新的需求导致数据模型的更改。 而在有ORM模型的Web框架中， 数据库的模型是应该随着应用层的模型代码而变动的。 也就是说， 当我们想要添加/删除某一个字段时， 不能直接在数据库中进行<code class="highlighter-rouge">alter table</code>操作， 而是修改应用层代码， 而后通过某种方式将这些改变映射到数据库中。</p>
+
+<p>在Django中， 提供了内置的<code class="highlighter-rouge">python manage.py makemigrations/migrate</code>帮助我们完成这件事， 而在Flask中， 需要使用第三方库<code class="highlighter-rouge">flask-migrate</code>以及<code class="highlighter-rouge">flask-scrip</code>。</p>
+
+<p>首先来定义一个简单的模型:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">TimeMixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">created</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+    <span class="n">updated</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">,</span> <span class="n">onupdate</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">deleted</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">Boolean</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">User</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">Model</span><span class="p">,</span> <span class="n">TimeMixin</span><span class="p">):</span>
+    <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">autoincrement</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">nickname</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">(</span><span class="mi">24</span><span class="p">),</span> <span class="n">nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">phone_number</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">(</span><span class="mi">11</span><span class="p">),</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">email</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>当然， 在首次部署项目时， 可以在代码中直接使用<code class="highlighter-rouge">db.create_all(app)</code>的方式来完成数据模型的写入， 但是这种方式过于僵硬， 无法回滚， 也无法添加新的字段。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">pip</span> <span class="n">install</span> <span class="n">flask</span><span class="o">-</span><span class="n">sqlalchemy</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">flask</span><span class="o">-</span><span class="n">migrate</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">flask</span><span class="o">-</span><span class="n">script</span>
+</code></pre></div></div>
+
+<p>创建<code class="highlighter-rouge">manage.py</code>文件， 并写入以下内容:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">flask_script</span> <span class="kn">import</span> <span class="n">Manager</span>
+<span class="kn">from</span> <span class="nn">flask_migrate</span> <span class="kn">import</span> <span class="n">Migrate</span><span class="p">,</span> <span class="n">MigrateCommand</span>
+
+<span class="kn">from</span> <span class="nn">app</span> <span class="kn">import</span> <span class="n">create_app</span><span class="p">,</span> <span class="n">db</span>
+
+<span class="n">migrate</span> <span class="o">=</span> <span class="n">Migrate</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span>
+
+<span class="n">manager</span> <span class="o">=</span> <span class="n">Manager</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="n">manager</span><span class="o">.</span><span class="n">add_command</span><span class="p">(</span><span class="s">'db'</span><span class="p">,</span> <span class="n">MigrateCommand</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">'__main__'</span><span class="p">:</span>
+    <span class="n">manager</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</code></pre></div></div>
+
+<ul>
+  <li>初始化migrations package:</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">db</span> <span class="n">init</span>
+</code></pre></div></div>
+
+<ul>
+  <li>创建migration文件(相当于Django中的makemigrations)</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">db</span> <span class="n">migrate</span> <span class="o">-</span><span class="n">m</span> <span class="s">"initial migrate"</span>
+</code></pre></div></div>
+
+<ul>
+  <li>将migration文件映射至数据库中(相当于Django中的migrate)</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">db</span> <span class="n">upgrade</span>
+</code></pre></div></div>
+
+<p>此后对模型的修改， 只需要执行<code class="highlighter-rouge">python manage.py db migrate -m "Some useful message"</code>以及<code class="highlighter-rouge">python manage.py db upgrade</code>即可。</p>
+
+<h4 id="10-小结">10. 小结</h4>
+<p>其实Web开发讲究的就是一个套路， 当把一个Web框架理解清楚了之后， 其余的都大同小异， 当然这里指的是同步类Web框架， 诸如Tornado,  Netty则不属于此列， 它们由于底层机制的不同， 要更为复杂一些。</p>
+
+<p>有时候看待Web框架也需要使用AOP的思想， 抽离相似的逻辑， 并用此逻辑去学习各种各样的框架， 这种方式在我看来比首先深入了解细节要更加高效， 因为实现细节必定有所差异， 而本质原理却基本类似。</p>
+
+	  ]]></description>
+	</item>
+
+
+</channel>
+</rss>

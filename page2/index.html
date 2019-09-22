@@ -114,7 +114,9 @@
             <a class="newer-posts" href="/" title="Previous Page">&laquo; Newer Posts</a>
         
     
-    <span class="page-number"> Page 2 of 2 </span>
+    <span class="page-number"> Page 2 of 4 </span>
+     
+        <a class="older-posts" href="/page3/" title="Next Page">Older Posts &raquo;</a>
      
 </nav>-->
         <!---->
@@ -124,12 +126,12 @@
     
     <article class="post">
         <header class="post-header">
-            <h2 class="post-title"><a href="/Java-Container">Java基础编程(03)--容器</a></h2>
+            <h2 class="post-title"><a href="/Redis-base-data-structure">Redis基本数据结构与实现</a></h2>
         </header>
         <section class="post-excerpt">
-            <p>Java中的各种容器类是对基本数据结构， 如顺序表， 链表， 平衡二叉树， 红黑树等最直接的体现， 容器在使用时最重要的就是其在不同的应用场景下的时间复杂度。 例如， 需要一个有序的容器， 需要频繁的向其头部和尾部分别执行删除和插入操作， 此时选择数组所实现的容器就非常的不明智。 所以， 如果想要彻底理解Java中的容器， 首先要理解计算机世界中的基础数据结构。 另外需要说明的是， 本篇博文没有任何代码， 只对各种容器的原理进行说明。
+            <p>Redis内置了5种对外开放的数据结构， 分别是字符串， 列表， 集合， 有序集合以及哈希对象。 每一种数据结构的底层实现都会由存入的数据产生动态变化， 这也是Redis具有极佳吞吐量的原因之一。 本篇文章主要描述其基本数据结构的实现以及这些结构在使用时的注意事项。
 
- <a class="read-more" href="/Java-Container">&raquo;</a></p>
+ <a class="read-more" href="/Redis-base-data-structure">&raquo;</a></p>
         </section>
         <footer class="post-meta">
             
@@ -147,26 +149,59 @@
                 on
                 
                     
-                       <a href='/tag/Java基础'>Java基础</a>
+                       <a href='/tag/Redis'>Redis</a>
                     
+                
+            
+            <time class="post-date" datetime="2019-03-13">13 Mar 2019</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/PriorityQueue">那些有趣的数据结构与算法(01)--优先队列</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>优先队列为动态变化的数据赋予了高效且准确的排序能力， 尽管有非常大规模的数据， 二叉堆所实现的优先队列依然能够表现出色。
+
+ <a class="read-more" href="/PriorityQueue">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
                 
                     
                        <a href='/tag/数据结构'>数据结构</a>
                     
                 
+                    
+                       <a href='/tag/优先队列'>优先队列</a>
+                    
+                
             
-            <time class="post-date" datetime="2018-12-01">01 Dec 2018</time>
+            <time class="post-date" datetime="2019-03-12">12 Mar 2019</time>
         </footer>
     </article>
     
     <article class="post">
         <header class="post-header">
-            <h2 class="post-title"><a href="/Java-Interface-and-abstract-class">Java基础编程(02)--接口与抽象类</a></h2>
+            <h2 class="post-title"><a href="/Nginx">分布式系统基础学习(04)--Nginx</a></h2>
         </header>
         <section class="post-excerpt">
-            <p>在Java中， 我认为接口和抽象类是能够让”匠人”充分发挥其想象力和创造力的地方， 这两个类结构使得软件大师们能够编写出精美， 优雅和巧妙的代码。 而在我这种低端程序员手中， 它仅仅只是一个结构而已， 离品尝到其设计精髓不知还隔着多少座大山。
+            <p>Nginx不管是在单机部署还是在集群部署下， 都起着非常重要的作用。 底层由C语言编写， 并且采用事件驱动模型对Socket连接进行管理， 所以有着非常高效的请求处理能力， 并且支持海量的并发。 本篇文章不会对Nginx的底层原理进行深究， 而是整理自己在工作中所遇到的一些问题和积累的经验。
 
- <a class="read-more" href="/Java-Interface-and-abstract-class">&raquo;</a></p>
+ <a class="read-more" href="/Nginx">&raquo;</a></p>
         </section>
         <footer class="post-meta">
             
@@ -184,26 +219,22 @@
                 on
                 
                     
-                       <a href='/tag/Java基础'>Java基础</a>
-                    
-                
-                    
-                       <a href='/tag/设计原则'>设计原则</a>
+                       <a href='/tag/分布式系统'>分布式系统</a>
                     
                 
             
-            <time class="post-date" datetime="2018-11-30">30 Nov 2018</time>
+            <time class="post-date" datetime="2019-01-15">15 Jan 2019</time>
         </footer>
     </article>
     
     <article class="post">
         <header class="post-header">
-            <h2 class="post-title"><a href="/Java-IO">Java基础编程(01)--I/O系统</a></h2>
+            <h2 class="post-title"><a href="/message-queue">分布式系统基础学习(03)--消息队列(RabbitMQ)</a></h2>
         </header>
         <section class="post-excerpt">
-            <p>Java中的I/O系统相较于Python要复杂许多， 不管是从设计上还是实现上。 这一块儿的内容也是我在学习Java时遇到的最大的困难(并发包都比这个好理解)， 经过了持(san)之(tian)以(da)恒(yu)的学习之后， 算是对Java I/O系统有一个基本的认识和理解。
+            <p>消息队列常常被用于跨进程通信， 异步调用， 系统解耦以及流量削峰等场景下。 目前市场上的消息队列种类繁多， 有LinkedIn开源的kafka， 阿里开源的RocketMQ， 以及使用较为广泛的RabbiMQ。 Redis虽然也可以做消息队列， 但是更多的是用来做缓存和其它工具使用。 但是随着Redis 5.0 版本的发布， Redis的功能越来越丰富， 也不排除在未来的某一天也能够占据消息队列的重要一席。
 
- <a class="read-more" href="/Java-IO">&raquo;</a></p>
+ <a class="read-more" href="/message-queue">&raquo;</a></p>
         </section>
         <footer class="post-meta">
             
@@ -221,26 +252,22 @@
                 on
                 
                     
-                       <a href='/tag/Java基础'>Java基础</a>
-                    
-                
-                    
-                       <a href='/tag/I/O'>I/O</a>
+                       <a href='/tag/分布式系统'>分布式系统</a>
                     
                 
             
-            <time class="post-date" datetime="2018-11-29">29 Nov 2018</time>
+            <time class="post-date" datetime="2019-01-11">11 Jan 2019</time>
         </footer>
     </article>
     
     <article class="post">
         <header class="post-header">
-            <h2 class="post-title"><a href="/MySQL-binlog">binlog的正确打开方式</a></h2>
+            <h2 class="post-title"><a href="/service-communication">分布式系统基础学习(02)--应用间通信(gRPC)</a></h2>
         </header>
         <section class="post-excerpt">
-            <p>在前面的主从复制中我们提到了bin-log， 主从复制中bing-log主要作为一种增量复制的方法进行主库与从库的同步。 在日常生产中， bin-log常常也作为实时数据恢复的必要手段。
+            <p>我始终认为， 随着语言和计算机技术的发展， 分布式系统才是互联网技术的未来。 而现在众多的分布式开源技术， 如Zookeper, SpringCloud等的蓬勃发展也证明这一点。 在分布式的系统中， A服务可能由Java编写， B服务可能由Python编写， C服务可能由PHP编写， 服务于服务之间的通信固然可以使用HTTP协议以RESTful-API的方式进行通信， 但是由于许多不必要的数据传输， 例如HTTP请求头， 会降低服务之间的通信速度， 在高并发的场景下极有可能成为系统瓶颈。 所以， 就有了RPC通信机制。
 
- <a class="read-more" href="/MySQL-binlog">&raquo;</a></p>
+ <a class="read-more" href="/service-communication">&raquo;</a></p>
         </section>
         <footer class="post-meta">
             
@@ -258,22 +285,22 @@
                 on
                 
                     
-                       <a href='/tag/MySQL'>MySQL</a>
+                       <a href='/tag/分布式系统'>分布式系统</a>
                     
                 
             
-            <time class="post-date" datetime="2018-10-23">23 Oct 2018</time>
+            <time class="post-date" datetime="2019-01-08">08 Jan 2019</time>
         </footer>
     </article>
     
     <article class="post">
         <header class="post-header">
-            <h2 class="post-title"><a href="/django-concurrent-data-process">Django处理数据并发问题</a></h2>
+            <h2 class="post-title"><a href="/distributed-system-of-communication">分布式系统基础学习(01)--通信(TCP/UDP)</a></h2>
         </header>
         <section class="post-excerpt">
-            <p>在Web开发中， 请求的并发处理通常会直接反映到数据库中数据的并发处理。 如果需要在并发的条件下保证数据的准确性， 则必须借助锁的力量来完成。 锁又分乐观锁和悲观锁， 表示了世界的两极。 本篇文章只是以Django作为载体， 来描述数据的并发处理。
+            <p>分布式系统是一个很庞大的话题， 在我个人的知识版图中， 也仅仅只是对一小部分土地进行了开荒。 不管是分布式系统， 还是单机应用系统， 都是建立在互联网通信机制之上的。 而提到通信， 就不得不提到TCP/UDP这两个非常经典的协议。
 
- <a class="read-more" href="/django-concurrent-data-process">&raquo;</a></p>
+ <a class="read-more" href="/distributed-system-of-communication">&raquo;</a></p>
         </section>
         <footer class="post-meta">
             
@@ -291,19 +318,144 @@
                 on
                 
                     
-                       <a href='/tag/Django'>Django</a>
-                    
-                
-                    
-                       <a href='/tag/Concurrent'>Concurrent</a>
-                    
-                
-                    
-                       <a href='/tag/Lock'>Lock</a>
+                       <a href='/tag/分布式系统'>分布式系统</a>
                     
                 
             
-            <time class="post-date" datetime="2018-09-18">18 Sep 2018</time>
+            <time class="post-date" datetime="2019-01-03">03 Jan 2019</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/Lock">Java并发编程(07)--锁</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>锁在并发编程中可以说是必须使用的一种资源保护技术， 而且是一种及其庞大且复杂的技术， 随着计算机学科的发展， 锁技术同样的在不断的发展和优化。 作为一个开发者， 当然无法直接深入到CPU的最底层去理解锁的原理， 但是通过一些其它的手段可以间接的理解锁的原理以及运行机制。
+本篇文章进行一个现阶段的总结， 整理一下所学的全部关于锁的知识， 涉及的编程语言包括Python和Java， 应用包括MySQL以及Redis， 如有错误， 还请指正。
+
+ <a class="read-more" href="/Lock">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/并发编程'>并发编程</a>
+                    
+                
+            
+            <time class="post-date" datetime="2018-12-31">31 Dec 2018</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/AbstractQueuedSynchronizer">Java并发编程(06)--AbstractQueuedSynchronizer</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>在整理下一篇文章， 有关锁的知识之前， 有一个无论如何都绕不开的话题：AbstractQueuedSynchronizer， 队列同步器， 通常简称AQS。
+
+ <a class="read-more" href="/AbstractQueuedSynchronizer">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/并发编程'>并发编程</a>
+                    
+                
+            
+            <time class="post-date" datetime="2018-12-26">26 Dec 2018</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/Python-ThreadingPool">Java并发编程(05)--Python线程池源码剖析</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>本来是一个对Java并发编程的一个学习和总结专题， 虽然Python有GIL的存在， 但不能否认其线程池的实现非常的简洁而优雅， 此外温故而知新， 通过理解其它语言的线程池也能够加深我们对Java线程池的理解。
+
+ <a class="read-more" href="/Python-ThreadingPool">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/并发编程'>并发编程</a>
+                    
+                
+            
+            <time class="post-date" datetime="2018-12-24">24 Dec 2018</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/Java-ThreadingPool">Java并发编程(04)--线程池</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>抛开Java自己封装的newFixedThreadPool, newCachedThreadPool等工厂线程池方法， 最核心的就是ThreadPoolExecutor的配置， 包括线程池的大小， 工作队列， 空闲线程存活时间以及饱和策略。
+
+ <a class="read-more" href="/Java-ThreadingPool">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/并发编程'>并发编程</a>
+                    
+                
+            
+            <time class="post-date" datetime="2018-12-18">18 Dec 2018</time>
         </footer>
     </article>
     
@@ -316,7 +468,9 @@
             <a class="newer-posts" href="/" title="Previous Page">&laquo; Newer Posts</a>
         
     
-    <span class="page-number"> Page 2 of 2 </span>
+    <span class="page-number"> Page 2 of 4 </span>
+     
+        <a class="older-posts" href="/page3/" title="Next Page">Older Posts &raquo;</a>
      
 </nav>
     

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>那些有趣的数据结构与算法(05)--限流</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//limits" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="那些有趣的数据结构与算法(05)--限流" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//limits" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="那些有趣的数据结构与算法(05)--限流" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//limits" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "那些有趣的数据结构与算法(05)--限流",
+    "url": "https://smartkeyerror.com//limits",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">那些有趣的数据结构与算法(05)--限流</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-07-20">20 Jul 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/数据结构'>数据结构</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>有时候限流也可以称为防刷， 这两者的界定并不是很明显， 常用的限流算法包括固定窗口， 滑动窗口， 漏桶以及令牌桶算法， 它们都有各自的优势与最适合的使用场景， 算法不分好坏， 之分场景。</p>
+
+<!---more--->
+
+<h4 id="1-固定窗口">1. 固定窗口</h4>
+<p>固定窗口属于最简单但是也最容易出现问题的限流策略， 假设某接口限制请求频率为<code class="highlighter-rouge">10000/minute</code>， 则统计一分钟内接口请求的总次数， 若次数大于10000， 则请求失败， 开始限流， 直到下一个一分钟开始。</p>
+
+<p>使用Redis可以非常轻松的实现该功能:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 该功能可用Lua优化，详见Lua模块</span>
+<span class="kn">from</span> <span class="nn">redis</span> <span class="kn">import</span> <span class="n">Redis</span>
+<span class="n">redis</span> <span class="o">=</span> <span class="n">Redis</span><span class="p">(</span><span class="s">"127.0.0.1"</span><span class="p">,</span> <span class="mi">6379</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">hit_user_access</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">redis_key</span> <span class="o">=</span> <span class="s">"restrict_access:"</span><span class="o">+</span><span class="n">api</span>
+        <span class="n">access_number</span> <span class="o">=</span> <span class="n">redis</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">redis_key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">access_number</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">redis</span><span class="o">.</span><span class="n">expire</span><span class="p">(</span><span class="n">redis_key</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">access_number</span> <span class="o">&gt;</span> <span class="n">MAX_ACCESS_NUMBER</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">False</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="c"># 日记记录</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>借助于Redis的expire-key功能来实现”当前一分钟”和”下一个一分钟”， 若键过期， 则重新进行计数， 表示下一个一分钟开始了。</p>
+
+<p>固定窗口用来做小流量的防刷比较适合， 但是并不适合作为整体系统的限流。 其原因就在于在这一分钟内接收流量并不一定是平均的。 攻击方可以在每一个一分钟开始的前1秒或几秒中疯狂攻击接口， 使得接口的请求数量在一开始就达到上限， 这样一来后续的正常用户将无法访问。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/limit/fixed.png" alt="" /></p>
+
+<p>但是在一些简单的场景下， 例如单个用户的验证码发送条数限制， 当天密码输入失败的最大次数等等， 使用Redis实现的固定窗口不失为一个最佳选择。</p>
+
+<h4 id="2-滑动窗口">2. 滑动窗口</h4>
+<p>固定窗口很像一步接着一步的走路， 两步之间没有间隙， 但是每一步之间不会重叠。 而滑动窗口则是”拖着脚”在走路， 下一步会部分的覆盖前一步所走过的路径。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/limit/moving-window.png" alt="" /></p>
+
+<p>如上图所示， 窗口大小为60s， 每过一秒向前移动一小步， 60s过后将会移动一整个窗口， 此时就像固定窗口移动一样。</p>
+
+<p>滑动窗口在限流上其实使用的不是很多， 原因就在于滑动窗口也无法处理1s内请求过载的问题，  但是在监控告警上却是不二之选。</p>
+
+<p>滑动窗口的最大优势就在于”重叠”， 因为窗口在滑动过程中， 势必会跨越前一分钟和后一分钟， 使得控制更加精细。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/limit/moving-window-alert.png" alt="" /></p>
+
+<p>在具体的实现上， 通常会使用计算的方式来模拟窗口的向右滑动， 也可以说是”薛定谔的滑动”。 这里不考虑限流的滑动窗口实现， 而是转而实现监控告警的功能。</p>
+
+<div class="language-lua highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">local</span> <span class="n">key</span> <span class="o">=</span> <span class="n">KEYS</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="kd">local</span> <span class="n">now_timestamp</span> <span class="o">=</span> <span class="nb">tonumber</span><span class="p">(</span><span class="n">ARGV</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="kd">local</span> <span class="n">window_size</span> <span class="o">=</span> <span class="nb">tonumber</span><span class="p">(</span><span class="n">ARGV</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+<span class="kd">local</span> <span class="n">limit</span> <span class="o">=</span> <span class="nb">tonumber</span><span class="p">(</span><span class="n">ARGV</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+
+<span class="kd">local</span> <span class="n">should_clear</span> <span class="o">=</span> <span class="n">now_timestamp</span> <span class="o">-</span> <span class="n">window_size</span>
+<span class="n">redis</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="s2">"ZREMRANGEBYSCORE"</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">should_clear</span><span class="p">)</span>
+
+<span class="kd">local</span> <span class="n">amount</span> <span class="o">=</span> <span class="n">redis</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="s2">"ZCARD"</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">amount</span> <span class="o">&lt;</span> <span class="n">limit</span> <span class="k">then</span>
+    <span class="n">redis</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="s2">"ZADD"</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">now_timestamp</span><span class="p">,</span> <span class="n">now_timestamp</span><span class="p">)</span>
+<span class="k">end</span>
+<span class="n">redis</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="s2">"EXPIRE"</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">window_size</span><span class="p">)</span>
+
+<span class="k">return</span> <span class="n">amount</span> <span class="o">&lt;</span> <span class="n">limit</span>
+</code></pre></div></div>
+
+<p>在熔断器里面会有这样的技术细节: 5分钟内失败率达到某个阈值时进行熔断， 像这样的需求完全可以使用滑动窗口很好的实现， 不管是使用简单的单机实现， 还是使用Redis的分布式实现。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MovingWindow</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">rate</span><span class="p">):</span>
+        <span class="s">"""
+        :param window: 窗口大小
+        :param rate: 移动速率
+        """</span>
+        <span class="k">assert</span> <span class="n">window</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">rate</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s">"window and rate should more than zero value"</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="s">"window and rate should be a Integer"</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">window</span> <span class="o">=</span> <span class="n">window</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rate</span> <span class="o">=</span> <span class="n">rate</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__window</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">window</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__last_moving</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">__shift</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="s">"""
+        :param step: 窗口向右滑动的距离
+        """</span>
+        <span class="k">if</span> <span class="n">step</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">window</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__window</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__window</span><span class="p">[</span><span class="n">step</span><span class="p">:]</span> <span class="o">+</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">step</span>
+
+    <span class="k">def</span> <span class="nf">__clock_shift</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s">"""
+        计算窗口应当滑动的距离
+        """</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+        <span class="n">expire</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">__last_moving</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">expire</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">step</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__shift</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__last_moving</span> <span class="o">=</span> <span class="n">now</span>
+
+    <span class="k">def</span> <span class="nf">incr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c"># 首先将窗口滑动至正确位置</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__clock_shift</span><span class="p">()</span>
+        <span class="c"># 将值添加至窗口最后一个元素上即可</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__window</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s">"""
+        :return: 返回当前窗口计数总数
+        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__clock_shift</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__window</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__window</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">window</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">"window: {}"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__window</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h4 id="3-令牌桶">3. 令牌桶</h4>
+<p>令牌桶算法可能是生产用使用的较为广泛的限流算法， 一方面可以限制瞬时流量， 一方面也可以限制一段时间内的流量， 算是比较两全的算法。</p>
+
+<p>令牌桶引入缓冲区， 按照一定的速率生成令牌， 并将其置于令牌桶中。 每一个请求首先尝试从令牌桶中获取令牌， 若无令牌可用， 则直接返回失败。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">TokenBucket</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">capacity</span><span class="p">,</span> <span class="n">rate</span><span class="p">):</span>
+        <span class="s">"""
+        :param capacity: 桶的容量
+        :param rate: 生成令牌的速率
+        """</span>
+        <span class="k">assert</span> <span class="n">capacity</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">rate</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s">"capacity and rate should more than zero"</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">capacity</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="s">"capacity and rate should be integer"</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span> <span class="o">=</span> <span class="n">capacity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rate</span> <span class="o">=</span> <span class="n">rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__last_clock</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+        <span class="c"># 初始令牌数为0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__bucket</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">hit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># 非并发安全的实现</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__bucket</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">,</span> <span class="p">(</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">__last_clock</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__bucket</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__bucket</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__last_clock</span> <span class="o">=</span> <span class="n">now</span>
+            <span class="k">return</span> <span class="bp">False</span>
+</code></pre></div></div>
+
+<h4 id="4-小结">4. 小结</h4>
+<p>无论是最简单的固定窗口， 还是稍微复杂一些的滑动窗口与令牌桶， 都有其适用的场景。 比如固定窗口适合限制具体的接口某个ip的访问次数， 滑动窗口用于记录一段时间内错误次数， 令牌桶用于秒杀场景下的限流。 在一个系统中综合运用这三种算法完全有可能， 只不过可能会根据业务场景的不同而进行稍加变动而已。</p>
+
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=那些有趣的数据结构与算法(05)--限流&amp;url=https://smartkeyerror.comlimits"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comlimits"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comlimits"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/change-log-system-design">
+            <section class="post">
+                <h2>数据变更操作日志设计</h2>
+                <p>当系统的某些行为涉及到资金与资产的数据变更时，常常会为其增加操作日志， 便于后续的问题排查。 例如红包的使用明细， 银行转账的详细记录等等。 操作日志记录这个需求看起来很简单， 但是深挖下去， 依然能找到很有趣的东西。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/B+Tree-and-B-Tree">
+            <section class="post">
+                <h2>那些有趣的数据结构与算法(04)--B-Tree与B+Tree</h2>
+                <p>树型结构由于其良好的递归特性， 高效的查询效率， 在软件系统设计中有着非常广泛的使用。 IO多路复用的epoll实现采用红黑树组织和管理sockfd， 以支持快速的增删改查； Golang中的Timer采用多叉堆实现； Java中的TreeMap以及TreeSet同样采用红黑树实现…而在MySQL中， 索引的构建同样采用树结构实现。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

@@ -190,7 +190,7 @@ tmpfs           7.9G     0  7.9G   0% /sys/fs/cgroup
 
 <p>只不过是将ad-hoc模式下变量传递的方式改写成yaml文件的格式而已， 本质上仍然是对模块的应用。 但是这种任务编写的方式提供了额外的拓展功能， 例如<code class="highlighter-rouge">chdir</code>改变当前任务的工作目录， <code class="highlighter-rouge">register</code>将当前任务的执行结果保存至某一个变量中， 可以用于后续的DEBUG。</p>
 
-<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">print current date</span>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">print current date</span>
   <span class="na">shell</span><span class="pi">:</span> <span class="s">date</span>
   <span class="na">args</span><span class="pi">:</span>
     <span class="na">chdir</span><span class="pi">:</span> <span class="s">/home/monitor</span>

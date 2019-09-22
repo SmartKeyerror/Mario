@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>分布式系统基础学习(02)--应用间通信(gRPC)</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//service-communication" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="分布式系统基础学习(02)--应用间通信(gRPC)" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//service-communication" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="分布式系统基础学习(02)--应用间通信(gRPC)" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//service-communication" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "分布式系统基础学习(02)--应用间通信(gRPC)",
+    "url": "https://smartkeyerror.com//service-communication",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">分布式系统基础学习(02)--应用间通信(gRPC)</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-01-08">08 Jan 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/分布式系统'>分布式系统</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>我始终认为， 随着语言和计算机技术的发展， 分布式系统才是互联网技术的未来。 而现在众多的分布式开源技术， 如<code class="highlighter-rouge">Zookeper</code>, <code class="highlighter-rouge">SpringCloud</code>等的蓬勃发展也证明这一点。 在分布式的系统中， A服务可能由Java编写， B服务可能由Python编写， C服务可能由PHP编写， 服务于服务之间的通信固然可以使用<code class="highlighter-rouge">HTTP</code>协议以<code class="highlighter-rouge">RESTful-API</code>的方式进行通信， 但是由于许多不必要的数据传输， 例如HTTP请求头， 会降低服务之间的通信速度， 在高并发的场景下极有可能成为系统瓶颈。 所以， 就有了RPC通信机制。</p>
+
+<!---more--->
+
+<h4 id="1-什么是rpc">1. 什么是RPC</h4>
+<p>RPC， 全称为 Romete Procedure Call， 远程过程调用， 实际上就是A机器调用B机器上的方法， B机器进行一系列的运算将结果返回给A机器。</p>
+
+<p>那么在这个过程中就涉及到Server服务器寻址， 服务器之间TCP连接的建立， 对象序列化与反序列化的过程， 以及方法寻址的问题。</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center ](https://www.cs.rutgers.edu/~pxk/417/notes/images/rpc-flow.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>上图来源于https://www.cs.rutgers.edu/~pxk/417/notes/03-rpc.html， 对RPC的内部过程展示的非常详细。 <code class="highlighter-rouge">stub</code>以及<code class="highlighter-rouge">skeleton</code>是对旧有的client和server的一种描述， 现在少有这种称呼， 对于提供方法的服务器， 称为server， 调用方统称为stub。</p>
+
+<p>假设A, B服务均由<code class="highlighter-rouge">Python</code>编写， 那么client传递参数给server， server经过计算之后返回结果即可， 在同平台下RPC的调用并没有很复杂。 但是如果跨平台呢？ 此时就需要有一个统一的描述语言来定义相关的数据类型， 达到多平台统一， 我们将其称为接口描述语言(Interface Description Language，IDL)， 其中， Google Protocol Buffers就是一种IDL。</p>
+
+<h4 id="2-protocol-buffers">2. Protocol Buffers</h4>
+<p>什么是Protocol Buffers？ 简单来讲， Protocol Buffers就是一种使具有一定组织结构的数据自动序列化的机制， 使用特殊的编译器对其进行编译之后， 可以跨平台使用。</p>
+
+<p>首先来看官网给出的demo， 基于proto3：</p>
+
+<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
+
+<span class="c1">// message为关键字， 用于定义结构体， 相当于C中的struct； Python, Java中的class
+</span><span class="kd">message</span> <span class="nc">SearchRequest</span> <span class="p">{</span>
+  <span class="c1">// field后面的数值， = 1并不表示值为1， 而是表示该字段的序号， 该序号在一个message中必须唯一
+</span>  <span class="kt">string</span> <span class="na">query</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="kt">int32</span> <span class="na">page_number</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="kt">int32</span> <span class="na">result_per_page</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">Result</span> <span class="p">{</span>
+  <span class="kt">string</span> <span class="na">url</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="kt">string</span> <span class="na">title</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="c1">// repeated， 允许字段重复0次或多次， 相当于一个列表
+</span>  <span class="k">repeated</span> <span class="kt">string</span> <span class="na">snippets</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">message</code>是<code class="highlighter-rouge">.proto</code>文件的关键字， 类似于其它语言中的<code class="highlighter-rouge">class</code>， 用于定义一个对象(结构体)。</p>
+
+<p>在proto3中移除了<code class="highlighter-rouge">required</code>和<code class="highlighter-rouge">optional</code>两个关键字， 仅保留了<code class="highlighter-rouge">repeated</code>， 用于表示列表。</p>
+
+<p>基本数据类型在Protocol Buffers中也有提供， 包括<code class="highlighter-rouge">double</code>, <code class="highlighter-rouge">float</code>, <code class="highlighter-rouge">int32</code>, <code class="highlighter-rouge">int64</code>, <code class="highlighter-rouge">bool</code>, <code class="highlighter-rouge">bytes</code>以及<code class="highlighter-rouge">string</code>， 同时<code class="highlighter-rouge">repeated</code>提供了列表结构， 以及<code class="highlighter-rouge">map&lt;K, V&gt;</code>所提供的字典结构。 在有了这些数据类型以及数据结构的支持， 我们就可以在多平台上进行通信了。</p>
+
+<p>更多的细节请参考官方文档： https://developers.google.com/protocol-buffers/docs/proto3</p>
+
+<h4 id="3-使用protocol-buffers编写一个demo">3. 使用Protocol Buffers编写一个demo</h4>
+<p>学习一项新技术最好的方法就是跟着官方文档跑一遍demo， 只不过这里官方的demo有些啰嗦， 所以就自己稍加改造了一下， 本质上的原理都是一样的。</p>
+
+<p>首先来看proto文件：</p>
+<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
+
+<span class="kn">package</span> <span class="nn">ProtoBuf</span><span class="p">;</span>
+
+<span class="kd">message</span> <span class="nc">Person</span> <span class="p">{</span>
+  <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="kt">int32</span> <span class="na">id</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="kt">string</span> <span class="na">email</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+
+  <span class="kd">enum</span> <span class="n">PhoneType</span> <span class="p">{</span>
+    <span class="na">MOBILE</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="na">HOME</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="na">WORK</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="kd">message</span> <span class="nc">PhoneNumber</span> <span class="p">{</span>
+    <span class="kt">string</span> <span class="na">number</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">PhoneType</span> <span class="na">type</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="k">repeated</span> <span class="n">PhoneNumber</span> <span class="na">phones</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">AddressBook</span> <span class="p">{</span>
+  <span class="k">repeated</span> <span class="n">Person</span> <span class="na">people</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>如果把这个Person转换成Json的话， 会更加的清晰， 也有助于我们查看：</p>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="s2">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"xx"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"id"</span><span class="p">:</span><span class="w"> </span><span class="err">xx</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"email"</span><span class="p">:</span><span class="w"> </span><span class="s2">"xx"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"phones"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="p">{</span><span class="s2">"number"</span><span class="p">:</span><span class="w"> </span><span class="s2">"xx"</span><span class="p">,</span><span class="w"> </span><span class="s2">"type"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span><span class="w">
+    </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>在定义完.proto文件之后， 我们需要使用<code class="highlighter-rouge">protoc</code>这个编译器对<code class="highlighter-rouge">addressbook.proto</code>文件进行编译， 让其自动的生成<code class="highlighter-rouge">Python</code>, <code class="highlighter-rouge">C++</code>, <code class="highlighter-rouge">Java</code>代码， 可以认为这份自动生成的代码就是<code class="highlighter-rouge">skeleton</code>。 由于我们要生成的是<code class="highlighter-rouge">Python</code>代码， 所以运行：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>protoc <span class="nt">-I</span><span class="o">=</span><span class="s2">"."</span> <span class="nt">--python_out</span><span class="o">=</span><span class="s2">"."</span> ./addressbook.proto
+</code></pre></div></div>
+<p>该命令将会在当前目录下生成<code class="highlighter-rouge">addressbook_pb2.py</code>， 里面写的是什么可以不用关心， 下面开始编写测试文件。 我们的测试是首先创建出一个<code class="highlighter-rouge">AddressBook</code>对象， 填充一个<code class="highlighter-rouge">Person</code>对象， 将其序列化后写入到一个文本文件中， 然后再读取该文本文件， 将其反序列化称为<code class="highlighter-rouge">Python</code>对象。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">ProtoBuf</span> <span class="kn">import</span> <span class="n">addressbook_pb2</span>
+
+<span class="n">address_book</span> <span class="o">=</span> <span class="n">addressbook_pb2</span><span class="o">.</span><span class="n">AddressBook</span><span class="p">()</span>
+<span class="c"># 添加一个person</span>
+<span class="n">person</span> <span class="o">=</span> <span class="n">address_book</span><span class="o">.</span><span class="n">people</span><span class="o">.</span><span class="n">add</span><span class="p">()</span>
+<span class="c"># 添加person属性</span>
+<span class="n">person</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"smart"</span>
+<span class="n">person</span><span class="o">.</span><span class="nb">id</span> <span class="o">=</span> <span class="mi">123</span>
+<span class="n">person</span><span class="o">.</span><span class="n">email</span> <span class="o">=</span> <span class="s">"smartkeyerror@gmail.com"</span>
+<span class="c"># person中添加一条phones, 并赋予属性</span>
+<span class="n">phone_number</span> <span class="o">=</span> <span class="n">person</span><span class="o">.</span><span class="n">phones</span><span class="o">.</span><span class="n">add</span><span class="p">()</span>
+<span class="n">phone_number</span><span class="o">.</span><span class="n">number</span> <span class="o">=</span> <span class="s">"1365656"</span>
+<span class="n">phone_number</span><span class="o">.</span><span class="nb">type</span> <span class="o">=</span> <span class="n">addressbook_pb2</span><span class="o">.</span><span class="n">Person</span><span class="o">.</span><span class="n">HOME</span>
+
+<span class="c"># 将序列化的二进制数据写入文件</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"temp.txt"</span><span class="p">,</span> <span class="s">"wb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">address_book</span><span class="o">.</span><span class="n">SerializeToString</span><span class="p">())</span>
+
+<span class="c"># 读取二进制文件</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"temp.txt"</span><span class="p">,</span> <span class="s">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+<span class="n">address_book</span> <span class="o">=</span> <span class="n">addressbook_pb2</span><span class="o">.</span><span class="n">AddressBook</span><span class="p">()</span>
+<span class="c"># 反序列化</span>
+<span class="n">address_book</span><span class="o">.</span><span class="n">ParseFromString</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+<span class="n">first_people</span> <span class="o">=</span> <span class="n">address_book</span><span class="o">.</span><span class="n">people</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s">"name: "</span><span class="p">,</span> <span class="n">first_people</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s">"id: "</span><span class="p">,</span> <span class="n">first_people</span><span class="o">.</span><span class="nb">id</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s">"email: "</span><span class="p">,</span> <span class="n">first_people</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s">"phone_number: "</span><span class="p">,</span> <span class="n">first_people</span><span class="o">.</span><span class="n">phones</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s">"phone_number_type"</span><span class="p">,</span> <span class="n">first_people</span><span class="o">.</span><span class="n">phones</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="nb">type</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>整个代码很简单， 没有什么很绕的地方， 如果<code class="highlighter-rouge">Java</code>程序想要读取该二进制文件并且反序列化称为一个<code class="highlighter-rouge">Java</code>对象该如何去做？ 首先使用<code class="highlighter-rouge">protoc</code>来生成<code class="highlighter-rouge">Java</code>相关的代码， 然后利用生成的代码按照官网指示去编写代码即可。 这样就完成了在多平台共享同一对象的作用。</p>
+
+<p>通过上面的例子我们对Protocol Buffers已经有了一个基本的认识， <code class="highlighter-rouge">.proto</code>文件就是一个结构定义文件， 利用<code class="highlighter-rouge">protoc</code>编译器可以生成<code class="highlighter-rouge">Python</code>, <code class="highlighter-rouge">Java</code>等语言代码， 依托于自动生成的代码， 我们可以将一个保存在文件中的二进制数据转换成<code class="highlighter-rouge">Python</code>对象， <code class="highlighter-rouge">Java</code>对象。 如果将该数据放到网络中， 就可以以对象的方式来进行不同平台间的通信了。 <code class="highlighter-rouge">gRPC</code>就是这样的一种工具。</p>
+
+<h4 id="4-grpc">4. gRPC</h4>
+<p>Protocol Buffers完成了不同语言之间的数据转换问题， 而<code class="highlighter-rouge">gRPC</code>则是使用Protocol Buffers进行不同服务间通信的RPC框架。 它帮我们建立了一个轻量且高效的<code class="highlighter-rouge">server</code>和<code class="highlighter-rouge">client</code>， 也就是说我们不必关心服务间怎么建立TCP连接， 怎么寻找方法调用， <code class="highlighter-rouge">gRPC</code>已经帮我们完成了这些功能。</p>
+
+<p>首先， 还是跑一遍官网的demo， 过程就不贴了， 直接贴官方所给出的实例代码， 首先当然是<code class="highlighter-rouge">.proto</code>文件：</p>
+
+<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
+
+<span class="kd">service</span> <span class="n">Greeter</span> <span class="p">{</span>
+  <span class="k">rpc</span> <span class="n">SayHello</span> <span class="p">(</span><span class="n">HelloRequest</span><span class="p">)</span> <span class="k">returns</span> <span class="p">(</span><span class="n">HelloReply</span><span class="p">)</span> <span class="p">{}</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">HelloRequest</span> <span class="p">{</span>
+  <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">HelloReply</span> <span class="p">{</span>
+  <span class="kt">string</span> <span class="kd">message</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>删除了一些与<code class="highlighter-rouge">Python</code>语言无关的代码， <code class="highlighter-rouge">service</code>指的就是远程调用的方法， 就像定义一个接口一样， 定义方法名称， 入参， 返回值类型以及一个空的方法体即可。 <code class="highlighter-rouge">message</code>的定义也比较简单， 可以看到方法的调用传入一个<code class="highlighter-rouge">HelloRequest</code>对象， 其中包含一个<code class="highlighter-rouge">name</code>字段； 返回一个<code class="highlighter-rouge">HelloReply</code>对象， 包含一个<code class="highlighter-rouge">message</code>字段。</p>
+
+<p>然后来分析<code class="highlighter-rouge">greeter_server.py</code>中的内容：</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">concurrent</span> <span class="kn">import</span> <span class="n">futures</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">grpc</span>
+
+<span class="kn">import</span> <span class="nn">helloworld_pb2</span>
+<span class="kn">import</span> <span class="nn">helloworld_pb2_grpc</span>
+
+<span class="n">_ONE_DAY_IN_SECONDS</span> <span class="o">=</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">24</span>
+
+
+<span class="k">class</span> <span class="nc">Greeter</span><span class="p">(</span><span class="n">helloworld_pb2_grpc</span><span class="o">.</span><span class="n">GreeterServicer</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">SayHello</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">helloworld_pb2</span><span class="o">.</span><span class="n">HelloReply</span><span class="p">(</span><span class="n">message</span><span class="o">=</span><span class="s">'Hello, </span><span class="si">%</span><span class="s">s!'</span> <span class="o">%</span> <span class="n">request</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">serve</span><span class="p">():</span>
+    <span class="n">server</span> <span class="o">=</span> <span class="n">grpc</span><span class="o">.</span><span class="n">server</span><span class="p">(</span><span class="n">futures</span><span class="o">.</span><span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
+    <span class="n">helloworld_pb2_grpc</span><span class="o">.</span><span class="n">add_GreeterServicer_to_server</span><span class="p">(</span><span class="n">Greeter</span><span class="p">(),</span> <span class="n">server</span><span class="p">)</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">add_insecure_port</span><span class="p">(</span><span class="s">'[::]:50051'</span><span class="p">)</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">_ONE_DAY_IN_SECONDS</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="n">server</span><span class="o">.</span><span class="n">stop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">'__main__'</span><span class="p">:</span>
+    <span class="n">serve</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>源代码还是值得看一看的， 对于<code class="highlighter-rouge">serve</code>方法， 首先是生成了包含10个线程的线程池， 并传入给了<code class="highlighter-rouge">grpc.server</code>方法。 非常缺略的过了一遍<code class="highlighter-rouge">grpc.server</code>方法， 应该是使用<code class="highlighter-rouge">Reactor</code>模型所实现的I/O多路复用模型， 至于底层是使用的<code class="highlighter-rouge">poll</code>还是<code class="highlighter-rouge">epoll</code>， 需要再详细的阅读， 这里的话知道这么一回事即可， 具体的源码分析先放一放。</p>
+
+<p>然后将<code class="highlighter-rouge">Greeter</code>对象和<code class="highlighter-rouge">server</code>对象传入给了<code class="highlighter-rouge">add_GreeterServicer_to_server</code>这个方法， 很明显是由<code class="highlighter-rouge">gRPC</code>所提供的， 这应该是一个通用方法， 然后绑定50051端口， 开启事件循环， 准备接受客户端的连接。</p>
+
+<p><code class="highlighter-rouge">Greeter</code>类继承了一个不知道是啥的类， 然后添加了一个在<code class="highlighter-rouge">.proto</code>中所定义的方法， 只不过这里比<code class="highlighter-rouge">.proto</code>文件多了一个参数， <code class="highlighter-rouge">context</code>， 这个参数有什么意义后面再讲。</p>
+
+<p>然后再来看客户端的代码：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+    <span class="k">with</span> <span class="n">grpc</span><span class="o">.</span><span class="n">insecure_channel</span><span class="p">(</span><span class="s">'localhost:50051'</span><span class="p">)</span> <span class="k">as</span> <span class="n">channel</span><span class="p">:</span>
+        <span class="n">stub</span> <span class="o">=</span> <span class="n">helloworld_pb2_grpc</span><span class="o">.</span><span class="n">GreeterStub</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">stub</span><span class="o">.</span><span class="n">SayHello</span><span class="p">(</span><span class="n">helloworld_pb2</span><span class="o">.</span><span class="n">HelloRequest</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">'you'</span><span class="p">))</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"Greeter client received: "</span> <span class="o">+</span> <span class="n">response</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>比较简单， 这里使用<code class="highlighter-rouge">with</code>来管理<code class="highlighter-rouge">channel</code>资源， 也就意味着在示例中是每调用一次方法都建立一个新的连接， 在实际使用中可以保持这个长连接， 有没有心跳机制还是需要看源码。 然后获取了一个<code class="highlighter-rouge">stub</code>对象， 直接调用了<code class="highlighter-rouge">SayHello</code>方法， 并实例化了一个<code class="highlighter-rouge">HelloRequest</code>对象作为参数传入， 打印调用结果。 远程过程调用就此结束。</p>
+
+<p>虽然官网给出的demo比较简单， 但是这的确是我们编写复杂逻辑的基础：</p>
+
+<p>1）定义<code class="highlighter-rouge">.proto</code>文件: 该文件包括client发送的对象以及server返回的对象， 以及服务名称和该服务下所对应的方法</p>
+
+<p>2）利用Google所提供<code class="highlighter-rouge">Python</code>类库生成<code class="highlighter-rouge">_pb2.py</code>以及<code class="highlighter-rouge">_pb2_grpc.py</code>文件， 前者为<code class="highlighter-rouge">.proto</code>文件所生成的数据结构文件， 后者服务于<code class="highlighter-rouge">gRPC</code>调用</p>
+
+<p>3）定义服务端代码：首先编写与<code class="highlighter-rouge">.proto</code>文件中<code class="highlighter-rouge">service</code>相同名称的类， 并继承<code class="highlighter-rouge">_pb2_grpc.py</code>中所对应的<code class="highlighter-rouge">servic</code>类， 然后实现定义好的函数</p>
+
+<p>4）启动服务端， 服务端为一个轻量级的<code class="highlighter-rouge">Reactor</code>模型， 根据服务器硬件条件定义线程池大小</p>
+
+<p>5）编写客户端调用代码</p>
+
+<h4 id="5-在生产环境中使用grpc">5. 在生产环境中使用gRPC</h4>
+<p>回顾一下我们使用<code class="highlighter-rouge">gRPC</code>框架的过程， 首先我们先得定义<code class="highlighter-rouge">.proto</code>文件， 编写函数调用的入参对象以及返回对象， 然后利用相关的编译工具生成<code class="highlighter-rouge">_pb2.py</code>以及<code class="highlighter-rouge">_pb2_grpc.py</code>文件， 前者为Protoco Buffers所需代码， 后者则为远程方法调用所用文件， 也就是说在client以及server中， 都需要这两个文件。</p>
+
+<p>那么问题就来了， 通常我们的client和server是两个不同的项目， 不会共用同一个代码仓库， 如果我的<code class="highlighter-rouge">.proto</code>文件位于<code class="highlighter-rouge">server</code>中， 此时修改了<code class="highlighter-rouge">.proto</code>文件， 重新编译并生成了代码， 这个时候client端也需要进行更新， 虽然直接把文件复制粘贴过去是可以解决的， 但是并不是很优雅。</p>
+
+<p>那么此时我们就可以使用<code class="highlighter-rouge">Git submodule</code>来管理公共子模块。 将<code class="highlighter-rouge">.proto</code>文件单独抽离成一个git项目， 然后在client和server端的仓库中使用该公共项目。</p>
+
+<p>关于<code class="highlighter-rouge">Git submodule</code>的更多内容请见文章<code class="highlighter-rouge">Git最佳实践</code>。</p>
+
+<h4 id="6-小结">6. 小结</h4>
+<p>在本篇文章中我们通过官方文档了解了<code class="highlighter-rouge">Protocol Buffers</code>以及<code class="highlighter-rouge">gRPC</code>的简单使用， 基本上这些内容也是我们在生产中使用最为频繁， 且核心的内容， 剩下的就是使用时的一些细节以及数据结构的设计。</p>
+
+<p>就我个人而言， 只有在需要高并发的场景下才会使用<code class="highlighter-rouge">gRPC</code>来进行远程调用， 普通场景下使用<code class="highlighter-rouge">RESTFul-API</code>来进行调用即可， 以获得最大的开发速度。</p>
+
+<p>然而<code class="highlighter-rouge">RPC</code>框架远不止<code class="highlighter-rouge">gRPC</code>， 市场上有相当多的选择， 具体的选择， 还是需要看团队对框架的熟悉程度以及具体的业务场景。</p>
+
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=分布式系统基础学习(02)--应用间通信(gRPC)&amp;url=https://smartkeyerror.comservice-communication"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comservice-communication"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comservice-communication"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/message-queue">
+            <section class="post">
+                <h2>分布式系统基础学习(03)--消息队列(RabbitMQ)</h2>
+                <p>消息队列常常被用于跨进程通信， 异步调用， 系统解耦以及流量削峰等场景下。 目前市场上的消息队列种类繁多， 有LinkedIn开源的kafka， 阿里开源的RocketMQ， 以及使用较为广泛的RabbiMQ。 Redis虽然也可以做消息队列， 但是更多的是用来做缓存和其它工具使用。 但是随着Redis 5.0 版本的发布， Redis的功能越来越丰富， 也不排除在未来的某一天也能够占据消息队列的重要一席。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/distributed-system-of-communication">
+            <section class="post">
+                <h2>分布式系统基础学习(01)--通信(TCP/UDP)</h2>
+                <p>分布式系统是一个很庞大的话题， 在我个人的知识版图中， 也仅仅只是对一小部分土地进行了开荒。 不管是分布式系统， 还是单机应用系统， 都是建立在互联网通信机制之上的。 而提到通信， 就不得不提到TCP/UDP这两个非常经典的协议。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

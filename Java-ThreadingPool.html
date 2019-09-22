@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Java并发编程(04)--线程池</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Java-ThreadingPool" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Java并发编程(04)--线程池" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//Java-ThreadingPool" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Java并发编程(04)--线程池" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Java-ThreadingPool" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Java并发编程(04)--线程池",
+    "url": "https://smartkeyerror.com//Java-ThreadingPool",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Java并发编程(04)--线程池</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-12-18">18 Dec 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/并发编程'>并发编程</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>抛开<code class="highlighter-rouge">Java</code>自己封装的<code class="highlighter-rouge">newFixedThreadPool</code>, <code class="highlighter-rouge">newCachedThreadPool</code>等工厂线程池方法， 最核心的就是<code class="highlighter-rouge">ThreadPoolExecutor</code>的配置， 包括线程池的大小， 工作队列， 空闲线程存活时间以及饱和策略。</p>
+
+<!---more--->
+
+<h4 id="1-threadpoolexecutor参数">1. ThreadPoolExecutor参数</h4>
+<p>首先来看<code class="highlighter-rouge">ThreadPoolExecutor</code>的通用构造函数：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="nf">ThreadPoolExecutor</span><span class="o">(</span><span class="kt">int</span> <span class="n">corePoolSize</span><span class="o">,</span>
+                          <span class="kt">int</span> <span class="n">maximumPoolSize</span><span class="o">,</span>
+                          <span class="kt">long</span> <span class="n">keepAliveTime</span><span class="o">,</span>
+                          <span class="n">TimeUnit</span> <span class="n">unit</span><span class="o">,</span>
+                          <span class="n">BlockingQueue</span><span class="o">&lt;</span><span class="n">Runnable</span><span class="o">&gt;</span> <span class="n">workQueue</span><span class="o">,</span>
+                          <span class="n">ThreadFactory</span> <span class="n">threadFactory</span><span class="o">,</span>
+                          <span class="n">RejectedExecutionHandler</span> <span class="n">handler</span><span class="o">)</span>
+</code></pre></div></div>
+<p>参数具体的含义在注释中也有非常清晰的讲到：</p>
+
+<p>1）corePoolSize： 线程池的基本大小
+2）maximumPoolSize：线程池中允许存在的线程数量大小
+3）keepAliveTime： 空闲线程的存活时间， 当池子里面有50个线程， 40个线程在执行任务， 那么空闲10个线程。 这空闲的10个线程将会在达到keepAliveTime时被回收
+4）unit: 时间单位， 提供给keepAliveTime参数
+5）workQueue： 工作队列
+6）threadFactory： 创建线程的工厂
+7）handler： 当线程池中线程用尽并且工作队列达到最大长度时的处理器</p>
+
+<p>线程池的基本大小(corePoolSize)， 最大大小(maximumPoolSize)以及存活时间等因素共同负责线程的创建与销毁。</p>
+
+<p>基本大小表示在没有任务执行时线程池的大小， 也就是当第一个任务提交时池中的线程数量， 并且只有在<strong>工作队列</strong>满了的情况下才会创建超出这个数量的线程。 也就是说如果我们将基本大小设置为4， 并且使用无界队列的话， 那么池中永远就只有4个线程工作。 <code class="highlighter-rouge">newFixedThreadPool</code>就是这么干的。</p>
+
+<p>线程池的最大大小表示可同时运行的线程数量的上限， 如果说我们使用基本大小为5、无界队列的线程池的话， 这个值永远不会产生作用。</p>
+
+<p>空闲线程的存活时间表示当一个线程空闲的时间超过了我们设置的存活时间， 就会被标记为可回收， 并且当线程池的当前大小超过了基本大小时， 该线程将被终止。</p>
+
+<h4 id="2-选择任务队列">2. 选择任务队列</h4>
+<p>基本的任务排队方法有3种：无界队列， 有界队列以及同步移交(<code class="highlighter-rouge">Synchronus Handoff</code>)， 队列的选择与线程池的基本大小和最大大小有着直接的关联。</p>
+
+<p><code class="highlighter-rouge">newFixedThreadPool</code>和<code class="highlighter-rouge">newSingleThreadPool</code>在默认情况下将使用一个无界的阻塞队列。 如果所有的工作队列处于忙碌状态， 那么任务将会在队列中等待。 如果任务持续快速的到达， 并且超过了线程池处理的速度， 那么队列将会无限制地增加，直到内存溢出。</p>
+
+<p>更稳妥的方式是使用有界队列， 比如<code class="highlighter-rouge">ArrayBlockingQueue</code>， 有界的链表阻塞队列以及优先队列。 那么当队列填满之后该如何处理？ 这个时候就需要使用饱和策略。</p>
+
+<h4 id="3-饱和策略">3. 饱和策略</h4>
+<p>当有界队列被填满之后， 饱和策略开始发挥作用。 <code class="highlighter-rouge">ThreadPoolExecutor</code>的饱和策略可以通过调用<code class="highlighter-rouge">setRejectedExecutionHandler</code>来修改。 JDK提供了几种不同的<code class="highlighter-rouge">RejectedExecutionHandler</code>实现：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">AbortPolicy</span><span class="o">,</span> <span class="n">CallerRunsPolicy</span><span class="o">,</span> <span class="n">DiscardPolicy</span><span class="o">,</span> <span class="n">DiscardOldestPolicy</span>
+</code></pre></div></div>
+
+<p>1）中止策略(AbortPolicy)是默认的饱和策略， 直接拒绝任务的提交， 并向你抛出一个<code class="highlighter-rouge">RejectedExecutionException</code>异常， 然后自己处理这个异常。</p>
+
+<p>2）抛弃策略(DiscardPolicy)将会悄咪咪的把你提交的任务干掉， 也不会抛出异常， 仿佛什么都没有发生。</p>
+
+<p>3）抛弃最旧的策略(DiscardOldestPolicy)将会抛弃下一个将被执行的任务， 然后尝试重新提交任务。 需要注意的是如果队列是优先队列的话， 将会抛弃优先级别最高的任务， 所以这种策略最好不要和优先队列一起使用。</p>
+
+<p>4）调用者运行策略(CallerRunsPolicy)实现了一种调节机制， 既不会抛出异常， 也不会抛弃最旧的任务， 而是将某些任务回退到调用者， 从而降低新任务的流量。 简单来讲就是在工作队列填满时， 下一个任务由主线程执行， 那么此时主线程不能提交任务， 并且也不接收新任务， 如果是<code class="highlighter-rouge">Web Server</code>的话， 此时任务会保存在TCP层的队列中， 如果TCP层队列满了的话， TCP将会抛弃请求。</p>
+
+<h5 id="31-自定义饱和策略">3.1 自定义饱和策略</h5>
+<p>如果我们想要自定义饱和策略的话， 那么首先就需要查看一下JDK的源代码， 看看JDK是如何实现的， 此后我们根据源码进行自定义的饱和策略编写即可。</p>
+
+<p>上面儿所提到的4种饱和策略的源码均实现<code class="highlighter-rouge">RejectedExecutionHandler</code>接口， 那么我们自定义的饱和策略同样实现这个接口即可。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/**
+ * AbortPolicy和DiscardPolicy以及其它的饱和策略其实都是ThreadExecutorPool中的内部类,
+ * 均实现了RejectedExecutionHandler接口，可以很明白的看到AbortPolicy直接抛出异常，
+ * 而DiscardPolicy什么都没做， 任务的拒绝交给了有界队列进行丢弃。
+ */</span>
+
+<span class="kd">public</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">AbortPolicy</span> <span class="kd">implements</span> <span class="n">RejectedExecutionHandler</span> <span class="o">{</span>
+
+    <span class="kd">public</span> <span class="nf">AbortPolicy</span><span class="o">()</span> <span class="o">{</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">rejectedExecution</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">,</span> <span class="n">ThreadPoolExecutor</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RejectedExecutionException</span><span class="o">(</span><span class="s">"Task "</span> <span class="o">+</span> <span class="n">r</span><span class="o">.</span><span class="na">toString</span><span class="o">()</span> <span class="o">+</span>
+                                             <span class="s">" rejected from "</span> <span class="o">+</span>
+                                             <span class="n">e</span><span class="o">.</span><span class="na">toString</span><span class="o">());</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">DiscardPolicy</span> <span class="kd">implements</span> <span class="n">RejectedExecutionHandler</span> <span class="o">{</span>
+
+    <span class="kd">public</span> <span class="nf">DiscardPolicy</span><span class="o">()</span> <span class="o">{</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">rejectedExecution</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">,</span> <span class="n">ThreadPoolExecutor</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h4 id="4-线程工厂">4. 线程工厂</h4>
+<p>在我们使用<code class="highlighter-rouge">newFixedThreadPool</code>或者是<code class="highlighter-rouge">newCachedThreadPool</code>时， 都是使用默认的线程工厂来创建线程：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">static</span> <span class="kd">class</span> <span class="nc">DefaultThreadFactory</span> <span class="kd">implements</span> <span class="n">ThreadFactory</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">AtomicInteger</span> <span class="n">poolNumber</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AtomicInteger</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">ThreadGroup</span> <span class="n">group</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">AtomicInteger</span> <span class="n">threadNumber</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AtomicInteger</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">namePrefix</span><span class="o">;</span>
+
+    <span class="n">DefaultThreadFactory</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">SecurityManager</span> <span class="n">s</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">getSecurityManager</span><span class="o">();</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="o">(</span><span class="n">s</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">?</span> <span class="n">s</span><span class="o">.</span><span class="na">getThreadGroup</span><span class="o">()</span> <span class="o">:</span>
+                              <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getThreadGroup</span><span class="o">();</span>
+        <span class="n">namePrefix</span> <span class="o">=</span> <span class="s">"pool-"</span> <span class="o">+</span>
+                      <span class="n">poolNumber</span><span class="o">.</span><span class="na">getAndIncrement</span><span class="o">()</span> <span class="o">+</span>
+                     <span class="s">"-thread-"</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="n">Thread</span> <span class="nf">newThread</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">Thread</span> <span class="n">t</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Thread</span><span class="o">(</span><span class="n">group</span><span class="o">,</span> <span class="n">r</span><span class="o">,</span>
+                              <span class="n">namePrefix</span> <span class="o">+</span> <span class="n">threadNumber</span><span class="o">.</span><span class="na">getAndIncrement</span><span class="o">(),</span>
+                              <span class="mi">0</span><span class="o">);</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">t</span><span class="o">.</span><span class="na">isDaemon</span><span class="o">())</span>
+            <span class="n">t</span><span class="o">.</span><span class="na">setDaemon</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">t</span><span class="o">.</span><span class="na">getPriority</span><span class="o">()</span> <span class="o">!=</span> <span class="n">Thread</span><span class="o">.</span><span class="na">NORM_PRIORITY</span><span class="o">)</span>
+            <span class="n">t</span><span class="o">.</span><span class="na">setPriority</span><span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">NORM_PRIORITY</span><span class="o">);</span>
+        <span class="k">return</span> <span class="n">t</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>其实自定义一个线程工厂也比较简单， 实现<code class="highlighter-rouge">ThreadFactory</code>接口， 并在<code class="highlighter-rouge">newThread</code>方法中赋予线程一些其余的属性或者特性即可。 例如我们想要将线程池中的所有线程都设置为守护线程， 或者自定义我们的线程名称。 例如：</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyThreadFactory</span> <span class="kd">implements</span> <span class="n">ThreadFactory</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="n">String</span> <span class="n">prefix</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="kt">boolean</span> <span class="n">threadIsDaemon</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">MyThreadFactory</span><span class="o">(</span><span class="n">String</span> <span class="n">prefix</span><span class="o">)</span> <span class="o">{</span> <span class="k">this</span><span class="o">.</span><span class="na">prefix</span> <span class="o">=</span> <span class="n">prefix</span><span class="o">;</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="nf">MyThreadFactory</span><span class="o">(</span><span class="n">String</span> <span class="n">prefix</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">threadIsDaemon</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">prefix</span> <span class="o">=</span> <span class="n">prefix</span><span class="o">;</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">threadIsDaemon</span> <span class="o">=</span> <span class="n">threadIsDaemon</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="n">Thread</span> <span class="nf">newThread</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">Thread</span> <span class="n">t</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Thread</span><span class="o">(</span><span class="n">r</span><span class="o">);</span>
+        <span class="n">t</span><span class="o">.</span><span class="na">setName</span><span class="o">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">t</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span>
+        <span class="n">t</span><span class="o">.</span><span class="na">setDaemon</span><span class="o">(</span><span class="n">threadIsDaemon</span><span class="o">);</span>
+        <span class="k">return</span> <span class="n">t</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>主要是对线程池中的线程做一些属性的配置， 没有什么很复杂的地方。</p>
+
+<h4 id="5-线程池的关闭">5. 线程池的关闭</h4>
+<p>线程池的关闭主要有两个函数， <code class="highlighter-rouge">shutdown</code>以及<code class="highlighter-rouge">shutdownNow</code>， 前者在调用之后首先禁止添加新的任务， 然后执行完所有的任务之后关闭线程池。 <code class="highlighter-rouge">shutdownNow</code>在调用后同样禁止添加新的任务， 然后中断所有的工作线程， 并返回没有被执行任务列表(<code class="highlighter-rouge">List&lt;Runnable&gt;</code>)。
+两种方式各有其应用场景， 视具体的业务来决定需要调用哪个关闭函数。</p>
+
+<h4 id="6-线程池的大小如何选择">6. 线程池的大小如何选择</h4>
+<p>如果任务是CPU密集型， 例如图片的拼接， 转换或者是其它需要计算的任务， 那么此时线程数量与CPU核心数相同即可。 因为CPU密集型的任务没有阻塞和等待， 所需要的只是CPU执行更长的时间， 而不是频繁的线程上下文切换。</p>
+
+<p>如果任务是I/O密集型， 虽然有理论上的计算公式， 但是很难计算系统中的阻塞系数， 那么此时可能需要进行一些并发的测试， 例如200个任务开25， 50， 75， 100个线程分别进行测试， 找到最佳的平衡点。 并不是线程数量越多越好， 操作系统创建一个线程以及线程的上下文切换都可以认为是重量级的操作， 应避免过多的上下文切换。 这个时候我认为只能通过测试以及实验的方法来找到平衡点， 这种情况的数量是无法被计算的。</p>
+
+<h4 id="7-小结">7. 小结</h4>
+<p>线程池的内容基本上就只有这么多， 在理清的其运行机制以及参数所代表的含义之后， 更多的是如何正确的配置以及使用， 例如是以单例模式应用于整个系统， 还是分布于系统的各个角落， 都需要根据特定的业务场景以及架构方式来进行选择。 并没有哪种方式绝对的好， 也没有哪种方式绝对的差， 有的只是权衡利弊。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Java并发编程(04)--线程池&amp;url=https://smartkeyerror.comJava-ThreadingPool"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comJava-ThreadingPool"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comJava-ThreadingPool"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Python-ThreadingPool">
+            <section class="post">
+                <h2>Java并发编程(05)--Python线程池源码剖析</h2>
+                <p>本来是一个对Java并发编程的一个学习和总结专题， 虽然Python有GIL的存在， 但不能否认其线程池的实现非常的简洁而优雅， 此外温故而知新， 通过理解其它语言的线程池也能够加深我们对Java线程池的理解。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/task-cancel-and-exception">
+            <section class="post">
+                <h2>Java并发编程(03)--任务的取消与异常处理</h2>
+                <p>在前面的一章整理并发编程的一些基础内容， 包括任务的创建， 任务的执行， 线程池的简单使用， 加入一个线程以及守护线程和线程同步。 基本上涵盖了绝大多数的基础内容， 在本章中学习任务的取消与异常处理。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

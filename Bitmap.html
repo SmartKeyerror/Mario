@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>那些有趣的数据结构与算法(02)--Bitmap</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Bitmap" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="那些有趣的数据结构与算法(02)--Bitmap" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//Bitmap" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="那些有趣的数据结构与算法(02)--Bitmap" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Bitmap" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "那些有趣的数据结构与算法(02)--Bitmap",
+    "url": "https://smartkeyerror.com//Bitmap",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">那些有趣的数据结构与算法(02)--Bitmap</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-03-18">18 Mar 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/数据结构'>数据结构</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在我刚接触Python这门开发语言时， 并没有想用它做Web后端开发， 而是拿来写爬虫。 第一个接触的爬虫框架就是Scrapy。 网络爬虫绕不开的一个话题就是URL去重问题。 在Scrapy原生框架下， 使用的是集合来对URL进行去重的。 集合本身采用哈希表实现， 是一种典型的以空间换时间的数据结构， 当URL数量极为庞大时， 使用这种策略的去重很有可能导致内存溢出而造成服务器宕机的问题。 此时， Bitmap走进了我的视线。</p>
+
+<!---more--->
+
+<h4 id="1-什么是bitmap">1. 什么是Bitmap</h4>
+<p>现代计算机使用二进制来作为信息存储和传输的基本单位， 由于计算机是老美发明的， 他们只需要使用A-Z这26个英文字母， 再加上一些字符， 就可以表达所有的文字内容了。 所以就有了ASCII编码， 使用8个bit(位)来表示一个byte(字节)。</p>
+
+<p>例如”Hey”这个字符， 是由3个字节所组成的， 分别是’H’, ‘e’, ‘y’， 所对应的ASCII码分别是72， 101， 121。 将其转换成二进制， 分别为01001000， 01100101， 01111001。 也就是说， “Hey”这个单词， 在底层存储时， 是使用010010000110010101111001来进行存储的。</p>
+
+<p>在了解了这些内容之后， 再来看如何通过Bitmap来进行URL去重。 假如对于<code class="highlighter-rouge">https://smartkeyerror.com/</code>这个URL， 我们对其进行某种编码操作， 让它变成一个数字， 例如12； 对于<code class="highlighter-rouge">https://smartkeyerror.com/categories/</code>这个URL采用同样的编码方式， 将其变为一个数字， 例如7…以此类推， 有10亿个URL， 就有10亿个数字。</p>
+
+<p>在上面我们得到了两个数字， 一个是12， 一个是7， 分别代表了两个URL。 接下来构建一个以位为单位的数组， 将这两个URL所代表的数字作为数组索引， 修改其值为1， 得到的结果就是这样的：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/BitMap%E7%BC%96%E7%A0%81.png" alt="" /></p>
+
+<p>如果爬虫再次爬取了<code class="highlighter-rouge">https://smartkeyerror.com/</code>这个URL， 通过编码得到了12， 发现这个数组索引为12的元素值为1， 那么就知道这个URL已经被爬取过了， 不会再次进行爬取， 也就达到了去重的作用。</p>
+
+<p>在图中， 位所组成的数组有16个元素， 即能够表示16个URL， 占用空间仅有2个字节。 如果有10亿个URL， 占用空间为 10×10^8 / 8 = 125×10^6字节， 约为125M， 对内存要求非常之低。</p>
+
+<h4 id="2-bitmap的实现">2. Bitmap的实现</h4>
+<p>如果是自己使用Python或者是Java来实现Bitmap这种数据结构的话， 还是比较麻烦的， 所以能够捡现成的用最为合适， 如果现成的不符合特定的需求的话， 自己实现也不迟。</p>
+
+<p>Redis所实现的Bitmap接口相当的简单：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 设置值</span>
+setbit key offset value
+<span class="c"># 获取值</span>
+getbit key offect
+</code></pre></div></div>
+
+<p>Bitmap除了能够用来进行数据去重以外， 还可以做一些统计功能。 例如用户每天对网站的访问情况， 使用用户id作为Bitmap的偏移量， 如果访问了， 将其值修改为1：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>setbit user_access_2019-03-10 15 1
+setbit user_access_2019-03-10 25 1
+setbit user_access_2019-03-10 1688 1
+</code></pre></div></div>
+
+<p>上面的3条命令表示在2019-03-10这天， id为15， 25， 1688的用户访问了网站。 通过使用<code class="highlighter-rouge">bitcount</code>命令可以很方便的统计出当天总访问用户是多少：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitcount user_access_2019-03-10
+</code></pre></div></div>
+
+<p>并且， Redis提供的Bitmap实现支持4种运算操作， 分别是and(交集), or(并集), not(非), xor(异或)， 并将结果保存至destkey中。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitop option destkey key1 key2 .....
+</code></pre></div></div>
+
+<p>例如， 查看2019-03-10和2019-03-09这两天都访问了网站的用户数量：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitop and user_access_2019-03-09_10 user_access_2019-03-09 user_access_2019-03-10
+</code></pre></div></div>
+
+<h4 id="3-利用bitmap实现网站标签统计">3. 利用Bitmap实现网站标签统计</h4>
+<p>这几天在拉钩上更新了自己许久未更的简历， 发现多了一个功能: 综合能力。 这一项需要我们从众多的能力标签中选出5个符合自己能力的标签， 例如沟通协调能力， 自驱动， 抗压能力等等。 自然， 我们可以用一个数组列表来对这些标签进行存储并展示， 但是在数据统计时， 就会有些麻烦了。</p>
+
+<p>如果采用列表存储标签的方法来做的话， 想要统计给自己打上”自驱动”标签的用户数量是多少， 或者是哪个标签是用户作为喜爱的标签等等， 这些统计功能很难展开。</p>
+
+<p>这个时候Redis实现的Bitmap就派上用场了， 假如标签有self-driven， communication-skills， work-well-under-pressure等等， 同样采用用户id作为偏移量:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>setbit self-driven 15 1
+setbit self-driven 2544 1
+
+setbit communication-skills 15 1
+setbit communication-skills 268 1
+
+setbit work-well-under-pressure 125 1
+</code></pre></div></div>
+
+<p>统计”自驱动”标签的用户数量:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitcount self-driven
+</code></pre></div></div>
+
+<p>统计最热门的标签:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitcount self-driven
+bitcount communication-skills
+bitcount work-well-under-pressure
+<span class="c"># 得到结果之后将其整理成为一个字典， 扫描该字典即可得到结果</span>
+</code></pre></div></div>
+
+<h4 id="4-利用bitmap对大文件进行排序">4. 利用Bitmap对大文件进行排序</h4>
+<p>这一小节的应用就比较功利了， 因为对磁盘大文件进行排序， 并且限制了内存使用不能超过50M的情况下， 在日常开发中出现的频次还是极低的。</p>
+
+<p>问题描述: 一个最多包含1000万个正整数的文件， 每个数的大小都小于10000000， 且数据没有重复。 如何在内存使用小于50M的情况下， 对该文件进行排序。</p>
+
+<p>由于内存以及效率的限制(使用归并排序会造成多次磁盘读取)， 这个问题最佳的解决方案就是使用Bitmap。 在内存中建立一个包含有1000万个bit的数组， 依次写入文件中的数字， 而后再顺序输出即可。 伪代码如下:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 初始化bit数组</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+    <span class="n">bit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c"># 数据逐行写入bit数组</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"file.txt"</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">bit</span><span class="p">[</span><span class="n">data</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="c"># 数据逐个输出</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">write</span> <span class="n">i</span> <span class="n">on</span> <span class="n">output</span> <span class="nb">file</span>
+</code></pre></div></div>
+
+<h4 id="5-小结">5. 小结</h4>
+<p>我记得Bitmap这个数据结构在Java中有内置的实现， 并且Guava包也对Bitmap进行了实现和优化， 至于Python,  似乎只有第三方包实现了该结构。 总的来说我们不用从零开始去编写， Redis也为我们提供了丰富的API。</p>
+
+<p>Bitmap最常用的场景依然是海量数据的去重以及判断某一个数是否在海量数据当中， 除此之外就是日常的小功能实现， 例如标签统计， 网站访客信息记录等等。</p>
+
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=那些有趣的数据结构与算法(02)--Bitmap&amp;url=https://smartkeyerror.comBitmap"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comBitmap"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comBitmap"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/UnionFind">
+            <section class="post">
+                <h2>那些有趣的数据结构与算法(03)--并查集</h2>
+                <p>在《算法》(第四版)的第一章最后一小节中， 也就是”案例研究: union-find算法”这一小节， 我看到了并查集。 在我完整的阅读了所有的算法内容之后， 脑子里只剩下两个字: 优美。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Redis-base-data-structure">
+            <section class="post">
+                <h2>Redis基本数据结构与实现</h2>
+                <p>Redis内置了5种对外开放的数据结构， 分别是字符串， 列表， 集合， 有序集合以及哈希对象。 每一种数据结构的底层实现都会由存入的数据产生动态变化， 这也是Redis具有极佳吞吐量的原因之一。 本篇文章主要描述其基本数据结构的实现以及这些结构在使用时的注意事项。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

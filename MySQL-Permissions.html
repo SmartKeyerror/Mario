@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>MySQL权限管理</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//MySQL-Permissions" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="MySQL权限管理" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//MySQL-Permissions" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MySQL权限管理" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//MySQL-Permissions" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "MySQL权限管理",
+    "url": "https://smartkeyerror.com//MySQL-Permissions",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">MySQL权限管理</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2018-10-30">30 Oct 2018</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p><code class="highlighter-rouge">MySQL</code>的权限管理重要性等同于服务器数据的重要性， 权限体系如果建立的不到位的话， 也就意味着生产数据处于危险状态。</p>
+
+<!---more--->
+
+<h4 id="1-ubuntu-1604-下安装mysql">1. Ubuntu 16.04 下安装MySQL</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>apt-get update
+<span class="nb">sudo </span>apt-get upgrade
+<span class="nb">sudo </span>apt-get install mysql-server mysql-client
+</code></pre></div></div>
+
+<h4 id="2-修改相关的配置文件">2. 修改相关的配置文件</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>vim /etc/mysql/mysql.conf.d/mysqld.cnf
+
+bind-address <span class="o">=</span> 0.0.0.0
+max_connections <span class="o">=</span> 3000
+
+<span class="c"># binlog相关配置</span>
+server-id <span class="o">=</span> 2
+log_bin <span class="o">=</span> /var/log/mysql/mysql-bin.log
+expire_logs_days <span class="o">=</span> 10
+max_binlog_size <span class="o">=</span> 100M
+
+<span class="c"># 慢查询日志配置</span>
+slow_query_log <span class="o">=</span> 1
+slow_query_log_file <span class="o">=</span> /var/log/mysql/mysql-slow.log
+long_query_time <span class="o">=</span> 2
+</code></pre></div></div>
+<p>编辑并保存后重启MySQL服务即可。另外需要在系统层面赋予MySQL最大文件描述符的配置：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>vim /lib/systemd/system/mysql.service
+
+<span class="c"># 添加</span>
+<span class="nv">LimitNOFILE</span><span class="o">=</span>65535
+<span class="nv">LimitNPROC</span><span class="o">=</span>65535
+</code></pre></div></div>
+
+<h4 id="3-管理权限体系的建立">3. 管理权限体系的建立</h4>
+<p>通常MySQL的权限分级与开发团队的组织形式直接相关， 包括初级工程师(只能select部分database), 中级工程师(能够对数据进行增删改查)， 高级开发工程师(全部权限)， 但是在现代的web开发， 使用ORM框架的条件下， 对应用的账号则必须赋予较高的权限， 那么能够查看代码的开发人员依然能够拿到较高权限。 所以MySQL的权限控制需要和Linux权限控制相结合： 涉及生产服务器MySQL数据库连接代码应只存放于服务器中， 并对其进行高权限控制， 即该文件只能由高级开发工程师进行查看或者修改， 以保证权限的统一。</p>
+
+<h5 id="31-创建用户并赋予权限">3.1 创建用户并赋予权限</h5>
+<p>创建用户使用<code class="highlighter-rouge">GRANT</code>命令， 常见参数及说明如下表所示：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>GRANT</th>
+      <th>ALL PRIVILEGES</th>
+      <th>ON database.table</th>
+      <th>TO user@address</th>
+      <th>IDENTIFIED BY ‘password’</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>创建用户命令</td>
+      <td>赋予什么权限</td>
+      <td>哪个数据库以及哪张表</td>
+      <td>用户名和登录地址</td>
+      <td>密码</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>创建smart用户， 并赋予其全部数据库的全部权限， 但只能在ip地址为144.35.177.20的机器上进行登录</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">GRANT</span> <span class="k">ALL</span> <span class="k">PRIVILEGES</span> <span class="k">ON</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="k">TO</span> <span class="s1">'smart'</span><span class="o">@</span><span class="s1">'144.35.177.20'</span> <span class="n">IDENTIFIED</span> <span class="k">BY</span> <span class="s1">'passwd'</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="n">FLUSH</span> <span class="k">PRIVILEGES</span><span class="p">;</span>
+
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">mysql</span><span class="p">.</span><span class="k">user</span> <span class="k">where</span> <span class="k">User</span><span class="o">=</span><span class="nv">"smart"</span> <span class="err">\</span><span class="k">G</span><span class="p">;</span>
+<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+                  <span class="k">Host</span><span class="p">:</span> <span class="mi">144</span><span class="p">.</span><span class="mi">35</span><span class="p">.</span><span class="mi">177</span><span class="p">.</span><span class="mi">20</span>
+                  <span class="k">User</span><span class="p">:</span> <span class="n">smart</span>
+           <span class="n">Select_priv</span><span class="p">:</span> <span class="n">Y</span>
+           <span class="n">Insert_priv</span><span class="p">:</span> <span class="n">Y</span>
+           <span class="n">Update_priv</span><span class="p">:</span> <span class="n">Y</span>
+           <span class="n">Delete_priv</span><span class="p">:</span> <span class="n">Y</span>
+           <span class="n">Create_priv</span><span class="p">:</span> <span class="n">Y</span>
+             <span class="n">Drop_priv</span><span class="p">:</span> <span class="n">Y</span>
+           <span class="n">Reload_priv</span><span class="p">:</span> <span class="n">Y</span>
+         <span class="n">Shutdown_priv</span><span class="p">:</span> <span class="n">Y</span>
+          <span class="n">Process_priv</span><span class="p">:</span> <span class="n">Y</span>
+          <span class="p">...</span>  <span class="err">中间省略</span>
+<span class="mi">1</span> <span class="k">row</span> <span class="k">in</span> <span class="k">set</span> <span class="p">(</span><span class="mi">0</span><span class="p">.</span><span class="mi">00</span> <span class="n">sec</span><span class="p">)</span>
+</code></pre></div></div>
+<p>在赋予<code class="highlighter-rouge">ALL PRIVILEGES</code>之后该用户除了不能创建用户以外， 用于对数据库的所有控制权限。 这样的账号应该只有运维经理以及高级开发才能拥有。</p>
+
+<p>下面来看一下MySQL具体都有哪些权限:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>维度</th>
+      <th>权限</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>数据</td>
+      <td>insert, select, update, delete</td>
+    </tr>
+    <tr>
+      <td>表</td>
+      <td>create, drop, references, index, alter, lock table, create temporary table</td>
+    </tr>
+    <tr>
+      <td>主从复制</td>
+      <td>replication client, replication slave</td>
+    </tr>
+    <tr>
+      <td>服务器</td>
+      <td>shutdown, processlist, grant, super, create role</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>该表简单的对权限进行了一个分类， 作用仅是便于记忆而已。 根据<code class="highlighter-rouge">MySQL</code>官方文档所给出的权限以及每种权限的作用， 下面进行详细的整理。</p>
+
+<ul>
+  <li>ALTER: 允许更改表结构， 例如添加索引， 删除字段等。 <code class="highlighter-rouge">ALTER TABLE</code>语句需要有CREATE以及INSERT权限。 当我们对一个表进行重命名的时候， 需要有ALTER和DROP以及CREATE， INSERT的权限。</li>
+  <li>ALTER ROUTINE: 使用ALTER存储过程的权限。</li>
+  <li>CREATE: 创建表的权限。</li>
+  <li>CREATE ROLE: 创建角色的权限， 当一个用户拥有了CREATE USER权限时， 该权限随即拥有。</li>
+  <li>CREATE ROUTINE: 允许使用CREATE存储过程。</li>
+  <li>CREATE TEMPORARY TABLES: 允许使用<code class="highlighter-rouge">CREATE TEMPORARY TABLE</code>语句来创建临时表， 这张临时表的 DROP TABLE， INSERT， UPDATE等权限随之赋予。</li>
+  <li>CREATE USER: 能够使用 ALTER USER， CREATE ROLE， CREATE USER， DROP ROLE， DROP USER, RENAME USER， 以及REVOKE ALL PRIVILEGES等语句， 属于管理员权限。</li>
+  <li>CREATE VIEW: 允许创建视图。</li>
+  <li>DELETE: 允许从表中删除数据。</li>
+  <li>DROP: 删除整张表以及数据的权限， TRUNCATE TABLE命令需要有该权限才能够执行。</li>
+  <li>DROP ROLE: 允许删除某一个用户， 当用户具有了CREATE USER的权限时， 该权限随之赋予。</li>
+  <li>GRANT OPTION: 允许为用户添加权限。</li>
+  <li>INDEX: 允许添加和删除索引， 当用于具有CREATE的权限时， 该权限随之赋予。</li>
+  <li>INSERT: 向表中插入数据的权限。</li>
+  <li>LOCK TABLES: 锁表的权限。</li>
+  <li>PROCESS: 允许查询当前数据库所运行的后台线程信息， 例如主从复制线程信息。</li>
+  <li>RELOAD: 允许运行flush-xxx相关命令， 包括刷新权限， 日志等， 属于管理员权限。</li>
+  <li>REPLICATION CLIENT： 允许使用SHOW MASTER STATUS, SHOW SLAVE STATUS, SHOW BINARY LOGS等语句， 主要用于主从复制。</li>
+  <li>REPLICATION SLAVE: 允许更新主库的变化。</li>
+  <li>SUPER: 这是一个相当重要的权限， 权限非常大， 并且<code class="highlighter-rouge">MySQL</code>在将来的版本中将会移除这个权限， 的确， 该权限比较危险。 SUPER权限能够在运行时修改系统变量， 该更主从复制相关信息， 以及更重要的， 该权限可以在<code class="highlighter-rouge">MySQL Session</code>中删除binlog日志文件， 即<code class="highlighter-rouge">purge master logs</code>命令。</li>
+  <li>UPDATE: 更新表数据的权限。</li>
+</ul>
+
+<p>可以看到， 比较危险的权限也就是DROP, CREATE USER， GRANT OPTION， RELOAD以及SUPER权限， 其中最危险的就是SUPER权限， <strong>除了管理员以外， 任何账号均不能有SUPER权限</strong>。</p>
+
+<h6 id="311-创建mysqldump账户并赋予权限">3.1.1 创建mysqldump账户并赋予权限</h6>
+<p><code class="highlighter-rouge">mysqldump</code>命令的权限讲实话我并不清楚， 查阅网上相关资料之后进行创建并赋予：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">create</span> <span class="k">user</span> <span class="s1">'dumper'</span><span class="o">@</span><span class="s1">'localhost'</span> <span class="n">identified</span> <span class="k">by</span> <span class="s1">'passwd'</span><span class="p">;</span>
+<span class="k">grant</span> <span class="k">select</span> <span class="k">on</span> <span class="n">myProjects</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">'dumper'</span><span class="o">@</span><span class="s1">'localhost'</span><span class="p">;</span>
+<span class="k">grant</span> <span class="k">show</span> <span class="k">view</span> <span class="k">on</span> <span class="n">myProjects</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">'dumper'</span><span class="o">@</span><span class="s1">'localhost'</span><span class="p">;</span>
+<span class="k">grant</span> <span class="k">lock</span> <span class="n">tables</span> <span class="k">on</span> <span class="n">myProjects</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">'dumper'</span><span class="o">@</span><span class="s1">'localhost'</span><span class="p">;</span>
+<span class="k">grant</span> <span class="k">trigger</span> <span class="k">on</span> <span class="n">myProjects</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">'dumper'</span><span class="o">@</span><span class="s1">'localhost'</span><span class="p">;</span>
+<span class="o">//</span> <span class="err">如果需要在备份时刷新二进制日志，</span> <span class="err">还需要以下权限</span>
+<span class="k">grant</span> <span class="n">reload</span> <span class="k">on</span> <span class="n">myProjects</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">'dumper'</span><span class="o">@</span><span class="s1">'localhost'</span><span class="p">;</span>
+<span class="k">grant</span> <span class="n">replication</span> <span class="n">slave</span><span class="p">,</span> <span class="n">replication</span> <span class="n">client</span> <span class="k">on</span> <span class="n">myProjects</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">'dumper'</span><span class="o">@</span><span class="s1">'localhost'</span><span class="p">;</span>
+</code></pre></div></div>
+<p>那么此时使用该账户进行登录， 进行查看<code class="highlighter-rouge">myProjects</code>库， 其余的增删改操作均不能进行。</p>
+
+<h6 id="312-创建主从复制的账号并赋予权限">3.1.2 创建主从复制的账号并赋予权限</h6>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">grant</span> <span class="n">replication</span> <span class="n">slave</span><span class="p">,</span> <span class="n">replication</span> <span class="n">client</span> <span class="k">on</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="n">repl</span><span class="o">@</span><span class="s1">'192.168.0.%'</span> <span class="n">dentified</span> <span class="k">by</span> <span class="s1">'passwd'</span><span class="p">;</span>
+</code></pre></div></div>
+<p>这里使用<code class="highlighter-rouge">%</code>通配符来对该局域网内的所有机器进行权限的赋予。</p>
+
+<h6 id="313-创建项目账号并赋予权限">3.1.3 创建项目账号并赋予权限</h6>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">grant</span> <span class="k">all</span> <span class="k">privileges</span> <span class="k">on</span> <span class="n">myProjects</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">'shop'</span><span class="o">@</span><span class="s1">'192.168.1.6'</span> <span class="n">identified</span> <span class="k">by</span> <span class="s1">'complex-passwd'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h4 id="32-查看某个用户的权限">3.2 查看某个用户的权限</h4>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">show</span> <span class="n">grants</span> <span class="k">for</span> <span class="s1">'user'</span><span class="o">@</span><span class="s1">'address'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h4 id="33-回收用户权限以及删除用户">3.3 回收用户权限以及删除用户</h4>
+<p>回收用户所有权限</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">revoke</span> <span class="k">all</span> <span class="k">on</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="k">from</span> <span class="s1">'user'</span><span class="o">@</span><span class="s1">'address'</span><span class="p">;</span>
+</code></pre></div></div>
+<p>回收用户部分权限</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">revoke</span> <span class="k">drop</span> <span class="k">on</span> <span class="n">myProjects</span><span class="p">.</span><span class="o">*</span> <span class="k">from</span> <span class="s1">'user'</span><span class="o">@</span><span class="s1">'address'</span><span class="p">;</span>
+</code></pre></div></div>
+<p>删除用户</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">drop</span> <span class="k">user</span> <span class="s1">'user'</span><span class="o">@</span><span class="s1">'address'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>修改某个用户的密码</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">update</span> <span class="n">mysql</span><span class="p">.</span><span class="k">user</span> <span class="k">set</span> <span class="n">authentication_string</span><span class="o">=</span><span class="n">password</span><span class="p">(</span><span class="nv">"passwd"</span><span class="p">)</span> <span class="k">where</span> <span class="k">user</span><span class="o">=</span><span class="nv">"user"</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>在执行完上面儿的语句之后， 尽量的执行<code class="highlighter-rouge">flush privileges;</code>命令刷新一下权限。</p>
+
+<h4 id="4-关于权限管理的一些杂谈">4. 关于权限管理的一些杂谈</h4>
+<p>MySQL并没有提供不给用户授予什么权限的命令， 也就是没有<code class="highlighter-rouge">exclude</code>这种语法， 但是我们可以先给用户授予全部的权限， 然后将不必要的权限进行回收。 像<code class="highlighter-rouge">drop</code>这种很危险的权限就不要随便给， 如果库里面儿只有逻辑删除的话， <code class="highlighter-rouge">delete</code>权限都可以不给， 有需要的时候让管理员进行协助处理。 尽可能的用最小权限做更安全的事情， 毕竟使用<code class="highlighter-rouge">binlog</code>进行数据恢复也不可能保证100%成功， 将危险扼杀在摇篮里才是正解。</p>
+
+<p>权限管理对于管理员来讲确实是比较麻烦的一件事情， 很多团队<code class="highlighter-rouge">root</code>账号满天跑， 包括笔者在内的团队在初期也是这样的。 在付出了血淋淋的代价之后才开始对权限进行管理， 亡羊补牢为时尚晚， 埋过的雷总会炸的。</p>
+
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=MySQL权限管理&amp;url=https://smartkeyerror.comMySQL-Permissions"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comMySQL-Permissions"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comMySQL-Permissions"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Java-IO">
+            <section class="post">
+                <h2>Java基础编程(01)--I/O系统</h2>
+                <p>Java中的I/O系统相较于Python要复杂许多， 不管是从设计上还是实现上。 这一块儿的内容也是我在学习Java时遇到的最大的困难(并发包都比这个好理解)， 经过了持(san)之(tian)以(da)恒(yu)的学习之后， 算是对Java I/O系统有一个基本的认识和理解。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/MySQL-slow-query-analysis-tool">
+            <section class="post">
+                <h2>MySQL慢查询日志分析工具</h2>
+                <p>慢查询日志使我们对MySQL进行性能优化的关键指标， 只有在确定了哪些查询的确是慢查询之后才能对症下药， 进行性能优化， 而不是凭自身的感觉去判断， 结果有事往往出乎意料。 直接打开慢查询日志进行查看效率比较低效， 所以需要借助pt-query-digest工具来进行分析。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

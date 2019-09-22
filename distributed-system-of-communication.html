@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>分布式系统基础学习(01)--通信(TCP/UDP)</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//distributed-system-of-communication" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="分布式系统基础学习(01)--通信(TCP/UDP)" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//distributed-system-of-communication" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="分布式系统基础学习(01)--通信(TCP/UDP)" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//distributed-system-of-communication" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "分布式系统基础学习(01)--通信(TCP/UDP)",
+    "url": "https://smartkeyerror.com//distributed-system-of-communication",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">分布式系统基础学习(01)--通信(TCP/UDP)</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-01-03">03 Jan 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/分布式系统'>分布式系统</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>分布式系统是一个很庞大的话题， 在我个人的知识版图中， 也仅仅只是对一小部分土地进行了开荒。 不管是分布式系统， 还是单机应用系统， 都是建立在互联网通信机制之上的。 而提到通信， 就不得不提到<code class="highlighter-rouge">TCP/UDP</code>这两个非常经典的协议。</p>
+
+<!---more--->
+
+<h4 id="1-为什么要学习tcp和udp">1. 为什么要学习TCP和UDP？</h4>
+<p>不管是科班出身还是自学出身的程序员， 或多或少的都会接触过这两个协议。 曾经我一度认为这玩意儿的底层原理有什么用？ 我直接使用语言给我封装好的<code class="highlighter-rouge">socket</code>接口或者是<code class="highlighter-rouge">http</code>协议不是更加方便吗， 了解了其原理又能怎样， 难道还能再实现一个相关协议出来吗？</p>
+
+<p>的确， 操作系统和框架已经将很多的细节隐藏了起来， 只为我们暴露非常简易的接口用于使用， 例如<code class="highlighter-rouge">socket</code>。 通过<code class="highlighter-rouge">socket</code>我们可以非常方便的建立TCP连接或者是UDP连接， 数据包的传输和解析也被隐藏， 使我们更加的专注于业务代码的编写。</p>
+
+<p>在绝大多数场景中， 我们根本不需要去了解其中的细节， 拿过来直接用就好了。 但是在高并发的系统中， 一个很重要的调优手段就是优化服务器的TCP连接， 在这其中有诸多参数我们可以进行配置， 有些参数不能被修改， 有的参数能够提升服务器的性能， 这个时候， 学习原理的价值也就体现出来了。</p>
+
+<p>我一直认为， <strong>优化==学习原理</strong>， 当我们将原理掌握之后， 对一行代码， 或者一个系统进行优化时， 就会游刃有余。</p>
+
+<h4 id="2-分层模型">2. 分层模型</h4>
+<p>虽然<code class="highlighter-rouge">TCP/UDP</code>协议属于传输层协议， 但是我们仍然需要以全局的眼光来看待。 网络分层有时会被分为5层， 有时会被分成7层， 后者是对5层模型的一个拓展， 本质上说的都是一个东西。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-05%2014-53-36%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>在这里以5层分层为例， 上图略去了物理层， 也就是光钎， 双绞线的比特传输， 这一层更偏向于物理硬件。 信息在互联网中传输是以数据包的形式进行的， 在传输时你发送一个包， 我接受一个包。</p>
+
+<p>最开始的报文由应用层组成， 里面包含所要发送的信息， 该包从上往下， 依次经过运输层， 网络层以及链路层的封装， 最终组成一个完整的数据包。 真实的组包过程要比上图复杂许多， 这个给出一个大致的利于理解的组包模型。</p>
+
+<h4 id="3--udp协议">3.  UDP协议</h4>
+<p>柿子挑软的捏， 相较于TCP协议， UDP协议更加的简单， 纯粹， 所以首先从UDP协议开始。</p>
+
+<p>UDP协议是一种不可靠的、无连接的传输层协议， 该协议只实现了传输层所要求的最低实现， 即进程到进程的数据交付和差错检查。 UDP协议只负责将数据报发送至远程， 不保证数据传输的有序性， 我们粗略的认为UDP协议就是直接和IP协议打交道， 自己并没有做什么额外的工作。</p>
+
+<h5 id="31-udp报文段结构">3.1 UDP报文段结构</h5>
+
+<table>
+  <tbody>
+    <tr>
+      <td>![</td>
+      <td>center ](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-05%2016-32-04%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>UDP报文段比较简单， 头部一共仅包含4个字段， 包括源端口号， 目的端口号， UDP包总长以及校验和， 其中校验和就是UDP的差错检查。</p>
+
+<p>其中伪头部是UDP报文经过IP协议封装之后所添加的头部， 包括的内容如上图。 之所以要加一个伪头部， 是因为UDP在做校验时需要这些数据。</p>
+
+<h5 id="32-udp校验和">3.2 UDP校验和</h5>
+<p>我们通过抓包的方式来实际的看一下UDP校验和到时是什么， 首选写一个非常简单的代码， 能够让我们抓到UDP包即可：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_DGRAM</span><span class="p">)</span>
+<span class="n">message</span> <span class="o">=</span> <span class="n">b</span><span class="s">'Hello~'</span>
+<span class="n">client</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="p">(</span><span class="s">"111.111.122.122"</span><span class="p">,</span> <span class="mi">7070</span><span class="p">))</span>
+<span class="n">modified_message</span><span class="p">,</span> <span class="n">server_address</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">(</span><span class="mi">4096</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">modified_message</span><span class="p">)</span>
+<span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>通过<code class="highlighter-rouge">wireshark</code>对该数据的发送进行抓包：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/wireshark_UDP.png" alt="" /></p>
+
+<p>在<code class="highlighter-rouge">wireshark</code>的界面中， 可以非常清晰的看到应用层数据包， UDP包， IP包以及以太网包的内容和每一层的封装过程， 与上图的4层模型是可以对应起来的。</p>
+
+<p>将抓包所得的数据填充至上图中， 可以得到：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-05%2016-45-07%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>然后刨去校验和(6ee5)， 将剩余的9个数据进行循环加法， 并对结果进行按位取反即可， 所得到的结果与UDP校验和进行对比， 若不相同， 则说明该包已经遭到损坏， 直接丢弃。</p>
+
+<p>事实上， 当校验失败的时候， UDP协议对差错的恢复根本无能为力， 因为是无连接的协议， 所以不能通知发送方再发送一次， 只能将包丢弃。</p>
+
+<h5 id="33-为何使用udp协议">3.3 为何使用UDP协议</h5>
+<p>在实际的体验了UDP协议的封包过程之后， 大致可以理解为什么UDP协议是不可靠的， 因为它对已损坏的包只能采取丢弃行为， 那么在客户端看来， 就切切实实的丢失了数据。</p>
+
+<p>但是由于无连接的特性， 使得UDP协议要比面向连接的TCP协议拥有更快的数据传输。 这里的更快是指UDP协议不需要建立连接， 省去了这个过程。 此外UDP协议还提供广播服务， 可以用于内网的多播服务， 效率要比TCP协议更高。</p>
+
+<p>基于上面的特性， DNS协议就是基于UDP协议所实现的， 这样一来就能够尽可能快的返回某个域名的IP地址。</p>
+
+<h4 id="4-可靠数据传输">4. 可靠数据传输</h4>
+<p>TCP协议是面向连接的、可靠的、具有拥塞机制的传输协议， 是目前使用最为广泛的传输层协议。 更极端的来讲， 99%的互联网应用都是由TCP协议所构成的。 TCP协议伟大的地方就在于它在不可靠的通信链路上实现了可靠的数据传输， 这也是TCP协议理解起来最为困难的地方。</p>
+
+<p>我在回答<code class="highlighter-rouge">TCP连接为什么是可靠的</code>这个问题上花了很长的时间， 也找了很多资料， 没有什么特别好的博客把这个问题讲的非常清楚和完整。 在不断的阅读<code class="highlighter-rouge">计算机网络-自顶向下方法</code>的<code class="highlighter-rouge">可靠数据传输原理</code>这一小节之后， 算是有一些理解。 所以这一小节主要是对书本上内容的一个解读和图例的展示， 图例会以我所理解的方式重新进行绘制。 对这部分内容不感兴趣或者有些难以理解的小伙伴儿可以跳过这一小节， 直接看下面的内容。</p>
+
+<h4 id="41-可靠通信链路">4.1 可靠通信链路</h4>
+<p>如果我们的通信链路是非常可靠的， 不存在丢包或者是字节损坏的问题， 那么这个时候发送方只管发送， 接收方只管接受。 在这种状态下， 发送方知道自己的包一定会被接收方接受， 接收方也知道自己接受到的信息一定是无损的。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2010-03-46%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<h5 id="42-具有字节损坏的通信链路">4.2 具有字节损坏的通信链路</h5>
+<p>完全可靠的通信链路在现实生活中是不存在的， 我们将通信链路的不可靠性一点一点向前推进， 在这里， 我们假定通信链路会对包的字节造成损坏， 但是不会有丢包的情况。</p>
+
+<p>在这个条件下， 我们可以定义一个ACK包和NAK包。 当接受方接受到完整无错的数据时， 会给发送方一个ACK包， 当接受的包出现了损坏时， 回给发送方一个NAK包。 发送方在接收到了NAK包之后， 就知道刚才发的包出错了， 进行一次重传。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2010-15-17%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>在这种解决方案下， 发送方只有在接受到了前一个包的NAK或者是NAK包之后， 才会对下一个数据包进行发送(如果是NAK则对上一个包进行重传)， 这个我们称之为<strong>停等协议</strong>， 发送方完全停止工作， 等待接收接收方所发送的确认包。</p>
+
+<p>比较遗憾的是， 虽然这个解决方案看起来能够work， 但是这是建立在ACK， NAK包不会遭到损坏的条件下。 确认包也是通过通信链路发送的， 那么就有可能遭受损坏。</p>
+
+<p>在网络数据传输时， 我们无法对一个数据包进行标记， 如果要标记一个数据包， 只能在包内部的某一个位置进行标记。 通常来讲ACK标记为1， NAK包标记为0。 当ACK包在传输时， 数值1被损坏， 变成了2， 那么这个时候发送方就傻眼儿了， 这不按套路出牌啊， 给我个2是什么鬼， 2是个啥？ 那我是不管呢， 还是重新发一个包过去？ 重新发一个包会不会造成数据重复？</p>
+
+<p>在上面的分析我们可看到， 发送方在接受到了收到损坏的确认包之后， 如果进行重新发送， 很有可能造成数据重复的问题， 为了解决这个， 我们可以对发送的每一个包进行编号。 这样一来如果发送方在接受到了一个收到损坏的确认包并进行重传时， 接收方就能够知道这个包是重传的了， 如果该序号的包自己已经处理过了， 那么直接回一个ACK包就行， 不会造成数据重复。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2010-46-28%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>那么这个时候ACK或者是NAK包收到损坏的问题就解决了， 反正发送方收到了损坏的确认包， 就直接重传刚才发送的包就好了， 接收方会对数据是否重复进行处理。</p>
+
+<p>这个解决方案还是有一个问题， 就是发送方必须要收到刚才数据包的确认包之后才能发送下一个新的数据包， 因为ACK包没有加上数据包的编号， 就只能通过这种串行的处理来保证这个ACK包是用来确认刚才所发送的数据包的。 所以我们再在ACK包中放一个包的编号。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2011-08-36%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>在这个版本中我们对ACK包和NAK包均进行编号， 这样一来发送方就有能力同时发送多个数据包了。 在此之外， 我们还可以对NAK包进行一下改进。</p>
+
+<p>当我们收到了编号10的数据包并校验失败之后， 不再发送NAK包， 而是再发送一个编号为9的ACK包， 这样一来发送方也能够知道10号包需要重发一次。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2011-14-01%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>到了最后一个版本， 我们已经能够比较好的处理在通信链路上出现的字节丢失问题了， 主要手段就是重传整个数据包， 并通过对数据包进行编号的方法， 解决ACK包不可靠以及接收方所出现的消息重复问题。</p>
+
+<h5 id="43-具有丢包的通信链路">4.3 具有丢包的通信链路</h5>
+<p>这一次通信链路不仅会使得字节遭到损坏， 并且比较过分， 数据包整个都没有了， 简单分析一下这个过程。</p>
+
+<p>发送方发送一个编号为15的数据包， 不幸的是， 这个包在传输时不小心丢了， 接收方没有接到这个数据包， 自然也不会回送一个编号为15的ACK包。 发送方等啊等， 迟迟没有收到编号为15的ACK包， 所以这个时候我们需要一个倒计时定时器。</p>
+
+<p>当发送方在一定时间内没有收到某个特定编号的ACK包时， 对该数据包进行重传。 所以， 发送方定时器要做这些事情：</p>
+<ol>
+  <li>每次发送一个数据包时(包括重传的包)， 启动一个定时器。</li>
+  <li>当定时器运行到终点时， 重发该数据包； 当定时器未结束便收到了ACK包， 则终止该计时器。</li>
+</ol>
+
+<p>那么到这里， 我们通过使用校验和， 包编号， 定时器， 肯定确认(单个ACK)和否定确认(重复ACK)建立了一个能够在不可靠信道上进行可靠数据传输的机制， 不管通信信道会造成字节损坏还是丢包， 该机制都能够正常应对。 在这里总结一个每个小技术的作用。</p>
+
+<ul>
+  <li>校验和： 用于判断数据包是否发生了字节丢失。</li>
+  <li>包编号： 接下来， 我们将编程称之为<strong>序号</strong>， 序号的作用有2个， 一是使得发送方能够同时发送多个数据包， 另一个作用就是解决数据重复的问题。</li>
+  <li>定时器： 当发生丢包时， 发送方能够对丢失的包进行重传。</li>
+  <li>肯定确认： 包含一个序号的ACK包， 用于确认某序号的数据包被成功接收。</li>
+  <li>否定确认： 一个重复的ACK包， 告知数据包验证失败。</li>
+</ul>
+
+<h5 id="44-具有更高效率的传输协议">4.4 具有更高效率的传输协议</h5>
+<p>在4.3小结中， 我们得到了具有可靠传输的最终版本， 也就是添加定时器的版本。 但是这个版本仍然是使用的停等协议， 一次只能发送一个数据包， 收到ACK之后发送第二个， 效率实在是太低了。 在我们为包添加了序号之后， 其实是可以一次传输多个数据包的。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2013-47-51%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>如上图所示， 一次性的发送了5个数据包。 其中13号数据包接收方返回的ACK序号为12， 说明13号包校验失败， 重新发送13号数据包。 接收方在发送14号数据包的ACK时意外丢失， 发送发在接收14号ACK包发生超时， 对14号数据包进行超时重传。 该模型已经比较的接近真实TCP协议了。</p>
+
+<h4 id="5-tcp协议">5. TCP协议</h4>
+<p>TCP协议是一种面向连接的， 可靠的， 具有拥塞机制的传输层协议， 相较于UDP协议， TCP协议能够保证数据包的有序性以及可靠性， 即使在使用不可靠的底层通信链路传输数据的情况下， TCP协议依然能够保证数据的完整性。 基于这些特性， 也就决定了TCP协议在传输层的统治地位。</p>
+
+<h5 id="51-tcp报文段结构">5.1 TCP报文段结构</h5>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2015-01-59%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>这里对其进行一个基本的划分：</p>
+<ol>
+  <li>序号和确认号是TCP头部最为重要的两个数据， 和校验和一起提供可靠数据传输</li>
+  <li>RST, SYN, FIN主要用于连接的建立与关闭， 在三次握手和四次挥手中将会发挥作用。 ACK用于确认接收方已成功接收数据， 这4个数据均只占一个bit。</li>
+  <li>接收窗口是TCP协议所提供的拥塞机制的具体体现， 稍后会提到。</li>
+  <li>URG, PSH以及紧急数据指针似乎在实际中并没有用到， 所以直接划掉， 不管这些。</li>
+</ol>
+
+<h5 id="52-三次握手">5.2 三次握手</h5>
+<p>既然TCP协议是面向连接的传输协议， 那么就必然会有通道连接的过程， 并且该过程必须可靠， 所以是三次握手， 而不是两次握手。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2015-32-14%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>SYN， 全称为<code class="highlighter-rouge">Synchronized Sequence Number</code>， 同步序列编号， 为三次握手发起的信号， 所有的握手都是以SYN为起点的。 需要特别注意的是， SYN， ACK等都是标志位， 只占一个bit。 发起连接的客户端会随机的选取一个序列号， 这个我们写为<code class="highlighter-rouge">client_isn</code>， 在上图中写为0是因为大多数的客户端起始序列号都是0， 并不代表起始序列号一定是0。</p>
+
+<p>当服务端接收到SYN标志位的包以后， 也随机的生成一个序列号， 写为<code class="highlighter-rouge">server_isn</code>。 与发起方一样， 大多数接收方的其实序列号也为0。 确认号(Acknowledge Number)的生成规则是将收到的序列号加1， 所以这里的值为1， 并将ACK标志位置为1， 返回给发送方。</p>
+
+<p>发送方接收到了这个包之后得回一个ACK包， 这是发送方发的第2个包， 由于前一个SYN包所发送的数据为0字节， 所以此时的序号直接加1， 确认号为接收到的序列号加1， 所以返回的Seq和确认号均为1。</p>
+
+<p>更加通用的三次握手图示：</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-06%2015-52-02%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>一定要区分ACK标志位和ACK确认号， 这两个不是同一个东西。 ACK标志位仅仅只是一个标志， 取值只有0和1； ACK确认号才是可靠传输的关键， 只不过在实际情况中并没有直接将收到的包序号返回， 在握手阶段由于SYN包和AYNACK包不会携带具体信息， 所以说确认号只会进行加1操作。 而在正常的数据传输过程中， ACK确认号为数据包的序号+数据字节数。</p>
+
+<h5 id="53-拥塞机制">5.3 拥塞机制</h5>
+<p>TCP协议要比UDP协议更加”智能”一些， 当接收方所能够接收的信息有限时， TCP会降低数据包的发送速率， 使得接收方不会因为大量数据的到来而被淹没。</p>
+
+<p>拥塞机制是一个很大的话题， 再加上目前能力有限， 所以在这一小节中只会对滑动窗口进行一个简单的介绍。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/2018-12-07%2014-26-13%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png" alt="" /></p>
+
+<p>假设在三次握手时， 通过AYNACK包得知接收方的窗口大小为4， 那么发送方每一次最多发送4个数据分组。</p>
+
+<p>如上图所示， 其中7， 8编号为已经发送并收到确认号的分组， 9， 10， 11， 12号分组为即将发送的分组。 当这4个分组发送出去之后， 发送方不会再发送13号分组(窗口大小限制)， 除非收到了9号分组的ACK。 这个假设我们的每个分组大小均为1， 所以9号包将会返回一个ACK=10。 9号包返回之后， 13号包发送， 10号包返回， 14号包发送。</p>
+
+<p>在发送分组以及接收分组的ACK包的过程中， 窗口不断的向前移动， 所以称之为滑动窗口。 这是一个非常简易的图例， 实际上， 在接收方， 同样也有接收窗口。</p>
+
+<p>窗口大小在三次握手阶段就得到了确认， 包括双方的窗口大小。</p>
+
+<h5 id="54-四次挥手">5.4 四次挥手</h5>
+<p>四次挥手要比三次握手稍微复杂一些， 原因也很简单。 想象一下你过年从外婆家离开， 外婆和你肯定要絮叨一下， 并且还会给你塞点儿东西才放你走。 四次挥手的过程与这个差不多。</p>
+
+<p>四次挥手的图例以及过程有一个博客我觉得讲的非常好， 还做了动图进行展示， 虽然平台为CSDN。</p>
+
+<blockquote>
+  <p>https://blog.csdn.net/qzcsu/article/details/72861891</p>
+</blockquote>
+
+<p>扪心自问我没办法做的这么好， 值得学习， 所以这一块儿的内容请移步该作者博客。</p>
+
+<h4 id="6-小结">6. 小结</h4>
+<p>我认为在网络协议中， 更为重要的是<strong>理解TCP连接为什么是可靠的</strong>， 为了保证可靠性和性能， TCP协议有哪些具体的实现， 这些思想在日常的编程过程非常值得借鉴。</p>
+
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=分布式系统基础学习(01)--通信(TCP/UDP)&amp;url=https://smartkeyerror.comdistributed-system-of-communication"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comdistributed-system-of-communication"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comdistributed-system-of-communication"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/service-communication">
+            <section class="post">
+                <h2>分布式系统基础学习(02)--应用间通信(gRPC)</h2>
+                <p>我始终认为， 随着语言和计算机技术的发展， 分布式系统才是互联网技术的未来。 而现在众多的分布式开源技术， 如Zookeper, SpringCloud等的蓬勃发展也证明这一点。 在分布式的系统中， A服务可能由Java编写， B服务可能由Python编写， C服务可能由PHP编写， 服务于服务之间的通信固然可以使用HTTP协议以RESTful-API的方式进行通信， 但是由于许多不必要的数据传输， 例如HTTP请求头， 会降低服务之间的通信速度， 在高并发的场景下极有可能成为系统瓶颈。...</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Lock">
+            <section class="post">
+                <h2>Java并发编程(07)--锁</h2>
+                <p>锁在并发编程中可以说是必须使用的一种资源保护技术， 而且是一种及其庞大且复杂的技术， 随着计算机学科的发展， 锁技术同样的在不断的发展和优化。 作为一个开发者， 当然无法直接深入到CPU的最底层去理解锁的原理， 但是通过一些其它的手段可以间接的理解锁的原理以及运行机制。
+本篇文章进行一个现阶段的总结， 整理一下所学的全部关于锁的知识， 涉及的编程语言包括Python和Java， 应用包括MySQL以及Redis， 如有错误， 还请指正。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

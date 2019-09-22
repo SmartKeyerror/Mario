@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>那些有趣的数据结构与算法(04)--B-Tree与B+Tree</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//B+Tree-and-B-Tree" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="那些有趣的数据结构与算法(04)--B-Tree与B+Tree" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//B+Tree-and-B-Tree" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="那些有趣的数据结构与算法(04)--B-Tree与B+Tree" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//B+Tree-and-B-Tree" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "那些有趣的数据结构与算法(04)--B-Tree与B+Tree",
+    "url": "https://smartkeyerror.com//B+Tree-and-B-Tree",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">那些有趣的数据结构与算法(04)--B-Tree与B+Tree</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-06-23">23 Jun 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/数据结构'>数据结构</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>树型结构由于其良好的递归特性， 高效的查询效率， 在软件系统设计中有着非常广泛的使用。 IO多路复用的epoll实现采用红黑树组织和管理sockfd， 以支持快速的增删改查； Golang中的Timer采用多叉堆实现； Java中的TreeMap以及TreeSet同样采用红黑树实现…而在MySQL中， 索引的构建同样采用树结构实现。</p>
+
+<!---more--->
+
+<h4 id="1-什么是b-tree">1. 什么是B-Tree</h4>
+<p>B-Tree简单的来讲就是一颗矮胖的多叉平衡树， 通常不会超过3层。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/index/B-Tree.png" alt="" /></p>
+
+<p>如上图所示， 每一层均由指针， 索引值以及卫星数据组成。 进行搜索时， 同样采用二分查找的方式进行搜索， 所以搜索效率与树的高度直接相关， 这也是为什么B-Tree的树高非常少的原因， 其目的就在于提高搜索效率。</p>
+
+<p>那么既然降低树高能够提高搜索效率， 为什么不干脆使用有序列表呢?</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/index/sorted-list.png" alt="" /></p>
+
+<p>现在树高只有1， 搜索的平均时间复杂度即为<code class="highlighter-rouge">O(logn)</code>， 不是比B-Tree更快吗？ 有一个很关键的点就是， B-Tree是为了构建存储数据的索引而生， 数据量庞大且将会被持久化至磁盘或者SSD上。 如果说某一张表拥有过亿的数据量， 且服务器只有4G的内存， 根本无法将列表形式的索引完全载入内存， 二分查找也就无从说起。</p>
+
+<h4 id="2-为硬盘存储而生的b-tree">2. 为硬盘存储而生的B-Tree</h4>
+<p>已经9102年了， 服务器使用HDD作为持久层已经成为了一个过去式， 目前均采用SSD， 即固态硬盘作为持久层， 其读写效率约为HDD的10倍左右。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/index/ssd-block.png" alt="" /></p>
+
+<p>SSD简单的来看是由很多个Block(块)组成， 而Block又由很多个Page(页)所组成。 Page的大小通常为4K或者是8K， Blcok的大小通常为512K。</p>
+
+<p>由于SSD没有向磁盘一样的悬臂， 所以不需要磁头的机械运动， 在读取数据时， 只需要找到数据所在的Block即可。 由于SSD特殊的组成方式， 在进行数据读取时， 其最小单位为Page， 也就是一次最小读取为4K或者是8K。 而对于删除数据来说， 其最小单位为Block， 因为需要进行加压擦除。</p>
+
+<p>B-Tree之所以适合作为数据库索引结构的存储， 就是因为其矮胖的树型结构。 如果我们将索引树改为红黑树或者是AVL树这种二叉树的话， 会发生什么？</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/index/AVL-IO.png" alt="" /></p>
+
+<p>假设树高为4， 所需的数据刚好位于AVL树的叶子节点， 那么在最坏的情况下(数据分散在不同的Page中)， 想要取出这条数据， 就需要4次的IO操作。 而IO操作， 相较于CPU的计算， 可以说慢如龟爬。 随着层高的增加， IO次数随线性增长， 这是我们不能接受的。</p>
+
+<p>而对于B-Tree来讲， 就不会存在这样的问题， 因为其树高也就只有3、4层， 无论数据位于叶子节点还是非叶子节点， 其IO次数最多也只是4次而已。</p>
+
+<h4 id="3-btree">3. B+Tree</h4>
+<p>B+Tree是B-Tree的进化版， 目的在于进一步减少磁盘IO次数， 提供稳定的查询效率以及优化范围查找。</p>
+
+<p>首先来看B+Tree的基本结构， 与B-Tree最大的不同就是: B+Tree的所有数据均保存在叶子节点， 非叶子节点只保存指针以及索引值。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/index/Tree.png" alt="" /></p>
+
+<p>如上图所示， 所有的数据均保存在B+Tree的叶子节点， 非叶子节点不保存数据， 这样一来使得在4K/Page的容量限制下， 能够保存更多的索引数量。 运气好的话原来使用B-Tree需要4层树高， 使用B+Tree的话可能只需要3层树高， 磁盘IO次数进一步降低了。</p>
+
+<p>并且由于B+Tree只在叶子节点保存数据， 所以每一次查询都需要遍历至树底， 而所有叶子节点均处于同一层， 所以所有的查询时间复杂度都是相同的。</p>
+
+<p>除此之外， 在叶子节点所有的数据均使用指针进行相连接， 也就是一个有序链表， 在进行范围查找时拥有极高的效率。 并不需要像B-Tree一样进行前序或者后序遍历。</p>
+
+<h4 id="4-哈希索引">4. 哈希索引</h4>
+<p>其实到这里有关B-Tree和B+Tree的内容就结束了， 但是还是忍不住再BB两句。</p>
+
+<p>Hash Table是一种以空间换时间的数据结构， 底层由数组实现， 其平均查询时间复杂度为<code class="highlighter-rouge">O(1)</code>。 而B+Tree的平均查询时间复杂度为<code class="highlighter-rouge">O(logn)</code>， 那么索引为什么不使用哈希表， 而要使用B+Tree呢？</p>
+
+<p>因为在数据库查询这一场景， 取出单一的一条数据这种需求占比并不会特别大， 更多的是使用某一种规则取出符合该规则的多条数据。 如果只是单一的一条数据， 那么哈希索引的效率确实要优于B+Tree。 但如果取出多条数据， 或者对数据进行排序的话， 那么B+Tree为更好的选择。</p>
+
+<p>MySQL的InnoDB存储引擎只允许用户定义B+Tree索引， 不允许用户定义哈希索引， 就是因为无法判断用户是否能正确使用哈希索引。 但是InnoDB会根据实际情况自动地为某些数据添加哈希索引， 以增加查询速度。</p>
+
+<h4 id="5-小结">5. 小结</h4>
+<p>从B-Tree以及B+Tree的使用场景上来看， 没有适用于一切场景的数据结构， 只有最适合某些场景的数据结构。 在学习数据结构的过程中， 有时候不仅要关注它的原理， 更需要关注它的设计初衷以及适用场景。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=那些有趣的数据结构与算法(04)--B-Tree与B+Tree&amp;url=https://smartkeyerror.comB+Tree-and-B-Tree"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comB+Tree-and-B-Tree"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comB+Tree-and-B-Tree"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/limits">
+            <section class="post">
+                <h2>那些有趣的数据结构与算法(05)--限流</h2>
+                <p>有时候限流也可以称为防刷， 这两者的界定并不是很明显， 常用的限流算法包括固定窗口， 滑动窗口， 漏桶以及令牌桶算法， 它们都有各自的优势与最适合的使用场景， 算法不分好坏， 之分场景。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/shell-programing">
+            <section class="post">
+                <h2>DevOps基础(1)--Shell脚本编程</h2>
+                <p>由于Docker容器以及Kubernetes容器编排服务的蓬勃发展， 服务器以及业务服务的运维不再是运维工程师的专属， 业务的开发工程师也必须加入到运维的领域之中， 与运维工程师合作， 形成一套完整、高效的自动化运维与部署的系统。 而在我看来， 传统的运维工程师将会逐渐被应用开发工程师所取代， 因为Kubernetes赋予了开发人员强大的负载均衡、自动横向拓展以及高效管理的相关功能。 而在这些宏大的系统建设之前， Shell编程是无论如何都离不开的话题。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

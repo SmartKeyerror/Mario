@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Redis基本数据结构与实现</title>
+    <meta name="description" content="" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Redis-base-data-structure" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Redis基本数据结构与实现" />
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="https://smartkeyerror.com//Redis-base-data-structure" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Redis基本数据结构与实现" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Redis-base-data-structure" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Redis基本数据结构与实现",
+    "url": "https://smartkeyerror.com//Redis-base-data-structure",
+    "image": "/assets/images/cover1.jpg",
+    "description": ""
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Redis基本数据结构与实现</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-03-13">13 Mar 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/Redis'>Redis</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>Redis内置了5种对外开放的数据结构， 分别是字符串， 列表， 集合， 有序集合以及哈希对象。 每一种数据结构的底层实现都会由存入的数据产生动态变化， 这也是Redis具有极佳吞吐量的原因之一。 本篇文章主要描述其基本数据结构的实现以及这些结构在使用时的注意事项。</p>
+
+<!---more--->
+
+<h4 id="1-string">1. String</h4>
+<p>Sting对象是Redis中使用最为广泛的数据结构， 不管是存储的Key， 还是Value， 都绕不开String对象。</p>
+
+<p>Redis并没有直接使用C语言中传统的字符数组来实现字符串， 而是对其进行了一层包装， 称为简单动态字符串(Simple Dynamic String, SDS)。</p>
+
+<p>首先对C语言中的字符串进行一个简单的介绍， 毕竟没有对比就没有伤害。 C语言是使用一个以<code class="highlighter-rouge">\0</code>结尾的字符数组来表示字符串的。 当我们想要判断一个字符串的长度时， C会对数组进行遍历， 直到发现<code class="highlighter-rouge">\0</code>标识为止。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">char</span> <span class="n">data</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"hello"</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%d"</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">data</span><span class="p">));</span>  <span class="c1">// 输出为5
+</span>    <span class="n">printf</span><span class="p">(</span><span class="s">"%d"</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">data</span><span class="p">));</span>  <span class="c1">// 输出为6
+</span><span class="p">}</span>
+</code></pre></div></div>
+
+<p>之所以<code class="highlighter-rouge">sizeof</code>函数对数组调用的结果为6， 是因为在数组末尾保存了<code class="highlighter-rouge">\0</code>, 即<code class="highlighter-rouge">null</code>这个标识位。 那么问题就来了， 如果我们有一个字符串是<code class="highlighter-rouge">hello\0hello</code>的话， C语言只会把它当作是<code class="highlighter-rouge">hello</code>字符串对待。</p>
+
+<p>基于这个问题， SDS结构对字符数组的使用长度， 以及空闲长度进行了记录， 避免此类问题的发生:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">sdshdr</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">len</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">free</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">buf</span><span class="p">[];</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>这样一来首先能够在O(1)的时间内获取字符串长度， 而C字符串则需要O(N)的时间复杂度。 并且在字符串拼接时， 能够避免缓冲区溢出问题。</p>
+
+<h4 id="2-字符串对象以及常用命令">2. 字符串对象以及常用命令</h4>
+<p>字符串对象的编码可以是int, embstr或者是raw， 这里的字符串对象和SDS有着本质的不同。 SDS是Redis底层的一种字符串实现方式， 而字符串对象则是用户在实际使用过程中产生的对象， 可以理解为SDS是字符串对象的一种组成方式。</p>
+
+<p>在使用<code class="highlighter-rouge">set age 1</code>的命令之后， 由于<code class="highlighter-rouge">age</code>的值为整型， 没有必要保存成为一个字符串， 所以在Redis内部直接使用整型来进行保存。</p>
+
+<p>对于小于39个字符的字符串对象， Redis采用一次分配内存的方式， 将其保存为embstr类型的字符串对象。 如果字符串字符数量大于39， 则采用两次分配内存的方式， 将其保存为raw类型的字符串对象。 数据的长度是Redis对数据结构优化的唯一指标。</p>
+
+<h5 id="21-字符串常用命令">2.1 字符串常用命令</h5>
+<ol>
+  <li>设置值</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">set </span>key value <span class="o">[</span>ex seconds] <span class="o">[</span>px milliseconds] <span class="o">[</span>nx|xx]
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">ex</code>和<code class="highlighter-rouge">px</code>代表了两种时间单位的过期时间， 前者表示秒级过期时间， 后者则代表毫秒级过期时间。</p>
+
+<p><code class="highlighter-rouge">nx</code>和<code class="highlighter-rouge">xx</code>是一个非常重要的选项。 <code class="highlighter-rouge">nx</code>表示当前键必须不存在才能够设置成功， 用于添加。 <code class="highlighter-rouge">xx</code>则相反， 键必须存在才能够设置成功， 用于修改。 <code class="highlighter-rouge">nx</code>常常会被作为一种简易的分布式锁来对系统中各进程进行资源的约束。 因为Redis是一个单线程命令处理的系统， 所以如果有多个客户端同时执行<code class="highlighter-rouge">setnx</code>命令的话， 只有一个客户端会成功。</p>
+
+<ol>
+  <li>计数</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">set </span>access_number 0
+incr access_number
+</code></pre></div></div>
+
+<p>同样是利用Redis单线程处理命令的机制， 可以以并发安全的来对某些key进行自增操作， 常用于访问量计数的基础组件。</p>
+
+<h4 id="3-列表">3. 列表</h4>
+<p>列表的内部编码有2种， ziplist(压缩列表)和linkedlist(链表)， 当列表的元素个数小于512， 或者是列表元素的值都小于64字节时， 会使用ziplist作为内部编码， 否则使用linkedlist。</p>
+
+<p>ziplist主要是为了节省内存而开发的， 其内部实现可参考《Redis设计与实现》。 由于我们对列表结构的索引功能使用并不会很频繁， 添加和移除元素的操作要更多一些， 那么在这种场景下， 链表要比压缩列表更为高效。</p>
+
+<h5 id="31-列表常用命令">3.1 列表常用命令</h5>
+<ol>
+  <li>添加元素</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>lpush|rpush user_list
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">lpush</code>表示从左侧添加元素， <code class="highlighter-rouge">rpush</code>则是从右侧添加元素。</p>
+
+<ol>
+  <li>删除元素</li>
+</ol>
+
+<p><code class="highlighter-rouge">rpop</code>和<code class="highlighter-rouge">lpop</code>分别表示从右侧和左侧删除一个元素， 在客户端操作的比较多。 更为重要的是阻塞操作<code class="highlighter-rouge">brpop</code>以及<code class="highlighter-rouge">blpop</code>。 <code class="highlighter-rouge">brpop</code>表示阻塞的删除列表元素， 当列表为空时， 该命令将会被阻塞。 <code class="highlighter-rouge">lpush+brpop</code>是非常常用的组成消息队列的两个命令。</p>
+
+<h4 id="4-哈希对象">4. 哈希对象</h4>
+<p>哈希对象的内部编码同样有两个， 压缩列表以及字典。 字典的实现与Python相同， 由哈希数组实现， 并且哈希冲突采用拉链法解决。</p>
+
+<p>这里想要提及的是字典对象的Rehash操作。 如果哈希数组的大小为512， 并且此时保存了1024个节点的话， 那么该哈希表的负载因子为:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>load_factor <span class="o">=</span> 1024 / 512 <span class="o">=</span> 2
+</code></pre></div></div>
+
+<p>也就是说， 平均每个数组空间都保存了2个节点元素， 如果哈希算法比较糟糕的话， 很有可能出现下图的情况:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2021-31-36.png" alt="" /></p>
+
+<p>此时的查询效率将会由O(1)转变为O(n)， 所以必须要对哈希数组进行扩容， 并对其中的节点进行Rehash操作。 那么问题来了， 该字典外部还在使用， 怎么做到安全， 稳定的Rehash操作呢？</p>
+
+<p>Redis在字典结构中保存了两个数组， 记为<code class="highlighter-rouge">ht[0]</code>以及<code class="highlighter-rouge">ht[1]</code>， 其中<code class="highlighter-rouge">ht[1]</code>是专门为了Rehash而生的。</p>
+
+<p>当Redis要对某个字典进行扩容Redis操作时， 首先为<code class="highlighter-rouge">ht[1]</code>数组分配足够的空间， 而后每次对字典的删改查的操作， 都会将<code class="highlighter-rouge">ht[0]</code>里面的元素重新rehash到<code class="highlighter-rouge">ht[1]</code>， 而添加操作则直接添加至<code class="highlighter-rouge">ht[1]</code>。 也就是说， 在rehash未完成之前， <code class="highlighter-rouge">ht[1]</code>保存了<code class="highlighter-rouge">ht[0]</code>的部分元素。 随着时间的推移， <code class="highlighter-rouge">ht[0]</code>里面的所有元素都被访问时， <code class="highlighter-rouge">ht[1]</code>也就有了全部的数据， rehash操作结束。</p>
+
+<p>当然， 有时候字典里面的键可能很久不会被使用， 这样以来该键就不会被rehash到<code class="highlighter-rouge">ht[1]</code>数组中， 所以此时可以有一个外部的定时脚本来协助完成这个工作。</p>
+
+<p>Redis通过渐进式Rehash， 多分数据冗余加上外部脚本的方式来完成字典数据的并发扩容。</p>
+
+<h4 id="5-过期键删除策略">5. 过期键删除策略</h4>
+<p><code class="highlighter-rouge">setex</code>可以使得某一个键在未来的某个时间上过期， 从而被Redis删除， 那么Redis是如何实现这个功能的呢？</p>
+
+<p>通常来讲， 过期键删除策略有3种:</p>
+<ul>
+  <li>定时删除: 为每一个键创建一个定时器， 让定时器在键的过期时间将要来临时 ， 立即执行对键的删除操作。</li>
+  <li>惰性删除: 对于过期键不做任何处理， 而是再下一次获取该键时检查其过期时间。 如果键过期了再删除。</li>
+  <li>定时脚本: 定时脚本对数据库中所有的键进行定时扫描， 发现过期的键则直接删除。</li>
+</ul>
+
+<p>为每一个键创建定时器的代价太大， 极为浪费服务器资源。 所以Redis采用的是惰性删除+定时脚本的方式来实现过期键的删除策略。</p>
+
+<p>在开发中许多地方都会用到过期这个功能， 例如电商订单45分钟内未支付则返回库存， 并将订单状态改为失效。 惰性删除+定时脚本的方案同样适于这些常规功能的开发。</p>
+
+<h4 id="6-aof重写缓冲区">6. AOF重写缓冲区</h4>
+<p>AOF文件类似于MySQL的binlog， 将所有数据的修改， 添加以及删除操作均写入<code class="highlighter-rouge">appendonly.aof</code>文件中， 其目的就是将内存数据持久化至磁盘， 便于数据在灾难时的恢复。</p>
+
+<p>将内存中持续产生的数据写入磁盘中有很多种方式， 比较常见的就是建立内存缓冲区， 每隔一段时间调用系统的<code class="highlighter-rouge">fsync</code>函数将数据一起写入磁盘中。 当然也可以每产生一个数据就写入磁盘， 但是这种方式效率比较低。 Redis所默认的刷盘方式是每秒将AOF缓冲区内的内容写入磁盘中。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/Screenshot%20from%202019-03-13%2009-45-10.png" alt="" /></p>
+
+<p>如果对列表对象执行了4次操作， 每次均添加一个元素:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>lpush name_list <span class="s2">"bob"</span>
+lpush name_list <span class="s2">"qob"</span>
+lpush name_list <span class="s2">"wob"</span>
+lpush name_list <span class="s2">"rob"</span>
+</code></pre></div></div>
+
+<p>此时aof文件中将会产生4条记录。 随着时间的推移， aof文件将会变得越来越大， 此时就必须要对aof文件进行重写。 重写的方法也很直白， 像上面的4条命令， 完全可以使用一条命令完成:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>lpush name_list <span class="s2">"bob"</span> <span class="s2">"qob"</span> <span class="s2">"wob"</span> <span class="s2">"rob"</span>
+</code></pre></div></div>
+
+<p>aof文件重写时也会和字典的扩容产生同样的问题: Redis仍然需要提供服务， 数据的修改不可能停止， 而aof文件重写也必须要进行， 这样一来就会导致数据不一致问题。</p>
+
+<p>字典的扩容采取了一个冗余的扩容数组， 采用渐进式rehash的方式进行数据迁移。 那么在这里， 同样可以对数据进行冗余: 当重写开始时， 建立AOF重写缓冲区， 此时数据记录将会写入AOF缓冲区以及AOF重写缓冲区中。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/Screenshot%20from%202019-03-13%2010-03-20.png" alt="" /></p>
+
+<h4 id="7-小结">7. 小结</h4>
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/Redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0.png" alt="" /></p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Redis基本数据结构与实现&amp;url=https://smartkeyerror.comRedis-base-data-structure"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comRedis-base-data-structure"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comRedis-base-data-structure"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/Bitmap">
+            <section class="post">
+                <h2>那些有趣的数据结构与算法(02)--Bitmap</h2>
+                <p>在我刚接触Python这门开发语言时， 并没有想用它做Web后端开发， 而是拿来写爬虫。 第一个接触的爬虫框架就是Scrapy。 网络爬虫绕不开的一个话题就是URL去重问题。 在Scrapy原生框架下， 使用的是集合来对URL进行去重的。 集合本身采用哈希表实现， 是一种典型的以空间换时间的数据结构， 当URL数量极为庞大时， 使用这种策略的去重很有可能导致内存溢出而造成服务器宕机的问题。 此时， Bitmap走进了我的视线。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/PriorityQueue">
+            <section class="post">
+                <h2>那些有趣的数据结构与算法(01)--优先队列</h2>
+                <p>优先队列为动态变化的数据赋予了高效且准确的排序能力， 尽管有非常大规模的数据， 二叉堆所实现的优先队列依然能够表现出色。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>
