@@ -15,10 +15,10 @@ REPO = CONFIG["repo"]
 SOURCE_BRANCH = CONFIG["branch"]
 
 # test
-DESTINATION_BRANCH = "test"
+# DESTINATION_BRANCH = "test"
 
 # production
-# DESTINATION_BRANCH = "gh-pages"
+DESTINATION_BRANCH = "gh-pages"
 
 def check_destination
   unless Dir.exist? CONFIG["destination"]
