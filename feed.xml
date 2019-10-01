@@ -2,9 +2,54 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>知其然, 知其所以然 - Articles</title>
-    <description></description>
+    <description>Keep coding, Keep curiosity</description>
     <link>
     https://smartkeyerror.com</link>
+    
+      
+      <item>
+        <title>MySQL中的悲观锁与常见的死锁场景</title>
+        
+          <description>&lt;p&gt;在MySQL中， 锁机制是并发条件下保护数据一致性与稳定性的一个非常重要的机制， 并且事务的实现也依赖于于锁机制。 其锁定的数据不单包括数据行记录， 同时也包括缓冲池中的LRU列表数据、日志数据等。 悲观锁(FOR UPDATE)则是日常开发中使用最多的一种锁， 但是， 由于事务隔离级别的多样性导致了悲观锁在使用时常常会有不同的表现， 死锁在程序员稍不注意时就会发生。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Wed, 18 Sep 2019 21:39:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/MySQL-Lock</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/MySQL-Lock</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>MySQL中的联合索引与覆盖索引</title>
+        
+          <description>&lt;p&gt;在上一篇文章中， 通过解析InnoDB存储引擎的&lt;code class=&quot;highlighter-rouge&quot;&gt;.ibd&lt;/code&gt;数据存储文件得到了数据与索引的真实组织方式: 数据通过聚集索引在逻辑上连续存放， 二级索引保存数据主键ID(Row ID)， 多棵B+Tree组合起来提供高效的索引数据查询。 除辅助索引(二级索引)外， 联合索引与覆盖索引在日常中也会经常用到。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Sun, 01 Sep 2019 21:39:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/MySQL-union-index-and-cover-index</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/MySQL-union-index-and-cover-index</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>MySQL物理存储方式</title>
+        
+          <description>&lt;p&gt;MySQL是基于磁盘进行数据存储的关系型数据库， 所有的数据、索引等数据均以磁盘文件的方式存储， 在有需要时载入内存读取。 为了加快数据查询的效率， 通常会在一些字段上添加索引， 但是许多文档都会告诉我们， 不要添加太多的索引， 索引不要太长， 使用数字或者空字符串来代替NULL值， 为什么会有这些建议? 这些建议又是否正确?  答案都能够从MySQL数据的物理存储方式中找到。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Thu, 15 Aug 2019 21:39:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/MySQL-physical-structure</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/MySQL-physical-structure</guid>
+      </item>
+      
     
       
       <item>

@@ -7,7 +7,7 @@
 
     <!-- Page Meta -->
     <title>知其然, 知其所以然</title>
-    <meta name="description" content="" />
+    <meta name="description" content="Keep coding, Keep curiosity" />
 
     <!-- Mobile Meta -->
     <meta name="HandheldFriendly" content="True" />
@@ -33,13 +33,13 @@
     <meta property="og:site_name" content="知其然, 知其所以然" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="知其然, 知其所以然" />
-    <meta property="og:description" content="" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
     <meta property="og:url" content="https://smartkeyerror.com//tag/MySQL/" />
     <meta property="og:image" content="/assets/images/cover.jpg" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="知其然, 知其所以然" />
-    <meta name="twitter:description" content="" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
     <meta name="twitter:url" content="https://smartkeyerror.com//tag/MySQL/" />
     <meta name="twitter:image:src" content="/assets/images/cover.jpg" />
 
@@ -51,7 +51,7 @@
     "name": "知其然, 知其所以然",
     "url": "https://smartkeyerror.com//tag/MySQL/",
     "image": "/assets/images/cover.jpg",
-    "description": ""
+    "description": "Keep coding, Keep curiosity"
 }
     </script>
 
@@ -97,7 +97,7 @@
             <h1 class="page-title">MySQL</h1>
             <h2 class="page-description">
             
-			    Totally 4 Articles
+			    Totally 7 Articles
             
             </h2>
         </div>
@@ -120,6 +120,105 @@
     <!--</div>-->
 
     <!-- This is the post loop - each post will be output using this markup -->
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/MySQL-Lock">MySQL中的悲观锁与常见的死锁场景</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>在MySQL中， 锁机制是并发条件下保护数据一致性与稳定性的一个非常重要的机制， 并且事务的实现也依赖于于锁机制。 其锁定的数据不单包括数据行记录， 同时也包括缓冲池中的LRU列表数据、日志数据等。 悲观锁(FOR UPDATE)则是日常开发中使用最多的一种锁， 但是， 由于事务隔离级别的多样性导致了悲观锁在使用时常常会有不同的表现， 死锁在程序员稍不注意时就会发生。
+
+ <a class="read-more" href="/MySQL-Lock">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+            
+            <time class="post-date" datetime="2019-09-18">18 Sep 2019</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/MySQL-union-index-and-cover-index">MySQL中的联合索引与覆盖索引</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>在上一篇文章中， 通过解析InnoDB存储引擎的.ibd数据存储文件得到了数据与索引的真实组织方式: 数据通过聚集索引在逻辑上连续存放， 二级索引保存数据主键ID(Row ID)， 多棵B+Tree组合起来提供高效的索引数据查询。 除辅助索引(二级索引)外， 联合索引与覆盖索引在日常中也会经常用到。
+
+ <a class="read-more" href="/MySQL-union-index-and-cover-index">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+            
+            <time class="post-date" datetime="2019-09-01">01 Sep 2019</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/MySQL-physical-structure">MySQL物理存储方式</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>MySQL是基于磁盘进行数据存储的关系型数据库， 所有的数据、索引等数据均以磁盘文件的方式存储， 在有需要时载入内存读取。 为了加快数据查询的效率， 通常会在一些字段上添加索引， 但是许多文档都会告诉我们， 不要添加太多的索引， 索引不要太长， 使用数字或者空字符串来代替NULL值， 为什么会有这些建议? 这些建议又是否正确?  答案都能够从MySQL数据的物理存储方式中找到。
+
+ <a class="read-more" href="/MySQL-physical-structure">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+            
+            <time class="post-date" datetime="2019-08-15">15 Aug 2019</time>
+        </footer>
+    </article>
     
     <article class="post">
         <header class="post-header">

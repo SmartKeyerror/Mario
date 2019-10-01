@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>MySQL物理存储方式</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//MySQL-physical-structure" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="MySQL物理存储方式" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//MySQL-physical-structure" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MySQL物理存储方式" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//MySQL-physical-structure" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "MySQL物理存储方式",
+    "url": "https://smartkeyerror.com//MySQL-physical-structure",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">MySQL物理存储方式</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-08-15">15 Aug 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>MySQL是基于磁盘进行数据存储的关系型数据库， 所有的数据、索引等数据均以磁盘文件的方式存储， 在有需要时载入内存读取。 为了加快数据查询的效率， 通常会在一些字段上添加索引， 但是许多文档都会告诉我们， 不要添加太多的索引， 索引不要太长， 使用数字或者空字符串来代替NULL值， 为什么会有这些建议? 这些建议又是否正确?  答案都能够从MySQL数据的物理存储方式中找到。</p>
+
+<!---more--->
+
+<h4 id="1-innodb文件格式">1. InnoDB文件格式</h4>
+<p>由于InnoDB是MySQL使用最为广泛的存储引擎， 所以本篇博文基于InnoDB存储引擎来讨论其数据存储方式。</p>
+
+<p>当我们创建一个table时， InnoDB会创建三个文件。 一个是表结构定义文件， 另一个为数据实际存储文件， 并且所有的索引也将存放在这个文件中。 最后一个文件保存该table所制定的字符集。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/innodb-table-structure.png" alt="" /></p>
+
+<h4 id="2-innodb行记录格式">2. InnoDB行记录格式</h4>
+<p>当我们使用SQL查询一条或者是多条数据时， 数据将会以一行一行的方式返回， 而实际上数据在文件中也的确是使用行记录的方式进行存储的。</p>
+
+<p>不同的InnoDB引擎版本可能有着不同的行记录格式来存放数据， 可以说， 行记录格式的变更将会直接影响到InnoDB的查询以及DML效率。 在MySQL 5.7版本中， 如果对某个table执行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SHOW</span> <span class="k">TABLE</span> <span class="n">STATUS</span> <span class="k">LIKE</span> <span class="nv">"table_name"</span> <span class="err">\</span><span class="k">G</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>将会得到该table的一系列信息， 在这里， 我们只需要知道<code class="highlighter-rouge">Row_format</code>的值即可， 5.7将会返回<code class="highlighter-rouge">Dynamic</code>。</p>
+
+<p>在官网上给出了不同格式的行记录格式之间的差别， 详细内容见官方文档:</p>
+
+<blockquote>
+  <p>https://dev.mysql.com/doc/refman/5.7/en/innodb-row-format.html</p>
+</blockquote>
+
+<p>在这里我们只需要知道<code class="highlighter-rouge">Dynamic</code>行记录格式在存储可变字符(Varchar)时， 与<code class="highlighter-rouge">Compact</code>行记录格式有着同样的表现即可。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/Compact-row-format.png" alt="" /></p>
+
+<p>Compact行记录格式将以上图的方式保存在文件中， 需要注意的是， 如果一个table中没有任何的varchar类型， 那么变长字段长度列表将为空。</p>
+
+<p>Compact行记录格式的首部是一个非NULL变长字段长度列表， 并且是按照列的顺序逆序放置的， 其长度表现为:</p>
+<ul>
+  <li>若列的长度小于255字节， 用1字节表示</li>
+  <li>若列的长度大于255字节， 用2字节表示</li>
+</ul>
+
+<p>变长字段的长度最大不会超过2字节， 这是因为MySQL中VARCAHR类型的最大长度限制为65535。 变长字段之后的第二个部分为NULL标识位， 该位指示了该行数据中是否存在NULL值， 有则用1表示， 本质上是一个bitmap。</p>
+
+<p>下面用一个实际的例子来具体分析Compact行记录格式的实际存储。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- 创建database</span>
+<span class="k">CREATE</span> <span class="k">SCHEMA</span> <span class="nv">`coco`</span> <span class="k">DEFAULT</span> <span class="n">CHARACTER</span> <span class="k">SET</span> <span class="n">latin1</span> <span class="p">;</span>
+
+<span class="c1">-- 创建table</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">one</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="c1">-- 插入代表性数据</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"a"</span><span class="p">,</span> <span class="nv">"AAA"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"b"</span><span class="p">,</span> <span class="nv">"BBB"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"c"</span><span class="p">,</span> <span class="k">NULL</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"d"</span><span class="p">,</span> <span class="nv">"DDD"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"e"</span><span class="p">,</span> <span class="nv">""</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"f"</span><span class="p">,</span> <span class="nv">"FFF"</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>而后在<code class="highlighter-rouge">/var/lib/mysql/coco</code>中即可找到该表的<code class="highlighter-rouge">.ibd</code>文件了， 使用<code class="highlighter-rouge">hexdump -C one.ibd</code>对其进行16进制的数据解析并查看。 由于数据太长， 所以仅截取部分数据:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000c070  73 75 70 72 65 6d 75 6d  03 01 00 00 00 10 00 1d  |supremum........|
+0000c080  80 00 00 01 00 00 00 08  d1 29 bd 00 00 01 35 01  |.........<span class="o">)</span>....5.|
+0000c090  10 61 41 41 41 03 01 00  00 00 18 00 1c 80 00 00  |.aAAA...........|
+0000c0a0  02 00 00 00 08 d1 29 bd  00 00 01 35 01 1d 62 42  |......<span class="o">)</span>....5..bB|
+0000c0b0  42 42 01 02 00 00 20 00  1a 80 00 00 03 00 00 00  |BB.... .........|
+0000c0c0  08 d1 29 bd 00 00 01 35  01 2a 63 03 01 00 00 00  |..<span class="o">)</span>....5.<span class="k">*</span>c.....|
+0000c0d0  28 00 1d 80 00 00 04 00  00 00 08 d1 29 bd 00 00  |<span class="o">(</span>...........<span class="o">)</span>...|
+0000c0e0  01 35 01 37 64 44 44 44  00 01 00 00 00 30 00 1a  |.5.7dDDD.....0..|
+0000c0f0  80 00 00 05 00 00 00 08  d1 29 bd 00 00 01 35 01  |.........<span class="o">)</span>....5.|
+0000c100  44 65 03 01 00 00 00 38  ff 66 80 00 00 06 00 00  |De.....8.f......|
+0000c110  00 08 d1 29 bd 00 00 01  35 01 51 66 46 46 46 00  |...<span class="o">)</span>....5.QfFFF.|
+</code></pre></div></div>
+
+<p>实际存储数据从<code class="highlighter-rouge">0000c078</code>开始， 使用Compact行记录格式对其进行整理:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">01</span> <span class="cm">/* 变长字段长度列表, 逆序, 第一行varchar数据为('a', 'AAA') */</span>
+<span class="mi">00</span> <span class="cm">/* NULL标识位, 该值表示该行未有NULL值的列 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">1</span><span class="n">d</span> <span class="cm">/* 记录头(Record Header)信息, 固定长度为5字节 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="cm">/* Row ID, 这里即为该行数据的主键值(paimary key)，长度为4 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">08</span> <span class="n">d1</span> <span class="mi">29</span> <span class="cm">/* Transaction ID, 即事务ID, 默认为6字节 */</span>
+<span class="n">bd</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">35</span> <span class="mi">01</span> <span class="mi">10</span> <span class="cm">/* 回滚指针, 默认为7字节 */</span>
+<span class="mi">61</span> <span class="cm">/* 列1数据'a' */</span>
+<span class="mi">41</span> <span class="mi">41</span> <span class="mi">41</span> <span class="cm">/* 列2数据'AAA' */</span>
+</code></pre></div></div>
+
+<p>第2行数据与第1行数据大同小异， 值得关注的是包含有NULL值以及空值的行， 即第3行和第5行， 首先来看第3行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">01</span> <span class="cm">/* 由于该行中只有一列数据类型为varchar，并且非NULL, 所以列表长度为1 */</span>
+<span class="mi">02</span> <span class="cm">/* 02转换为2进制结果为10, 表示第二列数据为NULL(注意是逆序) */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span> <span class="mi">00</span> <span class="mi">1</span><span class="n">a</span> <span class="cm">/* 记录头(Record Header)信息, 固定长度为5字节 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span> <span class="cm">/* 第3行数据的主键id */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">08</span> <span class="n">d1</span> <span class="mi">29</span>  <span class="cm">/* Transaction ID, 即事务ID, 默认为6字节 */</span>
+<span class="n">bd</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">35</span>  <span class="mi">01</span> <span class="mi">2</span><span class="n">a</span> <span class="cm">/* 回滚指针, 默认为7字节 */</span>
+<span class="mi">63</span> <span class="cm">/* 列1数据'c' */</span>
+</code></pre></div></div>
+
+<p>可以非常明显的看到， NULL值并没有在文件中进行存储， 而是仅使用NULL标识位来标记某一列是否为NULL。 所以说， NULL值不会占据任何的物理存储空间， 相反， varchar类型的NULL值还会少占用变长字段长度列表空间。</p>
+
+<p>再来看空字符串所在的第5行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 表示第2列的varchar长度为0 */</span>
+<span class="mi">00</span>  <span class="cm">/* 该行没有NULL值的列 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">30</span> <span class="mi">00</span> <span class="mi">1</span><span class="n">a</span>  <span class="cm">/* 记录头(Record Header)信息, 固定长度为5字节 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">05</span>  <span class="cm">/* 第5行数据的主键id */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">08</span> <span class="n">d1</span> <span class="mi">29</span>  <span class="cm">/* Transaction ID, 即事务ID, 默认为6字节 */</span>
+<span class="n">bd</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">35</span> <span class="mi">01</span> <span class="mi">44</span>   <span class="cm">/* 回滚指针, 默认为7字节 */</span>
+<span class="mi">65</span>  <span class="cm">/* 列1数据'e' */</span>
+</code></pre></div></div>
+
+<p>可以看到， 空字符串和NULL值一样， 也不占用任何的磁盘存储空间。 只不过与NULL值不同的是， 在首部的变长字符长度列表中仍然占据存储空间， 但是值为0。</p>
+
+<h4 id="3-数据的聚集索引组织方式">3. 数据的聚集索引组织方式</h4>
+<p>有些人将聚集索引(Cluster Index)理解成为主键， 或者是主键索引， 这是不准确的。 聚集索引并不是一种索引结构， 而是一种数据的组织方式， 用唯一且不为空的主键来对所有的数据进行组织。 主键， 是最为常见的聚集索引对外表现的形式。</p>
+
+<p>聚集索引最大的特点就在于数据在逻辑上是一定是连续的， 但是在物理是并不一定连续。 比如我们常见的自增主键， 当我们对查询语句不做任何处理时， 默认就是按照主键的递增顺序返回的。</p>
+
+<p>而辅助索引， 或者是二级索引， 是由程序员人为的在某些列上所添加的索引。 辅助索引所代表的数据在逻辑上不一定连续， 物理存储上也不一定连续。</p>
+
+<p>MySQL使用B+Tree来组织数据和索引(关于B+Tree的详细内容， 可见下方传送门)， 在非叶子节点中保存着索引和指针， 在叶子节点保存着数据。 情况又分两种:</p>
+<ul>
+  <li>聚集索引的叶子节点保存着实际的数据，即一行完整的数据</li>
+  <li>辅助索引的叶子节点保存着该行数据的主键ID</li>
+</ul>
+
+<p><a href="https://smartkeyerror.com/%E9%82%A3%E4%BA%9B%E6%9C%89%E8%B6%A3%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95-04-B-Tree%E4%B8%8EB-Tree.html">那些有趣的数据结构与算法(04)–B-Tree与B+Tree</a></p>
+
+<p>也就是说， 假设聚集索引和辅助索引的B+Tree树高均为3的话， 使用主键查询需要3次逻辑I/O。 而使用辅助索引则需要6次逻辑I/O才能找到该行数据。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/Cluster-Index.png" alt="" /></p>
+
+<p>还记得在上面的Compact行记录格式中的行记录头， 也就是Record Header信息吗?  Record Header的最后两个字节表示下一行数据的偏移量， 其实这个就是B+Tree中的指针。 例如第一行的起始位置为c078， Record Header最后两个字节为001d， 加起来等于c095， 刚好是第二行的起始位置。</p>
+
+<p>在上面的例子中， 我们创建了这样的一张表:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">one</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>其中<code class="highlighter-rouge">nickname</code>字段被我们添加了辅助索引， 同样地， 可以使用<code class="highlighter-rouge">.ibd</code>文件来具体对其结构进行分析。 使用<code class="highlighter-rouge">hexdump -C one.ibd</code>解析文件并找到辅助索引开始的地方:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00010060</span>  <span class="mi">02</span> <span class="mi">00</span> <span class="mi">37</span> <span class="mi">69</span> <span class="mi">6</span><span class="n">e</span> <span class="mi">66</span> <span class="mi">69</span> <span class="mi">6</span><span class="n">d</span>  <span class="mi">75</span> <span class="mi">6</span><span class="n">d</span> <span class="mi">00</span> <span class="mi">07</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">b</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">..</span><span class="mi">7</span><span class="n">infimum</span><span class="p">......</span><span class="o">|</span>
+<span class="mi">00010070</span>  <span class="mi">73</span> <span class="mi">75</span> <span class="mi">70</span> <span class="mi">72</span> <span class="mi">65</span> <span class="mi">6</span><span class="n">d</span> <span class="mi">75</span> <span class="mi">6</span><span class="n">d</span>  <span class="mi">03</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">e</span> <span class="mi">41</span>  <span class="o">|</span><span class="n">supremum</span><span class="p">.......</span><span class="n">A</span><span class="o">|</span>
+<span class="mi">00010080</span>  <span class="mi">41</span> <span class="mi">41</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">03</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">42</span> <span class="mi">42</span> <span class="mi">42</span>  <span class="o">|</span><span class="n">AA</span><span class="p">...........</span><span class="n">BBB</span><span class="o">|</span>
+<span class="mi">00010090</span>  <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">02</span> <span class="mi">01</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span>  <span class="mi">00</span> <span class="mi">19</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span> <span class="mi">03</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">.......</span> <span class="p">........</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">a0</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">28</span> <span class="mi">00</span> <span class="mi">19</span> <span class="mi">44</span> <span class="mi">44</span> <span class="mi">44</span>  <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">04</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">..(..</span><span class="n">DDD</span><span class="p">........</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">b0</span>  <span class="mi">30</span> <span class="n">ff</span> <span class="n">cc</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">05</span> <span class="mi">03</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">38</span> <span class="n">ff</span> <span class="n">b2</span> <span class="mi">46</span> <span class="mi">46</span>  <span class="o">|</span><span class="mi">0</span><span class="p">..........</span><span class="mi">8</span><span class="p">..</span><span class="n">FF</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">c0</span>  <span class="mi">46</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">06</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="n">F</span><span class="p">...............</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">d0</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">................</span><span class="o">|</span>
+</code></pre></div></div>
+
+<p>索引数据从00010078的位置开始， 逐行进行分析即可:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span>  <span class="cm">/* 当前索引字段的长度 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">e</span> <span class="cm">/* 不知道是啥 */</span>
+<span class="mi">41</span> <span class="mi">41</span> <span class="mi">41</span>   <span class="cm">/* 索引值 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 指向的主键id */</span>
+</code></pre></div></div>
+
+<p>第2行与第1行基本类似， 现在来看看比较特殊的第3行与第5行。 第3行索引数据内容:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span> <span class="mi">00</span> <span class="mi">19</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span>  <span class="cm">/* 指向的主键id */</span>
+</code></pre></div></div>
+
+<p>当索引的内容为NULL值时， 辅助索引的文件格式也变得奇怪了起来， 和第一行完全不一样， 再来看看第5行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span>  <span class="cm">/* 当前索引字段的长度 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">30</span> <span class="n">ff</span> <span class="n">cc</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">05</span>  <span class="cm">/* 指向的主键id */</span>
+</code></pre></div></div>
+
+<p>和正常索引内容基本类似， 空字符串仍然没有表示， 仅使用了00表示该字段长度为0。</p>
+
+<h4 id="4-辅助索引叶子节点存储方式">4. 辅助索引叶子节点存储方式</h4>
+<p>在MySQL中， 数据管理的最小单元为页(page)， 而并非一行一行的数据。 数据保存在页中， 当我们使用主键查找一行数据时， 其实MySQL并不能直接返回这一行数据， 而是将该行所在的页载入内存， 然后在内存页中进行查找。</p>
+
+<p>通常情况下页大小为16K， 在某些情况下可能会对页进行压缩， 使得页大小为8K或者是4K。 由于B+Tree的特点， 使得每一页内最少为2行数据， 再少就将退化成链表， 显然出于效率的考量不会让此种情况出现。 故而一行数据大小至多为16K， 通过该特性， 就可以研究二级索引的叶子节点是什么样子的了。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">two</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">8000</span><span class="p">),</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">(</span><span class="mi">2000</span><span class="p">))</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'A'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">,</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">'c'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'C'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">'d'</span><span class="p">,</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">5</span><span class="p">,</span> <span class="s1">'e'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'E'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">'f'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'F'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">7</span><span class="p">,</span> <span class="s1">'g'</span><span class="p">,</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">'h'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'H'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">9</span><span class="p">,</span> <span class="s1">'i'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'G'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">'i'</span><span class="p">,</span> <span class="nv">""</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>由于索引长度的限制， 这里仅取nickname的前2000个字符进行索引， 并插入一些具有代表性的数据。 同样使用<code class="highlighter-rouge">hexdump -C two.ibd</code>对索引结构进行分析:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>00010070  73 75 70 72 65 6d 75 6d  d0 87 00 05 00 10 07 e6  |supremum........|
+00010080  41 41 41 41 41 41 41 41  41 41 41 41 41 41 41 41  |AAAAAAAAAAAAAAAA|
+<span class="k">*</span>
+00010850  80 00 00 01 01 00 00 18  07 e6 80 00 00 02 d0 87  |................|
+00010860  00 00 00 20 07 e6 43 43  43 43 43 43 43 43 43 43  |... ..CCCCCCCCCC|
+00010870  43 43 43 43 43 43 43 43  43 43 43 43 43 43 43 43  |CCCCCCCCCCCCCCCC|
+<span class="k">*</span>
+00011030  43 43 43 43 43 43 80 00  00 03 01 00 00 28 0f c2  |CCCCCC.......<span class="o">(</span>..|
+00011040  80 00 00 04 d0 87 00 00  00 30 07 dc 45 45 45 45  |.........0..EEEE|
+00011050  45 45 45 45 45 45 45 45  45 45 45 45 45 45 45 45  |EEEEEEEEEEEEEEEE|
+<span class="k">*</span>
+00011810  45 45 45 45 45 45 45 45  45 45 45 45 80 00 00 05  |EEEEEEEEEEEE....|
+00011820  d0 87 00 00 00 38 0f c2  46 46 46 46 46 46 46 46  |.....8..FFFFFFFF|
+00011830  46 46 46 46 46 46 46 46  46 46 46 46 46 46 46 46  |FFFFFFFFFFFFFFFF|
+<span class="k">*</span>
+00011ff0  46 46 46 46 46 46 46 46  80 00 00 06 01 00 00 40  |FFFFFFFF.......@|
+00012000  0f c3 80 00 00 07 d0 87  00 00 00 48 e0 62 48 48  |...........H.bHH|
+00012010  48 48 48 48 48 48 48 48  48 48 48 48 48 48 48 48  |HHHHHHHHHHHHHHHH|
+<span class="k">*</span>
+000127d0  48 48 48 48 48 48 48 48  48 48 48 48 48 48 80 00  |HHHHHHHHHHHHHH..|
+000127e0  00 08 d0 87 00 00 00 50  f8 24 47 47 47 47 47 47  |.......P.<span class="nv">$GGGGGG</span>|
+000127f0  47 47 47 47 47 47 47 47  47 47 47 47 47 47 47 47  |GGGGGGGGGGGGGGGG|
+<span class="k">*</span>
+00012fb0  47 47 47 47 47 47 47 47  47 47 80 00 00 09 00 00  |GGGGGGGGGG......|
+00012fc0  00 00 58 d0 bb 80 00 00  0a 00 00 00 00 00 00 00  |..X.............|
+00012fd0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+</code></pre></div></div>
+
+<p>从上表中可以看到， 索引数据起始点为00010078， 逐行进行分析可以发现， NULL值和空值的表现形式与上一小节分析的基本相同。</p>
+
+<p>NULL值行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">07</span> <span class="n">e6</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">02</span>  <span class="cm">/* 主键id */</span>
+
+<span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">28</span> <span class="mi">0</span><span class="n">f</span> <span class="n">c2</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">04</span>  <span class="cm">/* 主键id */</span>
+
+<span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">40</span> <span class="mi">0</span><span class="n">f</span> <span class="n">c3</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">07</span>  <span class="cm">/* 主键id */</span>
+</code></pre></div></div>
+
+<p>空字符串行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">58</span> <span class="n">d0</span> <span class="n">bb</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">a</span>  <span class="cm">/* 主键id */</span>
+</code></pre></div></div>
+
+<p>所以说， 分析到这里， 我们完全有理由说NULL值要比空值占用更少的物理存储空间， 包含索引存储空间。 但是， 这是在我们所定义表结构时允许字段值为NULL的前提下， 当我们显式的指定IS NOT NULL时， 情况又会不一样。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">three</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"a"</span><span class="p">,</span> <span class="nv">"AAA"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"b"</span><span class="p">,</span> <span class="nv">""</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"c"</span><span class="p">,</span> <span class="nv">"CCC"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"d"</span><span class="p">,</span> <span class="nv">"DDD"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"e"</span><span class="p">,</span> <span class="nv">"EEE"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"f"</span><span class="p">,</span> <span class="nv">""</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"g"</span><span class="p">,</span> <span class="nv">"GGG"</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">hexdump -C three.ibd</code>可得:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000c070  73 75 70 72 65 6d 75 6d  03 01 00 00 10 00 1c 80  |supremum........|
+0000c080  00 00 01 00 00 00 08 dd  21 ba 00 00 01 2f 01 10  |........!..../..|
+0000c090  61 41 41 41 00 01 00 00  18 00 19 80 00 00 02 00  |aAAA............|
+0000c0a0  00 00 08 dd 22 bb 00 00  01 31 01 10 62 03 01 00  |....<span class="s2">"....1..b...|
+0000c0b0  00 20 00 1c 80 00 00 03  00 00 00 08 dd 25 bd 00  |. ...........%..|
+0000c0c0  00 01 35 01 10 63 43 43  43 03 01 00 00 28 00 1c  |..5..cCCC....(..|
+0000c0d0  80 00 00 04 00 00 00 08  dd 28 bf 00 00 01 36 01  |.........(....6.|
+0000c0e0  10 64 44 44 44 03 01 00  00 30 00 1c 80 00 00 05  |.dDDD....0......|
+0000c0f0  00 00 00 08 dd 29 c0 00  00 01 37 01 10 65 45 45  |.....)....7..eEE|
+0000c100  45 00 01 00 00 38 00 19  80 00 00 06 00 00 00 08  |E....8..........|
+0000c110  dd 2a a1 00 00 01 12 01  10 66 03 01 00 00 40 ff  |.*.......f....@.|
+0000c120  4f 80 00 00 07 00 00 00  08 dd 2b a2 00 00 01 15  |O.........+.....|
+0000c130  01 10 67 47 47 47 00 00  00 00 00 00 00 00 00 00  |..gGGG..........|
+</span></code></pre></div></div>
+
+<p>数据从c078开始， 同样进行逐行分析:</p>
+
+<p>第一行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">01</span>  <span class="cm">/* 逆序可变字符长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">1</span><span class="k">c</span>  <span class="cm">/* 记录头信息(Record Header), c078+001c=c094 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 主键id */</span>
+<span class="c1">-- Transaction ID + Roll Pointer</span>
+<span class="mi">61</span>  <span class="cm">/* 列1数据 */</span>
+<span class="mi">41</span> <span class="mi">41</span> <span class="mi">41</span>  <span class="cm">/* 列2数据 */</span>
+</code></pre></div></div>
+
+<p>第二行数据</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 逆序可变字符长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">00</span> <span class="mi">19</span>  <span class="cm">/* 记录头信息(Record Header), c094+0019=c0ad */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">02</span>  <span class="cm">/* 主键id */</span>
+<span class="c1">-- Transaction ID + Roll Pointer</span>
+<span class="mi">62</span>  <span class="cm">/* 列1数据, 列2数据为空值, 故无记录 */</span>
+</code></pre></div></div>
+
+<p>第三行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">01</span>  <span class="cm">/* 逆序可变字符长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span> <span class="mi">00</span> <span class="mi">1</span><span class="k">c</span>  <span class="cm">/* 记录头信息(Record Header), c0ad+001c=c0c9 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span>  <span class="cm">/* 主键id */</span>
+<span class="c1">-- Transaction ID + Roll Pointer</span>
+<span class="mi">63</span>  <span class="cm">/* 列1数据 */</span>
+<span class="mi">43</span> <span class="mi">43</span> <span class="mi">43</span>  <span class="cm">/* 列2数据 */</span>
+</code></pre></div></div>
+
+<p>可以看到， 将<strong>所有</strong>的列设置为NOT NULL之后， 存储内容少了一个NULL标识位， 此时该table的存储效率要高于最初的表结构。</p>
+
+<p>所以说， 如果想要真正的节省表空间存储大小， 需要将<strong>所有</strong>的字段都设置为NOT NULL约束， 否则在存储时仍然需要NULL标识位来标记哪一列数据为非NULL， 即使所有的列都有数据。</p>
+
+<p>最后， NULL真的比空字符串占用更少的空间吗? 答案是不一定。 如果在定义表结构时指定了NOT NULL， 那么数据中就不可能出现NULL值， 也就无从比起。 如果在定义表结构时没有指定NOT NULL， 那么NULL将会比空字符串占用更少的空间。</p>
+
+<h4 id="5-总结">5. 总结</h4>
+<p>经过对<code class="highlighter-rouge">.ibd</code>文件的分析， 想必对数据以及索引的组织方式有了一个更加清晰的了解， 并且也能够判断出各种各样优化建议到底是否正确了。</p>
+
+<p>使用数字或者是空串来代替NULL值? 没有必要， 有时还会适得其反， 而且对于添加了二级索引的NULL值， 查询仍然会使用索引。 正确的做法就是在定义表结构的时候就将NULL值扼杀在摇篮里， 如此一来能够节省一部分的磁盘空间以及一定程度上的效率提升。</p>
+
+<p>为什么索引不能太多? 因为每添加一个索引， <code class="highlighter-rouge">.ibd</code>文件中就需要多维护一个B+Tree索引树， 如果某一个table中存在10个索引， 那么就需要维护10棵B+Tree， 写入效率会降低， 并且会浪费磁盘空间。</p>
+
+<p>B+Tree中的指针是用什么实现的? 使用文件偏移量实现， 指向下一行或者是下一个索引的起始位置。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=MySQL物理存储方式&amp;url=https://smartkeyerror.comMySQL-physical-structure"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comMySQL-physical-structure"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comMySQL-physical-structure"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/MySQL-union-index-and-cover-index">
+            <section class="post">
+                <h2>MySQL中的联合索引与覆盖索引</h2>
+                <p>在上一篇文章中， 通过解析InnoDB存储引擎的.ibd数据存储文件得到了数据与索引的真实组织方式: 数据通过聚集索引在逻辑上连续存放， 二级索引保存数据主键ID(Row ID)， 多棵B+Tree组合起来提供高效的索引数据查询。 除辅助索引(二级索引)外， 联合索引与覆盖索引在日常中也会经常用到。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/change-log-system-design">
+            <section class="post">
+                <h2>数据变更操作日志设计</h2>
+                <p>当系统的某些行为涉及到资金与资产的数据变更时，常常会为其增加操作日志， 便于后续的问题排查。 例如红包的使用明细， 银行转账的详细记录等等。 操作日志记录这个需求看起来很简单， 但是深挖下去， 依然能找到很有趣的东西。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

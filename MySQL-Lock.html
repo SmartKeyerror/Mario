@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>MySQL中的悲观锁与常见的死锁场景</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//MySQL-Lock" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="MySQL中的悲观锁与常见的死锁场景" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//MySQL-Lock" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MySQL中的悲观锁与常见的死锁场景" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//MySQL-Lock" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "MySQL中的悲观锁与常见的死锁场景",
+    "url": "https://smartkeyerror.com//MySQL-Lock",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">MySQL中的悲观锁与常见的死锁场景</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-09-18">18 Sep 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在MySQL中， 锁机制是并发条件下保护数据一致性与稳定性的一个非常重要的机制， 并且事务的实现也依赖于于锁机制。 其锁定的数据不单包括数据行记录， 同时也包括缓冲池中的LRU列表数据、日志数据等。 悲观锁(FOR UPDATE)则是日常开发中使用最多的一种锁， 但是， 由于事务隔离级别的多样性导致了悲观锁在使用时常常会有不同的表现， 死锁在程序员稍不注意时就会发生。</p>
+
+<!---more--->
+
+<h4 id="1-悲观锁概述">1. 悲观锁概述</h4>
+<p>在通用的程序设计语言中， 锁通常是基于某一个对象， 或者是一组对象而言。 在Python、Java和Golang中， 分别提供了<code class="highlighter-rouge">threading.Lock</code>、<code class="highlighter-rouge">synchronized</code>以及<code class="highlighter-rouge">sync.Mutex</code>互斥所机制。 而数据库要更为特殊一些， 其原因就在于我们所管理的不是一个个的对象， 而是一行行的数据。</p>
+
+<p>InnoDB存储引擎支持的最小锁粒度为行锁， 可以通过在事务中执行<code class="highlighter-rouge">SELECT .. FOR UPDATE</code>为某一行或者是多行数据添加互斥锁。 锁的生命周期完全由InnoDB管理， 当事务成功提交或者是失败回滚时， 互斥锁则自动释放。</p>
+
+<p>需要注意的一点是， 互斥锁必须在事务中执行才会生效。 当<code class="highlighter-rouge">autocommit</code>为<code class="highlighter-rouge">ON</code>时， 需要显示的使用<code class="highlighter-rouge">BEGIN</code>开启事务， 而后对数据添加互斥锁。</p>
+
+<p>在程序设计语言中， 锁的目的是串行化修改、删除操作， InnoDB中的互斥锁有着同样的目的。 但是， 由于事务隔离级别的分类， 使得互斥锁的行为变得复杂许多。 其中最让人感到迷惑的就是为了解决幻读问题所添加的<code class="highlighter-rouge">GAP Lock</code>。</p>
+
+<h4 id="2-事务隔离级别概述">2. 事务隔离级别概述</h4>
+
+<p>不同的事务隔离级别， 悲观锁会产生不同的行为。 所以， 理解事务隔离级别是理解悲观锁的第一步。</p>
+
+<p>InnoDB事务隔离级别从低到高依次为未提交读(READ UNCOMMITED)， 提交读(READ COMMITED)， 可重复读(READ REPEATABLE)以及串行化(SERIALIZABLE)。</p>
+
+<p>未提交读指的是事务B可以读取到事务A未提交的数据， 此时若事务A回滚， 那么事务B读到的就是错误数据， 也称为脏数据。 该读取行为有时也会被称为脏读， 因为未提交读会导致脏读的问题， 从而导致数据混乱， 所以该事务隔离级别基本不会被使用。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/read-uncommitted-with-dirty-data.png" alt="" /></p>
+
+<p>提交读是指在执行事务B时， 可以读取到事务A提交到的数据， 未提交的数据不可读取。 提交读解决了脏读的问题， 读取到的数据一定是已经持久化至磁盘的数据， 但是会出现同一条SQL语句在执行时出现不一致的情况。 例如事务A、B先后开始执行， 事务A首先读取row-1的内容， 而此时事务B对row-1的内容修改并提交， 此时事务A再次读取row-1数据， 发现其已经发生改变， 而该变化并不是事务A自身进行的。 这种情况又称为不可重复读。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/Read-Committed.png" alt="" /></p>
+
+<p>可重复读， 顾名思义， 解决了提交读的不可重复读问题， 使得事务在读取同一行数据时， 结果并不会因为其它事务的执行而发生改变， 数据发生的修改行为在整个事务内是可以自恰的。 但是并没有解决幻读的问题， 幻读是指其余事务在某一个区间内插入数据， 而非修改数据， 此时事务也会读取到这部分插入的数据。 InnoDB借助MVCC(多版本并发控制)以及锁机制来解决幻读问题。</p>
+
+<p>MVCC即在数据中添加版本号， 数据插入时会有初始版本号， 在修改、删除时更新版本号。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/Repeatable-Read.png" alt="" /></p>
+
+<p>串行化指事务串行化执行， 自然就不会有出现上述出现的脏读、不可重复读以及幻读了。 一个很重要的事实是， 串行化的事务隔离级别执行效率并不会比可重复读事务隔离级别差很多。 同样的， 提交读执行效率也不会比可重复读执行效率高多少， 所以在优化数据库时， 事务隔离级别不应该是效率优化目标， 而是业务优化目标。</p>
+
+<h4 id="3-mysql中的锁">3. MySQL中的锁</h4>
+
+<p>使用<code class="highlighter-rouge">FOR UPDATE</code>对某一行或者是多行数据添加的锁， 其实是由MySQL更细粒度的锁组合而成的， 不同的事务隔离级别有不同的组合方式。</p>
+
+<p>在InnoDB存储引擎中， 存在3种行锁的算法， 其分别为:</p>
+<ul>
+  <li>Record Lock: 单个行记录上的锁，聚集索引及辅助索引均会添加锁。</li>
+  <li>Gap Lock: 间隙锁， 锁定一个范围， 但不包含行记录本身。</li>
+  <li>Next-Key Lock: Record Lock + Gap Lock，锁定行记录本身并且锁定一个范围。</li>
+</ul>
+
+<p>下面用一个实际的例子来解释Record Lock以及Gap Lock。 首先表结构定义如下:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">lock_test</span> <span class="p">(</span>
+  <span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+  <span class="n">a</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+  <span class="k">KEY</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">latin1</span><span class="p">;</span>
+
+<span class="c1">-- 插入部分测试数据</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"1"</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"3"</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"5"</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"8"</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>接着执行下面的语句:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “5” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“4”); <br /> 阻塞，等待会话A事务的提交</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">COMMIT;</td>
+      <td style="text-align: left">Query OK, 1 row affected (6.87 sec)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>尽管列<code class="highlighter-rouge">a</code>添加了辅助索引， 但是在对该列使用<code class="highlighter-rouge">FOR UPDATE</code>添加悲观锁时， 仍然会出现其它列被锁定的现象。 这是因为<code class="highlighter-rouge">a = "5"</code>该行数据不仅被添加了Record Lock， 并且也添加了Gap Lock， 其目的就是为了解决幻读问题， 前提是当前事务隔离级别为REPEATABLE READ。</p>
+
+<p>在列<code class="highlighter-rouge">a</code>的辅助索引中， 值”5”之前的值为”3”， 故存在(3, 5)这个间隙， 所以在插入值”4”时， InnoDB为了杜绝幻读现象的发生， 使得只有在会话A事务提交时才允许插入操作的进行。 另外一点需要注意的是， 当查询的索引具有唯一属性时， InnoDB存储引擎会对Next-Key Lock进行优化， 将其降级为Record Lock， 即仅锁住索引本身， 而不锁定一个范围。</p>
+
+<blockquote>
+  <p>For a unique index with a unique search condition, InnoDB locks only the index record found, not the gap before it.</p>
+</blockquote>
+
+<h4 id="4-锁与事务之间的关联">4. 锁与事务之间的关联</h4>
+
+<p>前面提到了Gap Lock的存在主要是为了解决幻读问题的发生， 而在READ COMMITTED事务隔离级别中， 只解决了脏读问题， 所以说， 在该事务隔离级别下， <code class="highlighter-rouge">FOR UPDATE</code>仅会添加Record Lock， 并不会添加Gap Lock。</p>
+
+<blockquote>
+  <p>For locking reads (SELECT with FOR UPDATE or FOR SHARE), UPDATE statements, and DELETE statements, InnoDB locks only index records, not the gaps before them.</p>
+</blockquote>
+
+<blockquote>
+  <p>Because gap locking is disabled, phantom problems may occur, as other sessions can insert new rows into the gaps</p>
+</blockquote>
+
+<p>此外， 如果用户通过索引查询一个值， 并在其之上添加排它锁， 当查询的值不存在时， READ COMMITTED与REPEATABLE READ两个事务隔离级别所产生的行为同样存在差异， 一个最直观的差异就是REPEATABLE READ在并发条件下会产生死锁， 而READ COMMITTED则不会。</p>
+
+<p>READ COMMITTED事务隔离级别:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “100” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “100” FOR UPDATE; <br /> 不会被阻塞</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“100”); <br /> 不会被阻塞</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">6</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“100”); <br /> 不会被阻塞</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">7</td>
+      <td style="text-align: left">COMMIT;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">8</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">COMMIT;</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>所以说， 当事务隔离级别为READ COMMITTED时， 无法使用Next-Key Lock来帮助我们实现类似于<code class="highlighter-rouge">update_or_create</code>或者是<code class="highlighter-rouge">get_or_create</code>等方法， 因为在并发条件下会造成重复数据创建， 除非表中存在唯一索引。 这也是Django框架官网中所提到的Multiply records问题。 感兴趣的小伙伴可访问官网获取更多详细内容:</p>
+
+<blockquote>
+  <p>https://docs.djangoproject.com/en/2.2/ref/models/querysets/#get-or-create</p>
+</blockquote>
+
+<p>REPEATABLE READ事务隔离级别:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE; <br /> 不会被阻塞</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“200”); <br /> 阻塞, 等待事务B的结束</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">6</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“200”); <br /> ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction，死锁发生</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>当在REPEATABLE READ事务隔离级别级别下实现<code class="highlighter-rouge">get_or_create</code>方法时，会产生死锁问题， 原因就在于锁定的记录并不存在， 多个事务可同时对其添加悲观锁， 但是插入语句的执行位置是不确定的， 所以就会有死锁问题的出现。解决此类问题的一个方法就是使用指数退避方式的重试。</p>
+
+<h4 id="5-死锁">5. 死锁</h4>
+
+<p>通常来讲， 如果我们的SQL执行计划较为简单， 几乎所有的执行均为单条语句执行时， 死锁基本与我们无关。 但是当执行计划稍加复杂， 事务执行的语句较多时， 就会出现死锁问题。 一个最经典的死锁场景即为AB-BA死锁。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “400” FOR UPDATE;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “400” FOR UPDATE<br /> 阻塞, 等待事务B的结束</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">6</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE; <br /> ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction，死锁发生</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>当MySQL检测到死锁时， 会根据其事务权重选择性的回滚其中一个事务。 但是， 权重的判定完全由MySQL决定， 业务系统无法人为的干预， 如果某一个事务在业务系统中非常重要， 但是MySQL却回滚了该事务， 而业务系统仅捕捉了该异常并向外扩散的话， 并不是我们期望的结果。 所以， 在绝大多数场景下， 指数退避的重试策略要更好一些。 或者对于关键性的业务逻辑， 使用Redis等消息队列进行串行化操作。</p>
+
+<p>另外一个死锁场景则是上一小节中我们所见到的并发执行<code class="highlighter-rouge">if not exist then create</code>模式所带来的死锁问题， 该模式在业务场景下其实非常常见。</p>
+
+<h4 id="reference">Reference</h4>
+<ul>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-isolation-levels.html</li>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-locking.html</li>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-deadlocks.html</li>
+</ul>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=MySQL中的悲观锁与常见的死锁场景&amp;url=https://smartkeyerror.comMySQL-Lock"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comMySQL-Lock"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comMySQL-Lock"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/MySQL-union-index-and-cover-index">
+            <section class="post">
+                <h2>MySQL中的联合索引与覆盖索引</h2>
+                <p>在上一篇文章中， 通过解析InnoDB存储引擎的.ibd数据存储文件得到了数据与索引的真实组织方式: 数据通过聚集索引在逻辑上连续存放， 二级索引保存数据主键ID(Row ID)， 多棵B+Tree组合起来提供高效的索引数据查询。 除辅助索引(二级索引)外， 联合索引与覆盖索引在日常中也会经常用到。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

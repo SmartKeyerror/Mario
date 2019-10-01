@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>MySQL中的联合索引与覆盖索引</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//MySQL-union-index-and-cover-index" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="MySQL中的联合索引与覆盖索引" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//MySQL-union-index-and-cover-index" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MySQL中的联合索引与覆盖索引" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//MySQL-union-index-and-cover-index" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "MySQL中的联合索引与覆盖索引",
+    "url": "https://smartkeyerror.com//MySQL-union-index-and-cover-index",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">MySQL中的联合索引与覆盖索引</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-09-01">01 Sep 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在上一篇文章中， 通过解析InnoDB存储引擎的<code class="highlighter-rouge">.ibd</code>数据存储文件得到了数据与索引的真实组织方式: 数据通过聚集索引在逻辑上连续存放， 二级索引保存数据主键ID(Row ID)， 多棵B+Tree组合起来提供高效的索引数据查询。 除辅助索引(二级索引)外， 联合索引与覆盖索引在日常中也会经常用到。</p>
+
+<!---more--->
+
+<h4 id="1-联合索引">1. 联合索引</h4>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">union_test</span> <span class="p">(</span>
+	<span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+	<span class="n">user_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+	<span class="n">order_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+	<span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+	<span class="k">KEY</span> <span class="n">ix_union_order_id_user_id</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0000"</span><span class="p">,</span> <span class="nv">"A0000"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0000"</span><span class="p">,</span> <span class="nv">"A0001"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0001"</span><span class="p">,</span> <span class="nv">"A0003"</span><span class="p">);</span>
+<span class="p">...</span>
+</code></pre></div></div>
+
+<p>在创建表结构以及插入部分测试数据之后， 我们依然使用<code class="highlighter-rouge">hexdump -C</code>来对<code class="highlighter-rouge">.ibd</code>文件进行分析， 从最基本的数据存储结构中更能够发现联合索引的存储特点。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>00010070  73 75 70 72 65 6d 75 6d  03 04 00 00 10 00 36 30  |supremum......60|
+00010080  30 35 38 41 31 34 80 00  00 01 03 04 07 00 18 05  |058A14..........|
+00010090  e2 30 30 33 36 41 32 30  80 00 00 02 03 04 08 00  |.0036A20........|
+000100a0  20 00 fb 30 30 34 33 41  31 33 80 00 00 03 03 04  | ..0043A13......|
+000100b0  00 00 28 01 67 30 30 35  39 41 32 31 80 00 00 04  |..<span class="o">(</span>.g0059A21....|
+000100c0  03 04 08 00 30 02 65 30  30 34 39 41 38 39 80 00  |....0.e0049A89..|
+000100d0  00 05 03 04 00 00 38 01  1f 30 30 35 31 41 35 34  |......8..0051A54|
+000100e0  80 00 00 06 02 04 06 00  40 05 76 30 30 32 33 41  |........@.v0023A|
+000100f0  36 80 00 00 07 03 04 00  00 48 02 0c 30 30 30 31  |6........H..0001|
+00010100  41 35 30 80 00 00 08 03  04 00 00 50 06 19 30 30  |A50........P..00|
+00010110  31 35 41 39 31 80 00 00  09 03 04 00 00 58 ff 83  |15A91........X..|
+00010120  30 30 34 32 41 37 32 80  00 00 0a 03 04 00 00 60  |0042A72........<span class="sb">`</span>|
+00010130  01 56 30 30 33 38 41 39  35 80 00 00 0b 03 04 00  |.V0038A95.......|
+00010140  00 68 03 4f 30 30 32 39  41 39 37 80 00 00 0c 03  |.h.O0029A97.....|
+00010150  04 05 00 70 05 41 30 30  35 37 41 31 31 80 00 00  |...p.A0057A11...|
+00010160  0d 03 04 00 00 78 02 c0  30 30 31 39 41 35 32 80  |.....x..0019A52.|
+</code></pre></div></div>
+
+<p>直接截取部分的联合索引内容进行分析， 索引数据从<code class="highlighter-rouge">00010078</code>开始:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">04</span>  <span class="cm">/* 倒序索引长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">36</span>
+<span class="mi">30</span> <span class="mi">30</span> <span class="mi">35</span> <span class="mi">38</span>  <span class="cm">/* 列1索引数据 */</span>
+<span class="mi">41</span> <span class="mi">31</span> <span class="mi">34</span>  <span class="cm">/* 列2索引数据 */</span>
+<span class="mi">80</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 主键id */</span>
+</code></pre></div></div>
+
+<p>可以看到， 联合索引的物理存储方式与单一索引的最大区别就是索引数据不是分开存储的。 所以， 联合索引要比两个或多个单独的索引占用更少的磁盘空间。</p>
+
+<p>事实上， 联合索引与单列索引在组织形式上没什么区别， 都是一棵B+Tree。 只不过联合索引的键值数量不是1， 而是大于等于2。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/union-index.png" alt="" /></p>
+
+<p>如上图所示， 联合索引的第1列数据将严格按照B+Tree的字典序进行排序， 第2列数据则在第一列数据有序的基础上进行排序。 可以认为， 联合索引的B+Tree结构就是对一个多维数组进行排序， 以Python为例:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 假设有如下数据</span>
+<span class="n">unsorted_list</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>  <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
+
+<span class="n">res</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">unsorted_list</span><span class="p">)</span>
+<span class="c"># Out: [(1, 2), (1, 3), (2, 4), (2, 5), (4, 1), (4, 2)]</span>
+</code></pre></div></div>
+
+<p>假设现在有两列数据a, b组合成为了联合索引， 那么当a列相同时， b列数据一定是有序存放的， 也就是说当执行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="k">table</span> <span class="k">WHERE</span> <span class="n">a</span> <span class="o">=</span> <span class="n">XX</span> <span class="k">AND</span> <span class="n">b</span> <span class="o">=</span> <span class="n">XX</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>其效率要高于a, b两个单独的索引列查询， 原因就在于其索引数据保存在同一棵B+Tree中， 使用更少的逻辑I/O就能将数据取出。</p>
+
+<p>在单独查询列a时， 依然可以使用联合索引进行查询， 但是在单独查询b列时， 则不可以使用联合索引。 因为b列数据并不是有序存放的。</p>
+
+<p>如上例所示， b列的数据为<code class="highlighter-rouge">[2, 3, 2, 4, 1, 2]</code>， 完全无序， 故使用:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="k">table</span> <span class="k">WHERE</span> <span class="n">b</span> <span class="o">=</span> <span class="n">XX</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>进行查询时将无法使用联合索引。 联合索引除了能加速查询以外， 还有另外一个好处， 就是加速<code class="highlighter-rouge">ORDER BY</code>的查询。</p>
+
+<p>这也很好理解， 因为在建立了联合索引以后， 第2列数据， 甚至是第n列数据， 将会有序的组成B+Tree， 如此一来就省去了排序的的时间。</p>
+
+<p>假设现在有4列数据a, b, c, d组成的联合索引(a, b, c, d)， 那么B+Tree的结构为a有序排列， b在a相同的情况下有序排列， c在b相同的情况下有序排列， d在c相同的情况下有序排列。 在查询时， 只要查询条件包含a字段， 均可以使用索引进行查询。</p>
+
+<h4 id="2-覆盖索引cover-index">2. 覆盖索引(Cover Index)</h4>
+<p>现在我们已经知道了InnoDB的物理存储方式是一个聚集索引+多个辅助索引组成， 辅助索引包含单列索引以及上面提到的联合索引。 在使用索引进行数据查询时， 首先在辅助索引树中找到该条数据对应的主键id(Row ID)， 而后根据主键id在聚集索引树中进行查询， 粗略的认为就是2次逻辑I/O。</p>
+
+<p>覆盖索引的本质就是不使用聚集索引， 只使用辅助索引就能够将所需要的数据查询出来， 最典型的例子就是<code class="highlighter-rouge">count(*)</code>。</p>
+
+<p>当某张表内存在二级索引时， <code class="highlighter-rouge">count(*)</code>将直接统计二级索引的数量并返回。 由于二级索引的B+Tree要比聚集索引更加的矮胖， 每页能够容纳更多的索引数据行， 所以其效率要高于扫描聚集索引。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="p">(</span>
+	<span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+	<span class="n">user_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+	<span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+	<span class="k">KEY</span> <span class="n">ix_user_id</span> <span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/count-with-cover-index.png" alt="" /></p>
+
+<p>如果表内有多个二级索引， 则<code class="highlighter-rouge">count(*)</code>将会选择长度最短的二级索引。 索引长度越短， 每页就能够容纳更多的数据， 就会有更少的逻辑I/O， 因此效率也就越高。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="k">ADD</span> <span class="n">order_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="k">ADD</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">order_id</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/count-with-shorter-cover-index.png" alt="" /></p>
+
+<p>覆盖索引严格意义上来讲是MySQL的查询优化器所做的优化， 并不是物理上存在的索引。 但是， 借助于覆盖索引的特点， 我们可以有目的的对某些查询进行优化。</p>
+
+<h4 id="3-小结">3. 小结</h4>
+<p>联合索引是优化多字段查询以及需要对某个字段进行排序的一种手段， 而覆盖索引则是MySQL查询优化器的一种优化策略， 并不能称为真正意义上的索引。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=MySQL中的联合索引与覆盖索引&amp;url=https://smartkeyerror.comMySQL-union-index-and-cover-index"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comMySQL-union-index-and-cover-index"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comMySQL-union-index-and-cover-index"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+        <a class="read-next-story no-cover" href="/MySQL-Lock">
+            <section class="post">
+                <h2>MySQL中的悲观锁与常见的死锁场景</h2>
+                <p>在MySQL中， 锁机制是并发条件下保护数据一致性与稳定性的一个非常重要的机制， 并且事务的实现也依赖于于锁机制。 其锁定的数据不单包括数据行记录， 同时也包括缓冲池中的LRU列表数据、日志数据等。 悲观锁(FOR UPDATE)则是日常开发中使用最多的一种锁， 但是， 由于事务隔离级别的多样性导致了悲观锁在使用时常常会有不同的表现， 死锁在程序员稍不注意时就会发生。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/MySQL-physical-structure">
+            <section class="post">
+                <h2>MySQL物理存储方式</h2>
+                <p>MySQL是基于磁盘进行数据存储的关系型数据库， 所有的数据、索引等数据均以磁盘文件的方式存储， 在有需要时载入内存读取。 为了加快数据查询的效率， 通常会在一些字段上添加索引， 但是许多文档都会告诉我们， 不要添加太多的索引， 索引不要太长， 使用数字或者空字符串来代替NULL值， 为什么会有这些建议? 这些建议又是否正确?  答案都能够从MySQL数据的物理存储方式中找到。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-69281367-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

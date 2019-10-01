@@ -6,11 +6,786 @@
       <title>smartkeyerror.com/</title>
    
    <link>https://smartkeyerror.com</link>
-   <description></description>
+   <description>Keep coding, Keep curiosity</description>
    <language>en-uk</language>
    <managingEditor> </managingEditor>
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
+	<item>
+	  <title>MySQL中的悲观锁与常见的死锁场景</title>
+	  <link>//MySQL-Lock</link>
+	  <author></author>
+	  <pubDate>2019-09-18T21:39:25+00:00</pubDate>
+	  <guid>//MySQL-Lock</guid>
+	  <description><![CDATA[
+	     <p>在MySQL中， 锁机制是并发条件下保护数据一致性与稳定性的一个非常重要的机制， 并且事务的实现也依赖于于锁机制。 其锁定的数据不单包括数据行记录， 同时也包括缓冲池中的LRU列表数据、日志数据等。 悲观锁(FOR UPDATE)则是日常开发中使用最多的一种锁， 但是， 由于事务隔离级别的多样性导致了悲观锁在使用时常常会有不同的表现， 死锁在程序员稍不注意时就会发生。</p>
+
+<!---more--->
+
+<h4 id="1-悲观锁概述">1. 悲观锁概述</h4>
+<p>在通用的程序设计语言中， 锁通常是基于某一个对象， 或者是一组对象而言。 在Python、Java和Golang中， 分别提供了<code class="highlighter-rouge">threading.Lock</code>、<code class="highlighter-rouge">synchronized</code>以及<code class="highlighter-rouge">sync.Mutex</code>互斥所机制。 而数据库要更为特殊一些， 其原因就在于我们所管理的不是一个个的对象， 而是一行行的数据。</p>
+
+<p>InnoDB存储引擎支持的最小锁粒度为行锁， 可以通过在事务中执行<code class="highlighter-rouge">SELECT .. FOR UPDATE</code>为某一行或者是多行数据添加互斥锁。 锁的生命周期完全由InnoDB管理， 当事务成功提交或者是失败回滚时， 互斥锁则自动释放。</p>
+
+<p>需要注意的一点是， 互斥锁必须在事务中执行才会生效。 当<code class="highlighter-rouge">autocommit</code>为<code class="highlighter-rouge">ON</code>时， 需要显示的使用<code class="highlighter-rouge">BEGIN</code>开启事务， 而后对数据添加互斥锁。</p>
+
+<p>在程序设计语言中， 锁的目的是串行化修改、删除操作， InnoDB中的互斥锁有着同样的目的。 但是， 由于事务隔离级别的分类， 使得互斥锁的行为变得复杂许多。 其中最让人感到迷惑的就是为了解决幻读问题所添加的<code class="highlighter-rouge">GAP Lock</code>。</p>
+
+<h4 id="2-事务隔离级别概述">2. 事务隔离级别概述</h4>
+
+<p>不同的事务隔离级别， 悲观锁会产生不同的行为。 所以， 理解事务隔离级别是理解悲观锁的第一步。</p>
+
+<p>InnoDB事务隔离级别从低到高依次为未提交读(READ UNCOMMITED)， 提交读(READ COMMITED)， 可重复读(READ REPEATABLE)以及串行化(SERIALIZABLE)。</p>
+
+<p>未提交读指的是事务B可以读取到事务A未提交的数据， 此时若事务A回滚， 那么事务B读到的就是错误数据， 也称为脏数据。 该读取行为有时也会被称为脏读， 因为未提交读会导致脏读的问题， 从而导致数据混乱， 所以该事务隔离级别基本不会被使用。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/read-uncommitted-with-dirty-data.png" alt="" /></p>
+
+<p>提交读是指在执行事务B时， 可以读取到事务A提交到的数据， 未提交的数据不可读取。 提交读解决了脏读的问题， 读取到的数据一定是已经持久化至磁盘的数据， 但是会出现同一条SQL语句在执行时出现不一致的情况。 例如事务A、B先后开始执行， 事务A首先读取row-1的内容， 而此时事务B对row-1的内容修改并提交， 此时事务A再次读取row-1数据， 发现其已经发生改变， 而该变化并不是事务A自身进行的。 这种情况又称为不可重复读。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/Read-Committed.png" alt="" /></p>
+
+<p>可重复读， 顾名思义， 解决了提交读的不可重复读问题， 使得事务在读取同一行数据时， 结果并不会因为其它事务的执行而发生改变， 数据发生的修改行为在整个事务内是可以自恰的。 但是并没有解决幻读的问题， 幻读是指其余事务在某一个区间内插入数据， 而非修改数据， 此时事务也会读取到这部分插入的数据。 InnoDB借助MVCC(多版本并发控制)以及锁机制来解决幻读问题。</p>
+
+<p>MVCC即在数据中添加版本号， 数据插入时会有初始版本号， 在修改、删除时更新版本号。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/Repeatable-Read.png" alt="" /></p>
+
+<p>串行化指事务串行化执行， 自然就不会有出现上述出现的脏读、不可重复读以及幻读了。 一个很重要的事实是， 串行化的事务隔离级别执行效率并不会比可重复读事务隔离级别差很多。 同样的， 提交读执行效率也不会比可重复读执行效率高多少， 所以在优化数据库时， 事务隔离级别不应该是效率优化目标， 而是业务优化目标。</p>
+
+<h4 id="3-mysql中的锁">3. MySQL中的锁</h4>
+
+<p>使用<code class="highlighter-rouge">FOR UPDATE</code>对某一行或者是多行数据添加的锁， 其实是由MySQL更细粒度的锁组合而成的， 不同的事务隔离级别有不同的组合方式。</p>
+
+<p>在InnoDB存储引擎中， 存在3种行锁的算法， 其分别为:</p>
+<ul>
+  <li>Record Lock: 单个行记录上的锁，聚集索引及辅助索引均会添加锁。</li>
+  <li>Gap Lock: 间隙锁， 锁定一个范围， 但不包含行记录本身。</li>
+  <li>Next-Key Lock: Record Lock + Gap Lock，锁定行记录本身并且锁定一个范围。</li>
+</ul>
+
+<p>下面用一个实际的例子来解释Record Lock以及Gap Lock。 首先表结构定义如下:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">lock_test</span> <span class="p">(</span>
+  <span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+  <span class="n">a</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+  <span class="k">KEY</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">latin1</span><span class="p">;</span>
+
+<span class="c1">-- 插入部分测试数据</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"1"</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"3"</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"5"</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"8"</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>接着执行下面的语句:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “5” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“4”); <br /> 阻塞，等待会话A事务的提交</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">COMMIT;</td>
+      <td style="text-align: left">Query OK, 1 row affected (6.87 sec)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>尽管列<code class="highlighter-rouge">a</code>添加了辅助索引， 但是在对该列使用<code class="highlighter-rouge">FOR UPDATE</code>添加悲观锁时， 仍然会出现其它列被锁定的现象。 这是因为<code class="highlighter-rouge">a = "5"</code>该行数据不仅被添加了Record Lock， 并且也添加了Gap Lock， 其目的就是为了解决幻读问题， 前提是当前事务隔离级别为REPEATABLE READ。</p>
+
+<p>在列<code class="highlighter-rouge">a</code>的辅助索引中， 值”5”之前的值为”3”， 故存在(3, 5)这个间隙， 所以在插入值”4”时， InnoDB为了杜绝幻读现象的发生， 使得只有在会话A事务提交时才允许插入操作的进行。 另外一点需要注意的是， 当查询的索引具有唯一属性时， InnoDB存储引擎会对Next-Key Lock进行优化， 将其降级为Record Lock， 即仅锁住索引本身， 而不锁定一个范围。</p>
+
+<blockquote>
+  <p>For a unique index with a unique search condition, InnoDB locks only the index record found, not the gap before it.</p>
+</blockquote>
+
+<h4 id="4-锁与事务之间的关联">4. 锁与事务之间的关联</h4>
+
+<p>前面提到了Gap Lock的存在主要是为了解决幻读问题的发生， 而在READ COMMITTED事务隔离级别中， 只解决了脏读问题， 所以说， 在该事务隔离级别下， <code class="highlighter-rouge">FOR UPDATE</code>仅会添加Record Lock， 并不会添加Gap Lock。</p>
+
+<blockquote>
+  <p>For locking reads (SELECT with FOR UPDATE or FOR SHARE), UPDATE statements, and DELETE statements, InnoDB locks only index records, not the gaps before them.</p>
+</blockquote>
+
+<blockquote>
+  <p>Because gap locking is disabled, phantom problems may occur, as other sessions can insert new rows into the gaps</p>
+</blockquote>
+
+<p>此外， 如果用户通过索引查询一个值， 并在其之上添加排它锁， 当查询的值不存在时， READ COMMITTED与REPEATABLE READ两个事务隔离级别所产生的行为同样存在差异， 一个最直观的差异就是REPEATABLE READ在并发条件下会产生死锁， 而READ COMMITTED则不会。</p>
+
+<p>READ COMMITTED事务隔离级别:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “100” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “100” FOR UPDATE; <br /> 不会被阻塞</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“100”); <br /> 不会被阻塞</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">6</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“100”); <br /> 不会被阻塞</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">7</td>
+      <td style="text-align: left">COMMIT;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">8</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">COMMIT;</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>所以说， 当事务隔离级别为READ COMMITTED时， 无法使用Next-Key Lock来帮助我们实现类似于<code class="highlighter-rouge">update_or_create</code>或者是<code class="highlighter-rouge">get_or_create</code>等方法， 因为在并发条件下会造成重复数据创建， 除非表中存在唯一索引。 这也是Django框架官网中所提到的Multiply records问题。 感兴趣的小伙伴可访问官网获取更多详细内容:</p>
+
+<blockquote>
+  <p>https://docs.djangoproject.com/en/2.2/ref/models/querysets/#get-or-create</p>
+</blockquote>
+
+<p>REPEATABLE READ事务隔离级别:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE; <br /> 不会被阻塞</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“200”); <br /> 阻塞, 等待事务B的结束</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">6</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“200”); <br /> ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction，死锁发生</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>当在REPEATABLE READ事务隔离级别级别下实现<code class="highlighter-rouge">get_or_create</code>方法时，会产生死锁问题， 原因就在于锁定的记录并不存在， 多个事务可同时对其添加悲观锁， 但是插入语句的执行位置是不确定的， 所以就会有死锁问题的出现。解决此类问题的一个方法就是使用指数退避方式的重试。</p>
+
+<h4 id="5-死锁">5. 死锁</h4>
+
+<p>通常来讲， 如果我们的SQL执行计划较为简单， 几乎所有的执行均为单条语句执行时， 死锁基本与我们无关。 但是当执行计划稍加复杂， 事务执行的语句较多时， 就会出现死锁问题。 一个最经典的死锁场景即为AB-BA死锁。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “400” FOR UPDATE;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “400” FOR UPDATE<br /> 阻塞, 等待事务B的结束</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">6</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE; <br /> ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction，死锁发生</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>当MySQL检测到死锁时， 会根据其事务权重选择性的回滚其中一个事务。 但是， 权重的判定完全由MySQL决定， 业务系统无法人为的干预， 如果某一个事务在业务系统中非常重要， 但是MySQL却回滚了该事务， 而业务系统仅捕捉了该异常并向外扩散的话， 并不是我们期望的结果。 所以， 在绝大多数场景下， 指数退避的重试策略要更好一些。 或者对于关键性的业务逻辑， 使用Redis等消息队列进行串行化操作。</p>
+
+<p>另外一个死锁场景则是上一小节中我们所见到的并发执行<code class="highlighter-rouge">if not exist then create</code>模式所带来的死锁问题， 该模式在业务场景下其实非常常见。</p>
+
+<h4 id="reference">Reference</h4>
+<ul>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-isolation-levels.html</li>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-locking.html</li>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-deadlocks.html</li>
+</ul>
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>MySQL中的联合索引与覆盖索引</title>
+	  <link>//MySQL-union-index-and-cover-index</link>
+	  <author></author>
+	  <pubDate>2019-09-01T21:39:25+00:00</pubDate>
+	  <guid>//MySQL-union-index-and-cover-index</guid>
+	  <description><![CDATA[
+	     <p>在上一篇文章中， 通过解析InnoDB存储引擎的<code class="highlighter-rouge">.ibd</code>数据存储文件得到了数据与索引的真实组织方式: 数据通过聚集索引在逻辑上连续存放， 二级索引保存数据主键ID(Row ID)， 多棵B+Tree组合起来提供高效的索引数据查询。 除辅助索引(二级索引)外， 联合索引与覆盖索引在日常中也会经常用到。</p>
+
+<!---more--->
+
+<h4 id="1-联合索引">1. 联合索引</h4>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">union_test</span> <span class="p">(</span>
+	<span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+	<span class="n">user_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+	<span class="n">order_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+	<span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+	<span class="k">KEY</span> <span class="n">ix_union_order_id_user_id</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0000"</span><span class="p">,</span> <span class="nv">"A0000"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0000"</span><span class="p">,</span> <span class="nv">"A0001"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0001"</span><span class="p">,</span> <span class="nv">"A0003"</span><span class="p">);</span>
+<span class="p">...</span>
+</code></pre></div></div>
+
+<p>在创建表结构以及插入部分测试数据之后， 我们依然使用<code class="highlighter-rouge">hexdump -C</code>来对<code class="highlighter-rouge">.ibd</code>文件进行分析， 从最基本的数据存储结构中更能够发现联合索引的存储特点。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>00010070  73 75 70 72 65 6d 75 6d  03 04 00 00 10 00 36 30  |supremum......60|
+00010080  30 35 38 41 31 34 80 00  00 01 03 04 07 00 18 05  |058A14..........|
+00010090  e2 30 30 33 36 41 32 30  80 00 00 02 03 04 08 00  |.0036A20........|
+000100a0  20 00 fb 30 30 34 33 41  31 33 80 00 00 03 03 04  | ..0043A13......|
+000100b0  00 00 28 01 67 30 30 35  39 41 32 31 80 00 00 04  |..<span class="o">(</span>.g0059A21....|
+000100c0  03 04 08 00 30 02 65 30  30 34 39 41 38 39 80 00  |....0.e0049A89..|
+000100d0  00 05 03 04 00 00 38 01  1f 30 30 35 31 41 35 34  |......8..0051A54|
+000100e0  80 00 00 06 02 04 06 00  40 05 76 30 30 32 33 41  |........@.v0023A|
+000100f0  36 80 00 00 07 03 04 00  00 48 02 0c 30 30 30 31  |6........H..0001|
+00010100  41 35 30 80 00 00 08 03  04 00 00 50 06 19 30 30  |A50........P..00|
+00010110  31 35 41 39 31 80 00 00  09 03 04 00 00 58 ff 83  |15A91........X..|
+00010120  30 30 34 32 41 37 32 80  00 00 0a 03 04 00 00 60  |0042A72........<span class="sb">`</span>|
+00010130  01 56 30 30 33 38 41 39  35 80 00 00 0b 03 04 00  |.V0038A95.......|
+00010140  00 68 03 4f 30 30 32 39  41 39 37 80 00 00 0c 03  |.h.O0029A97.....|
+00010150  04 05 00 70 05 41 30 30  35 37 41 31 31 80 00 00  |...p.A0057A11...|
+00010160  0d 03 04 00 00 78 02 c0  30 30 31 39 41 35 32 80  |.....x..0019A52.|
+</code></pre></div></div>
+
+<p>直接截取部分的联合索引内容进行分析， 索引数据从<code class="highlighter-rouge">00010078</code>开始:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">04</span>  <span class="cm">/* 倒序索引长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">36</span>
+<span class="mi">30</span> <span class="mi">30</span> <span class="mi">35</span> <span class="mi">38</span>  <span class="cm">/* 列1索引数据 */</span>
+<span class="mi">41</span> <span class="mi">31</span> <span class="mi">34</span>  <span class="cm">/* 列2索引数据 */</span>
+<span class="mi">80</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 主键id */</span>
+</code></pre></div></div>
+
+<p>可以看到， 联合索引的物理存储方式与单一索引的最大区别就是索引数据不是分开存储的。 所以， 联合索引要比两个或多个单独的索引占用更少的磁盘空间。</p>
+
+<p>事实上， 联合索引与单列索引在组织形式上没什么区别， 都是一棵B+Tree。 只不过联合索引的键值数量不是1， 而是大于等于2。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/union-index.png" alt="" /></p>
+
+<p>如上图所示， 联合索引的第1列数据将严格按照B+Tree的字典序进行排序， 第2列数据则在第一列数据有序的基础上进行排序。 可以认为， 联合索引的B+Tree结构就是对一个多维数组进行排序， 以Python为例:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 假设有如下数据</span>
+<span class="n">unsorted_list</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>  <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
+
+<span class="n">res</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">unsorted_list</span><span class="p">)</span>
+<span class="c"># Out: [(1, 2), (1, 3), (2, 4), (2, 5), (4, 1), (4, 2)]</span>
+</code></pre></div></div>
+
+<p>假设现在有两列数据a, b组合成为了联合索引， 那么当a列相同时， b列数据一定是有序存放的， 也就是说当执行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="k">table</span> <span class="k">WHERE</span> <span class="n">a</span> <span class="o">=</span> <span class="n">XX</span> <span class="k">AND</span> <span class="n">b</span> <span class="o">=</span> <span class="n">XX</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>其效率要高于a, b两个单独的索引列查询， 原因就在于其索引数据保存在同一棵B+Tree中， 使用更少的逻辑I/O就能将数据取出。</p>
+
+<p>在单独查询列a时， 依然可以使用联合索引进行查询， 但是在单独查询b列时， 则不可以使用联合索引。 因为b列数据并不是有序存放的。</p>
+
+<p>如上例所示， b列的数据为<code class="highlighter-rouge">[2, 3, 2, 4, 1, 2]</code>， 完全无序， 故使用:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="k">table</span> <span class="k">WHERE</span> <span class="n">b</span> <span class="o">=</span> <span class="n">XX</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>进行查询时将无法使用联合索引。 联合索引除了能加速查询以外， 还有另外一个好处， 就是加速<code class="highlighter-rouge">ORDER BY</code>的查询。</p>
+
+<p>这也很好理解， 因为在建立了联合索引以后， 第2列数据， 甚至是第n列数据， 将会有序的组成B+Tree， 如此一来就省去了排序的的时间。</p>
+
+<p>假设现在有4列数据a, b, c, d组成的联合索引(a, b, c, d)， 那么B+Tree的结构为a有序排列， b在a相同的情况下有序排列， c在b相同的情况下有序排列， d在c相同的情况下有序排列。 在查询时， 只要查询条件包含a字段， 均可以使用索引进行查询。</p>
+
+<h4 id="2-覆盖索引cover-index">2. 覆盖索引(Cover Index)</h4>
+<p>现在我们已经知道了InnoDB的物理存储方式是一个聚集索引+多个辅助索引组成， 辅助索引包含单列索引以及上面提到的联合索引。 在使用索引进行数据查询时， 首先在辅助索引树中找到该条数据对应的主键id(Row ID)， 而后根据主键id在聚集索引树中进行查询， 粗略的认为就是2次逻辑I/O。</p>
+
+<p>覆盖索引的本质就是不使用聚集索引， 只使用辅助索引就能够将所需要的数据查询出来， 最典型的例子就是<code class="highlighter-rouge">count(*)</code>。</p>
+
+<p>当某张表内存在二级索引时， <code class="highlighter-rouge">count(*)</code>将直接统计二级索引的数量并返回。 由于二级索引的B+Tree要比聚集索引更加的矮胖， 每页能够容纳更多的索引数据行， 所以其效率要高于扫描聚集索引。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="p">(</span>
+	<span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+	<span class="n">user_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+	<span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+	<span class="k">KEY</span> <span class="n">ix_user_id</span> <span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/count-with-cover-index.png" alt="" /></p>
+
+<p>如果表内有多个二级索引， 则<code class="highlighter-rouge">count(*)</code>将会选择长度最短的二级索引。 索引长度越短， 每页就能够容纳更多的数据， 就会有更少的逻辑I/O， 因此效率也就越高。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="k">ADD</span> <span class="n">order_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="k">ADD</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">order_id</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/count-with-shorter-cover-index.png" alt="" /></p>
+
+<p>覆盖索引严格意义上来讲是MySQL的查询优化器所做的优化， 并不是物理上存在的索引。 但是， 借助于覆盖索引的特点， 我们可以有目的的对某些查询进行优化。</p>
+
+<h4 id="3-小结">3. 小结</h4>
+<p>联合索引是优化多字段查询以及需要对某个字段进行排序的一种手段， 而覆盖索引则是MySQL查询优化器的一种优化策略， 并不能称为真正意义上的索引。</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>MySQL物理存储方式</title>
+	  <link>//MySQL-physical-structure</link>
+	  <author></author>
+	  <pubDate>2019-08-15T21:39:25+00:00</pubDate>
+	  <guid>//MySQL-physical-structure</guid>
+	  <description><![CDATA[
+	     <p>MySQL是基于磁盘进行数据存储的关系型数据库， 所有的数据、索引等数据均以磁盘文件的方式存储， 在有需要时载入内存读取。 为了加快数据查询的效率， 通常会在一些字段上添加索引， 但是许多文档都会告诉我们， 不要添加太多的索引， 索引不要太长， 使用数字或者空字符串来代替NULL值， 为什么会有这些建议? 这些建议又是否正确?  答案都能够从MySQL数据的物理存储方式中找到。</p>
+
+<!---more--->
+
+<h4 id="1-innodb文件格式">1. InnoDB文件格式</h4>
+<p>由于InnoDB是MySQL使用最为广泛的存储引擎， 所以本篇博文基于InnoDB存储引擎来讨论其数据存储方式。</p>
+
+<p>当我们创建一个table时， InnoDB会创建三个文件。 一个是表结构定义文件， 另一个为数据实际存储文件， 并且所有的索引也将存放在这个文件中。 最后一个文件保存该table所制定的字符集。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/innodb-table-structure.png" alt="" /></p>
+
+<h4 id="2-innodb行记录格式">2. InnoDB行记录格式</h4>
+<p>当我们使用SQL查询一条或者是多条数据时， 数据将会以一行一行的方式返回， 而实际上数据在文件中也的确是使用行记录的方式进行存储的。</p>
+
+<p>不同的InnoDB引擎版本可能有着不同的行记录格式来存放数据， 可以说， 行记录格式的变更将会直接影响到InnoDB的查询以及DML效率。 在MySQL 5.7版本中， 如果对某个table执行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SHOW</span> <span class="k">TABLE</span> <span class="n">STATUS</span> <span class="k">LIKE</span> <span class="nv">"table_name"</span> <span class="err">\</span><span class="k">G</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>将会得到该table的一系列信息， 在这里， 我们只需要知道<code class="highlighter-rouge">Row_format</code>的值即可， 5.7将会返回<code class="highlighter-rouge">Dynamic</code>。</p>
+
+<p>在官网上给出了不同格式的行记录格式之间的差别， 详细内容见官方文档:</p>
+
+<blockquote>
+  <p>https://dev.mysql.com/doc/refman/5.7/en/innodb-row-format.html</p>
+</blockquote>
+
+<p>在这里我们只需要知道<code class="highlighter-rouge">Dynamic</code>行记录格式在存储可变字符(Varchar)时， 与<code class="highlighter-rouge">Compact</code>行记录格式有着同样的表现即可。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/Compact-row-format.png" alt="" /></p>
+
+<p>Compact行记录格式将以上图的方式保存在文件中， 需要注意的是， 如果一个table中没有任何的varchar类型， 那么变长字段长度列表将为空。</p>
+
+<p>Compact行记录格式的首部是一个非NULL变长字段长度列表， 并且是按照列的顺序逆序放置的， 其长度表现为:</p>
+<ul>
+  <li>若列的长度小于255字节， 用1字节表示</li>
+  <li>若列的长度大于255字节， 用2字节表示</li>
+</ul>
+
+<p>变长字段的长度最大不会超过2字节， 这是因为MySQL中VARCAHR类型的最大长度限制为65535。 变长字段之后的第二个部分为NULL标识位， 该位指示了该行数据中是否存在NULL值， 有则用1表示， 本质上是一个bitmap。</p>
+
+<p>下面用一个实际的例子来具体分析Compact行记录格式的实际存储。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- 创建database</span>
+<span class="k">CREATE</span> <span class="k">SCHEMA</span> <span class="nv">`coco`</span> <span class="k">DEFAULT</span> <span class="n">CHARACTER</span> <span class="k">SET</span> <span class="n">latin1</span> <span class="p">;</span>
+
+<span class="c1">-- 创建table</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">one</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="c1">-- 插入代表性数据</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"a"</span><span class="p">,</span> <span class="nv">"AAA"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"b"</span><span class="p">,</span> <span class="nv">"BBB"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"c"</span><span class="p">,</span> <span class="k">NULL</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"d"</span><span class="p">,</span> <span class="nv">"DDD"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"e"</span><span class="p">,</span> <span class="nv">""</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"f"</span><span class="p">,</span> <span class="nv">"FFF"</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>而后在<code class="highlighter-rouge">/var/lib/mysql/coco</code>中即可找到该表的<code class="highlighter-rouge">.ibd</code>文件了， 使用<code class="highlighter-rouge">hexdump -C one.ibd</code>对其进行16进制的数据解析并查看。 由于数据太长， 所以仅截取部分数据:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000c070  73 75 70 72 65 6d 75 6d  03 01 00 00 00 10 00 1d  |supremum........|
+0000c080  80 00 00 01 00 00 00 08  d1 29 bd 00 00 01 35 01  |.........<span class="o">)</span>....5.|
+0000c090  10 61 41 41 41 03 01 00  00 00 18 00 1c 80 00 00  |.aAAA...........|
+0000c0a0  02 00 00 00 08 d1 29 bd  00 00 01 35 01 1d 62 42  |......<span class="o">)</span>....5..bB|
+0000c0b0  42 42 01 02 00 00 20 00  1a 80 00 00 03 00 00 00  |BB.... .........|
+0000c0c0  08 d1 29 bd 00 00 01 35  01 2a 63 03 01 00 00 00  |..<span class="o">)</span>....5.<span class="k">*</span>c.....|
+0000c0d0  28 00 1d 80 00 00 04 00  00 00 08 d1 29 bd 00 00  |<span class="o">(</span>...........<span class="o">)</span>...|
+0000c0e0  01 35 01 37 64 44 44 44  00 01 00 00 00 30 00 1a  |.5.7dDDD.....0..|
+0000c0f0  80 00 00 05 00 00 00 08  d1 29 bd 00 00 01 35 01  |.........<span class="o">)</span>....5.|
+0000c100  44 65 03 01 00 00 00 38  ff 66 80 00 00 06 00 00  |De.....8.f......|
+0000c110  00 08 d1 29 bd 00 00 01  35 01 51 66 46 46 46 00  |...<span class="o">)</span>....5.QfFFF.|
+</code></pre></div></div>
+
+<p>实际存储数据从<code class="highlighter-rouge">0000c078</code>开始， 使用Compact行记录格式对其进行整理:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">01</span> <span class="cm">/* 变长字段长度列表, 逆序, 第一行varchar数据为('a', 'AAA') */</span>
+<span class="mi">00</span> <span class="cm">/* NULL标识位, 该值表示该行未有NULL值的列 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">1</span><span class="n">d</span> <span class="cm">/* 记录头(Record Header)信息, 固定长度为5字节 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="cm">/* Row ID, 这里即为该行数据的主键值(paimary key)，长度为4 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">08</span> <span class="n">d1</span> <span class="mi">29</span> <span class="cm">/* Transaction ID, 即事务ID, 默认为6字节 */</span>
+<span class="n">bd</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">35</span> <span class="mi">01</span> <span class="mi">10</span> <span class="cm">/* 回滚指针, 默认为7字节 */</span>
+<span class="mi">61</span> <span class="cm">/* 列1数据'a' */</span>
+<span class="mi">41</span> <span class="mi">41</span> <span class="mi">41</span> <span class="cm">/* 列2数据'AAA' */</span>
+</code></pre></div></div>
+
+<p>第2行数据与第1行数据大同小异， 值得关注的是包含有NULL值以及空值的行， 即第3行和第5行， 首先来看第3行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">01</span> <span class="cm">/* 由于该行中只有一列数据类型为varchar，并且非NULL, 所以列表长度为1 */</span>
+<span class="mi">02</span> <span class="cm">/* 02转换为2进制结果为10, 表示第二列数据为NULL(注意是逆序) */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span> <span class="mi">00</span> <span class="mi">1</span><span class="n">a</span> <span class="cm">/* 记录头(Record Header)信息, 固定长度为5字节 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span> <span class="cm">/* 第3行数据的主键id */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">08</span> <span class="n">d1</span> <span class="mi">29</span>  <span class="cm">/* Transaction ID, 即事务ID, 默认为6字节 */</span>
+<span class="n">bd</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">35</span>  <span class="mi">01</span> <span class="mi">2</span><span class="n">a</span> <span class="cm">/* 回滚指针, 默认为7字节 */</span>
+<span class="mi">63</span> <span class="cm">/* 列1数据'c' */</span>
+</code></pre></div></div>
+
+<p>可以非常明显的看到， NULL值并没有在文件中进行存储， 而是仅使用NULL标识位来标记某一列是否为NULL。 所以说， NULL值不会占据任何的物理存储空间， 相反， varchar类型的NULL值还会少占用变长字段长度列表空间。</p>
+
+<p>再来看空字符串所在的第5行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 表示第2列的varchar长度为0 */</span>
+<span class="mi">00</span>  <span class="cm">/* 该行没有NULL值的列 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">30</span> <span class="mi">00</span> <span class="mi">1</span><span class="n">a</span>  <span class="cm">/* 记录头(Record Header)信息, 固定长度为5字节 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">05</span>  <span class="cm">/* 第5行数据的主键id */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">08</span> <span class="n">d1</span> <span class="mi">29</span>  <span class="cm">/* Transaction ID, 即事务ID, 默认为6字节 */</span>
+<span class="n">bd</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">35</span> <span class="mi">01</span> <span class="mi">44</span>   <span class="cm">/* 回滚指针, 默认为7字节 */</span>
+<span class="mi">65</span>  <span class="cm">/* 列1数据'e' */</span>
+</code></pre></div></div>
+
+<p>可以看到， 空字符串和NULL值一样， 也不占用任何的磁盘存储空间。 只不过与NULL值不同的是， 在首部的变长字符长度列表中仍然占据存储空间， 但是值为0。</p>
+
+<h4 id="3-数据的聚集索引组织方式">3. 数据的聚集索引组织方式</h4>
+<p>有些人将聚集索引(Cluster Index)理解成为主键， 或者是主键索引， 这是不准确的。 聚集索引并不是一种索引结构， 而是一种数据的组织方式， 用唯一且不为空的主键来对所有的数据进行组织。 主键， 是最为常见的聚集索引对外表现的形式。</p>
+
+<p>聚集索引最大的特点就在于数据在逻辑上是一定是连续的， 但是在物理是并不一定连续。 比如我们常见的自增主键， 当我们对查询语句不做任何处理时， 默认就是按照主键的递增顺序返回的。</p>
+
+<p>而辅助索引， 或者是二级索引， 是由程序员人为的在某些列上所添加的索引。 辅助索引所代表的数据在逻辑上不一定连续， 物理存储上也不一定连续。</p>
+
+<p>MySQL使用B+Tree来组织数据和索引(关于B+Tree的详细内容， 可见下方传送门)， 在非叶子节点中保存着索引和指针， 在叶子节点保存着数据。 情况又分两种:</p>
+<ul>
+  <li>聚集索引的叶子节点保存着实际的数据，即一行完整的数据</li>
+  <li>辅助索引的叶子节点保存着该行数据的主键ID</li>
+</ul>
+
+<p><a href="https://smartkeyerror.com/%E9%82%A3%E4%BA%9B%E6%9C%89%E8%B6%A3%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95-04-B-Tree%E4%B8%8EB-Tree.html">那些有趣的数据结构与算法(04)–B-Tree与B+Tree</a></p>
+
+<p>也就是说， 假设聚集索引和辅助索引的B+Tree树高均为3的话， 使用主键查询需要3次逻辑I/O。 而使用辅助索引则需要6次逻辑I/O才能找到该行数据。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/Cluster-Index.png" alt="" /></p>
+
+<p>还记得在上面的Compact行记录格式中的行记录头， 也就是Record Header信息吗?  Record Header的最后两个字节表示下一行数据的偏移量， 其实这个就是B+Tree中的指针。 例如第一行的起始位置为c078， Record Header最后两个字节为001d， 加起来等于c095， 刚好是第二行的起始位置。</p>
+
+<p>在上面的例子中， 我们创建了这样的一张表:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">one</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>其中<code class="highlighter-rouge">nickname</code>字段被我们添加了辅助索引， 同样地， 可以使用<code class="highlighter-rouge">.ibd</code>文件来具体对其结构进行分析。 使用<code class="highlighter-rouge">hexdump -C one.ibd</code>解析文件并找到辅助索引开始的地方:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00010060</span>  <span class="mi">02</span> <span class="mi">00</span> <span class="mi">37</span> <span class="mi">69</span> <span class="mi">6</span><span class="n">e</span> <span class="mi">66</span> <span class="mi">69</span> <span class="mi">6</span><span class="n">d</span>  <span class="mi">75</span> <span class="mi">6</span><span class="n">d</span> <span class="mi">00</span> <span class="mi">07</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">b</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">..</span><span class="mi">7</span><span class="n">infimum</span><span class="p">......</span><span class="o">|</span>
+<span class="mi">00010070</span>  <span class="mi">73</span> <span class="mi">75</span> <span class="mi">70</span> <span class="mi">72</span> <span class="mi">65</span> <span class="mi">6</span><span class="n">d</span> <span class="mi">75</span> <span class="mi">6</span><span class="n">d</span>  <span class="mi">03</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">e</span> <span class="mi">41</span>  <span class="o">|</span><span class="n">supremum</span><span class="p">.......</span><span class="n">A</span><span class="o">|</span>
+<span class="mi">00010080</span>  <span class="mi">41</span> <span class="mi">41</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">03</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">42</span> <span class="mi">42</span> <span class="mi">42</span>  <span class="o">|</span><span class="n">AA</span><span class="p">...........</span><span class="n">BBB</span><span class="o">|</span>
+<span class="mi">00010090</span>  <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">02</span> <span class="mi">01</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span>  <span class="mi">00</span> <span class="mi">19</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span> <span class="mi">03</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">.......</span> <span class="p">........</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">a0</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">28</span> <span class="mi">00</span> <span class="mi">19</span> <span class="mi">44</span> <span class="mi">44</span> <span class="mi">44</span>  <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">04</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">..(..</span><span class="n">DDD</span><span class="p">........</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">b0</span>  <span class="mi">30</span> <span class="n">ff</span> <span class="n">cc</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">05</span> <span class="mi">03</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">38</span> <span class="n">ff</span> <span class="n">b2</span> <span class="mi">46</span> <span class="mi">46</span>  <span class="o">|</span><span class="mi">0</span><span class="p">..........</span><span class="mi">8</span><span class="p">..</span><span class="n">FF</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">c0</span>  <span class="mi">46</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">06</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="n">F</span><span class="p">...............</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">d0</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">................</span><span class="o">|</span>
+</code></pre></div></div>
+
+<p>索引数据从00010078的位置开始， 逐行进行分析即可:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span>  <span class="cm">/* 当前索引字段的长度 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">e</span> <span class="cm">/* 不知道是啥 */</span>
+<span class="mi">41</span> <span class="mi">41</span> <span class="mi">41</span>   <span class="cm">/* 索引值 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 指向的主键id */</span>
+</code></pre></div></div>
+
+<p>第2行与第1行基本类似， 现在来看看比较特殊的第3行与第5行。 第3行索引数据内容:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span> <span class="mi">00</span> <span class="mi">19</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span>  <span class="cm">/* 指向的主键id */</span>
+</code></pre></div></div>
+
+<p>当索引的内容为NULL值时， 辅助索引的文件格式也变得奇怪了起来， 和第一行完全不一样， 再来看看第5行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span>  <span class="cm">/* 当前索引字段的长度 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">30</span> <span class="n">ff</span> <span class="n">cc</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">05</span>  <span class="cm">/* 指向的主键id */</span>
+</code></pre></div></div>
+
+<p>和正常索引内容基本类似， 空字符串仍然没有表示， 仅使用了00表示该字段长度为0。</p>
+
+<h4 id="4-辅助索引叶子节点存储方式">4. 辅助索引叶子节点存储方式</h4>
+<p>在MySQL中， 数据管理的最小单元为页(page)， 而并非一行一行的数据。 数据保存在页中， 当我们使用主键查找一行数据时， 其实MySQL并不能直接返回这一行数据， 而是将该行所在的页载入内存， 然后在内存页中进行查找。</p>
+
+<p>通常情况下页大小为16K， 在某些情况下可能会对页进行压缩， 使得页大小为8K或者是4K。 由于B+Tree的特点， 使得每一页内最少为2行数据， 再少就将退化成链表， 显然出于效率的考量不会让此种情况出现。 故而一行数据大小至多为16K， 通过该特性， 就可以研究二级索引的叶子节点是什么样子的了。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">two</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">8000</span><span class="p">),</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">(</span><span class="mi">2000</span><span class="p">))</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'A'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">,</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">'c'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'C'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">'d'</span><span class="p">,</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">5</span><span class="p">,</span> <span class="s1">'e'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'E'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">'f'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'F'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">7</span><span class="p">,</span> <span class="s1">'g'</span><span class="p">,</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">'h'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'H'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">9</span><span class="p">,</span> <span class="s1">'i'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'G'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">'i'</span><span class="p">,</span> <span class="nv">""</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>由于索引长度的限制， 这里仅取nickname的前2000个字符进行索引， 并插入一些具有代表性的数据。 同样使用<code class="highlighter-rouge">hexdump -C two.ibd</code>对索引结构进行分析:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>00010070  73 75 70 72 65 6d 75 6d  d0 87 00 05 00 10 07 e6  |supremum........|
+00010080  41 41 41 41 41 41 41 41  41 41 41 41 41 41 41 41  |AAAAAAAAAAAAAAAA|
+<span class="k">*</span>
+00010850  80 00 00 01 01 00 00 18  07 e6 80 00 00 02 d0 87  |................|
+00010860  00 00 00 20 07 e6 43 43  43 43 43 43 43 43 43 43  |... ..CCCCCCCCCC|
+00010870  43 43 43 43 43 43 43 43  43 43 43 43 43 43 43 43  |CCCCCCCCCCCCCCCC|
+<span class="k">*</span>
+00011030  43 43 43 43 43 43 80 00  00 03 01 00 00 28 0f c2  |CCCCCC.......<span class="o">(</span>..|
+00011040  80 00 00 04 d0 87 00 00  00 30 07 dc 45 45 45 45  |.........0..EEEE|
+00011050  45 45 45 45 45 45 45 45  45 45 45 45 45 45 45 45  |EEEEEEEEEEEEEEEE|
+<span class="k">*</span>
+00011810  45 45 45 45 45 45 45 45  45 45 45 45 80 00 00 05  |EEEEEEEEEEEE....|
+00011820  d0 87 00 00 00 38 0f c2  46 46 46 46 46 46 46 46  |.....8..FFFFFFFF|
+00011830  46 46 46 46 46 46 46 46  46 46 46 46 46 46 46 46  |FFFFFFFFFFFFFFFF|
+<span class="k">*</span>
+00011ff0  46 46 46 46 46 46 46 46  80 00 00 06 01 00 00 40  |FFFFFFFF.......@|
+00012000  0f c3 80 00 00 07 d0 87  00 00 00 48 e0 62 48 48  |...........H.bHH|
+00012010  48 48 48 48 48 48 48 48  48 48 48 48 48 48 48 48  |HHHHHHHHHHHHHHHH|
+<span class="k">*</span>
+000127d0  48 48 48 48 48 48 48 48  48 48 48 48 48 48 80 00  |HHHHHHHHHHHHHH..|
+000127e0  00 08 d0 87 00 00 00 50  f8 24 47 47 47 47 47 47  |.......P.<span class="nv">$GGGGGG</span>|
+000127f0  47 47 47 47 47 47 47 47  47 47 47 47 47 47 47 47  |GGGGGGGGGGGGGGGG|
+<span class="k">*</span>
+00012fb0  47 47 47 47 47 47 47 47  47 47 80 00 00 09 00 00  |GGGGGGGGGG......|
+00012fc0  00 00 58 d0 bb 80 00 00  0a 00 00 00 00 00 00 00  |..X.............|
+00012fd0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+</code></pre></div></div>
+
+<p>从上表中可以看到， 索引数据起始点为00010078， 逐行进行分析可以发现， NULL值和空值的表现形式与上一小节分析的基本相同。</p>
+
+<p>NULL值行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">07</span> <span class="n">e6</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">02</span>  <span class="cm">/* 主键id */</span>
+
+<span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">28</span> <span class="mi">0</span><span class="n">f</span> <span class="n">c2</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">04</span>  <span class="cm">/* 主键id */</span>
+
+<span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">40</span> <span class="mi">0</span><span class="n">f</span> <span class="n">c3</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">07</span>  <span class="cm">/* 主键id */</span>
+</code></pre></div></div>
+
+<p>空字符串行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">58</span> <span class="n">d0</span> <span class="n">bb</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">a</span>  <span class="cm">/* 主键id */</span>
+</code></pre></div></div>
+
+<p>所以说， 分析到这里， 我们完全有理由说NULL值要比空值占用更少的物理存储空间， 包含索引存储空间。 但是， 这是在我们所定义表结构时允许字段值为NULL的前提下， 当我们显式的指定IS NOT NULL时， 情况又会不一样。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">three</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"a"</span><span class="p">,</span> <span class="nv">"AAA"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"b"</span><span class="p">,</span> <span class="nv">""</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"c"</span><span class="p">,</span> <span class="nv">"CCC"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"d"</span><span class="p">,</span> <span class="nv">"DDD"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"e"</span><span class="p">,</span> <span class="nv">"EEE"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"f"</span><span class="p">,</span> <span class="nv">""</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"g"</span><span class="p">,</span> <span class="nv">"GGG"</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">hexdump -C three.ibd</code>可得:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000c070  73 75 70 72 65 6d 75 6d  03 01 00 00 10 00 1c 80  |supremum........|
+0000c080  00 00 01 00 00 00 08 dd  21 ba 00 00 01 2f 01 10  |........!..../..|
+0000c090  61 41 41 41 00 01 00 00  18 00 19 80 00 00 02 00  |aAAA............|
+0000c0a0  00 00 08 dd 22 bb 00 00  01 31 01 10 62 03 01 00  |....<span class="s2">"....1..b...|
+0000c0b0  00 20 00 1c 80 00 00 03  00 00 00 08 dd 25 bd 00  |. ...........%..|
+0000c0c0  00 01 35 01 10 63 43 43  43 03 01 00 00 28 00 1c  |..5..cCCC....(..|
+0000c0d0  80 00 00 04 00 00 00 08  dd 28 bf 00 00 01 36 01  |.........(....6.|
+0000c0e0  10 64 44 44 44 03 01 00  00 30 00 1c 80 00 00 05  |.dDDD....0......|
+0000c0f0  00 00 00 08 dd 29 c0 00  00 01 37 01 10 65 45 45  |.....)....7..eEE|
+0000c100  45 00 01 00 00 38 00 19  80 00 00 06 00 00 00 08  |E....8..........|
+0000c110  dd 2a a1 00 00 01 12 01  10 66 03 01 00 00 40 ff  |.*.......f....@.|
+0000c120  4f 80 00 00 07 00 00 00  08 dd 2b a2 00 00 01 15  |O.........+.....|
+0000c130  01 10 67 47 47 47 00 00  00 00 00 00 00 00 00 00  |..gGGG..........|
+</span></code></pre></div></div>
+
+<p>数据从c078开始， 同样进行逐行分析:</p>
+
+<p>第一行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">01</span>  <span class="cm">/* 逆序可变字符长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">1</span><span class="k">c</span>  <span class="cm">/* 记录头信息(Record Header), c078+001c=c094 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 主键id */</span>
+<span class="c1">-- Transaction ID + Roll Pointer</span>
+<span class="mi">61</span>  <span class="cm">/* 列1数据 */</span>
+<span class="mi">41</span> <span class="mi">41</span> <span class="mi">41</span>  <span class="cm">/* 列2数据 */</span>
+</code></pre></div></div>
+
+<p>第二行数据</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 逆序可变字符长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">00</span> <span class="mi">19</span>  <span class="cm">/* 记录头信息(Record Header), c094+0019=c0ad */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">02</span>  <span class="cm">/* 主键id */</span>
+<span class="c1">-- Transaction ID + Roll Pointer</span>
+<span class="mi">62</span>  <span class="cm">/* 列1数据, 列2数据为空值, 故无记录 */</span>
+</code></pre></div></div>
+
+<p>第三行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">01</span>  <span class="cm">/* 逆序可变字符长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span> <span class="mi">00</span> <span class="mi">1</span><span class="k">c</span>  <span class="cm">/* 记录头信息(Record Header), c0ad+001c=c0c9 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span>  <span class="cm">/* 主键id */</span>
+<span class="c1">-- Transaction ID + Roll Pointer</span>
+<span class="mi">63</span>  <span class="cm">/* 列1数据 */</span>
+<span class="mi">43</span> <span class="mi">43</span> <span class="mi">43</span>  <span class="cm">/* 列2数据 */</span>
+</code></pre></div></div>
+
+<p>可以看到， 将<strong>所有</strong>的列设置为NOT NULL之后， 存储内容少了一个NULL标识位， 此时该table的存储效率要高于最初的表结构。</p>
+
+<p>所以说， 如果想要真正的节省表空间存储大小， 需要将<strong>所有</strong>的字段都设置为NOT NULL约束， 否则在存储时仍然需要NULL标识位来标记哪一列数据为非NULL， 即使所有的列都有数据。</p>
+
+<p>最后， NULL真的比空字符串占用更少的空间吗? 答案是不一定。 如果在定义表结构时指定了NOT NULL， 那么数据中就不可能出现NULL值， 也就无从比起。 如果在定义表结构时没有指定NOT NULL， 那么NULL将会比空字符串占用更少的空间。</p>
+
+<h4 id="5-总结">5. 总结</h4>
+<p>经过对<code class="highlighter-rouge">.ibd</code>文件的分析， 想必对数据以及索引的组织方式有了一个更加清晰的了解， 并且也能够判断出各种各样优化建议到底是否正确了。</p>
+
+<p>使用数字或者是空串来代替NULL值? 没有必要， 有时还会适得其反， 而且对于添加了二级索引的NULL值， 查询仍然会使用索引。 正确的做法就是在定义表结构的时候就将NULL值扼杀在摇篮里， 如此一来能够节省一部分的磁盘空间以及一定程度上的效率提升。</p>
+
+<p>为什么索引不能太多? 因为每添加一个索引， <code class="highlighter-rouge">.ibd</code>文件中就需要多维护一个B+Tree索引树， 如果某一个table中存在10个索引， 那么就需要维护10棵B+Tree， 写入效率会降低， 并且会浪费磁盘空间。</p>
+
+<p>B+Tree中的指针是用什么实现的? 使用文件偏移量实现， 指向下一行或者是下一个索引的起始位置。</p>
+
+	  ]]></description>
+	</item>
+
 	<item>
 	  <title>MySQL权限管理</title>
 	  <link>//MySQL-Permissions</link>

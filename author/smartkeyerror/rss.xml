@@ -6,11 +6,786 @@
       <title>smartkeyerror.com/</title>
    
    <link>https://smartkeyerror.com</link>
-   <description></description>
+   <description>Keep coding, Keep curiosity</description>
    <language>en-uk</language>
    <managingEditor> </managingEditor>
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
+	<item>
+	  <title>MySQL中的悲观锁与常见的死锁场景</title>
+	  <link>//MySQL-Lock</link>
+	  <author></author>
+	  <pubDate>2019-09-18T21:39:25+00:00</pubDate>
+	  <guid>//MySQL-Lock</guid>
+	  <description><![CDATA[
+	     <p>在MySQL中， 锁机制是并发条件下保护数据一致性与稳定性的一个非常重要的机制， 并且事务的实现也依赖于于锁机制。 其锁定的数据不单包括数据行记录， 同时也包括缓冲池中的LRU列表数据、日志数据等。 悲观锁(FOR UPDATE)则是日常开发中使用最多的一种锁， 但是， 由于事务隔离级别的多样性导致了悲观锁在使用时常常会有不同的表现， 死锁在程序员稍不注意时就会发生。</p>
+
+<!---more--->
+
+<h4 id="1-悲观锁概述">1. 悲观锁概述</h4>
+<p>在通用的程序设计语言中， 锁通常是基于某一个对象， 或者是一组对象而言。 在Python、Java和Golang中， 分别提供了<code class="highlighter-rouge">threading.Lock</code>、<code class="highlighter-rouge">synchronized</code>以及<code class="highlighter-rouge">sync.Mutex</code>互斥所机制。 而数据库要更为特殊一些， 其原因就在于我们所管理的不是一个个的对象， 而是一行行的数据。</p>
+
+<p>InnoDB存储引擎支持的最小锁粒度为行锁， 可以通过在事务中执行<code class="highlighter-rouge">SELECT .. FOR UPDATE</code>为某一行或者是多行数据添加互斥锁。 锁的生命周期完全由InnoDB管理， 当事务成功提交或者是失败回滚时， 互斥锁则自动释放。</p>
+
+<p>需要注意的一点是， 互斥锁必须在事务中执行才会生效。 当<code class="highlighter-rouge">autocommit</code>为<code class="highlighter-rouge">ON</code>时， 需要显示的使用<code class="highlighter-rouge">BEGIN</code>开启事务， 而后对数据添加互斥锁。</p>
+
+<p>在程序设计语言中， 锁的目的是串行化修改、删除操作， InnoDB中的互斥锁有着同样的目的。 但是， 由于事务隔离级别的分类， 使得互斥锁的行为变得复杂许多。 其中最让人感到迷惑的就是为了解决幻读问题所添加的<code class="highlighter-rouge">GAP Lock</code>。</p>
+
+<h4 id="2-事务隔离级别概述">2. 事务隔离级别概述</h4>
+
+<p>不同的事务隔离级别， 悲观锁会产生不同的行为。 所以， 理解事务隔离级别是理解悲观锁的第一步。</p>
+
+<p>InnoDB事务隔离级别从低到高依次为未提交读(READ UNCOMMITED)， 提交读(READ COMMITED)， 可重复读(READ REPEATABLE)以及串行化(SERIALIZABLE)。</p>
+
+<p>未提交读指的是事务B可以读取到事务A未提交的数据， 此时若事务A回滚， 那么事务B读到的就是错误数据， 也称为脏数据。 该读取行为有时也会被称为脏读， 因为未提交读会导致脏读的问题， 从而导致数据混乱， 所以该事务隔离级别基本不会被使用。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/read-uncommitted-with-dirty-data.png" alt="" /></p>
+
+<p>提交读是指在执行事务B时， 可以读取到事务A提交到的数据， 未提交的数据不可读取。 提交读解决了脏读的问题， 读取到的数据一定是已经持久化至磁盘的数据， 但是会出现同一条SQL语句在执行时出现不一致的情况。 例如事务A、B先后开始执行， 事务A首先读取row-1的内容， 而此时事务B对row-1的内容修改并提交， 此时事务A再次读取row-1数据， 发现其已经发生改变， 而该变化并不是事务A自身进行的。 这种情况又称为不可重复读。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/Read-Committed.png" alt="" /></p>
+
+<p>可重复读， 顾名思义， 解决了提交读的不可重复读问题， 使得事务在读取同一行数据时， 结果并不会因为其它事务的执行而发生改变， 数据发生的修改行为在整个事务内是可以自恰的。 但是并没有解决幻读的问题， 幻读是指其余事务在某一个区间内插入数据， 而非修改数据， 此时事务也会读取到这部分插入的数据。 InnoDB借助MVCC(多版本并发控制)以及锁机制来解决幻读问题。</p>
+
+<p>MVCC即在数据中添加版本号， 数据插入时会有初始版本号， 在修改、删除时更新版本号。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/Repeatable-Read.png" alt="" /></p>
+
+<p>串行化指事务串行化执行， 自然就不会有出现上述出现的脏读、不可重复读以及幻读了。 一个很重要的事实是， 串行化的事务隔离级别执行效率并不会比可重复读事务隔离级别差很多。 同样的， 提交读执行效率也不会比可重复读执行效率高多少， 所以在优化数据库时， 事务隔离级别不应该是效率优化目标， 而是业务优化目标。</p>
+
+<h4 id="3-mysql中的锁">3. MySQL中的锁</h4>
+
+<p>使用<code class="highlighter-rouge">FOR UPDATE</code>对某一行或者是多行数据添加的锁， 其实是由MySQL更细粒度的锁组合而成的， 不同的事务隔离级别有不同的组合方式。</p>
+
+<p>在InnoDB存储引擎中， 存在3种行锁的算法， 其分别为:</p>
+<ul>
+  <li>Record Lock: 单个行记录上的锁，聚集索引及辅助索引均会添加锁。</li>
+  <li>Gap Lock: 间隙锁， 锁定一个范围， 但不包含行记录本身。</li>
+  <li>Next-Key Lock: Record Lock + Gap Lock，锁定行记录本身并且锁定一个范围。</li>
+</ul>
+
+<p>下面用一个实际的例子来解释Record Lock以及Gap Lock。 首先表结构定义如下:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">lock_test</span> <span class="p">(</span>
+  <span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+  <span class="n">a</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+  <span class="k">KEY</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">latin1</span><span class="p">;</span>
+
+<span class="c1">-- 插入部分测试数据</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"1"</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"3"</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"5"</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"8"</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>接着执行下面的语句:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “5” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“4”); <br /> 阻塞，等待会话A事务的提交</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">COMMIT;</td>
+      <td style="text-align: left">Query OK, 1 row affected (6.87 sec)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>尽管列<code class="highlighter-rouge">a</code>添加了辅助索引， 但是在对该列使用<code class="highlighter-rouge">FOR UPDATE</code>添加悲观锁时， 仍然会出现其它列被锁定的现象。 这是因为<code class="highlighter-rouge">a = "5"</code>该行数据不仅被添加了Record Lock， 并且也添加了Gap Lock， 其目的就是为了解决幻读问题， 前提是当前事务隔离级别为REPEATABLE READ。</p>
+
+<p>在列<code class="highlighter-rouge">a</code>的辅助索引中， 值”5”之前的值为”3”， 故存在(3, 5)这个间隙， 所以在插入值”4”时， InnoDB为了杜绝幻读现象的发生， 使得只有在会话A事务提交时才允许插入操作的进行。 另外一点需要注意的是， 当查询的索引具有唯一属性时， InnoDB存储引擎会对Next-Key Lock进行优化， 将其降级为Record Lock， 即仅锁住索引本身， 而不锁定一个范围。</p>
+
+<blockquote>
+  <p>For a unique index with a unique search condition, InnoDB locks only the index record found, not the gap before it.</p>
+</blockquote>
+
+<h4 id="4-锁与事务之间的关联">4. 锁与事务之间的关联</h4>
+
+<p>前面提到了Gap Lock的存在主要是为了解决幻读问题的发生， 而在READ COMMITTED事务隔离级别中， 只解决了脏读问题， 所以说， 在该事务隔离级别下， <code class="highlighter-rouge">FOR UPDATE</code>仅会添加Record Lock， 并不会添加Gap Lock。</p>
+
+<blockquote>
+  <p>For locking reads (SELECT with FOR UPDATE or FOR SHARE), UPDATE statements, and DELETE statements, InnoDB locks only index records, not the gaps before them.</p>
+</blockquote>
+
+<blockquote>
+  <p>Because gap locking is disabled, phantom problems may occur, as other sessions can insert new rows into the gaps</p>
+</blockquote>
+
+<p>此外， 如果用户通过索引查询一个值， 并在其之上添加排它锁， 当查询的值不存在时， READ COMMITTED与REPEATABLE READ两个事务隔离级别所产生的行为同样存在差异， 一个最直观的差异就是REPEATABLE READ在并发条件下会产生死锁， 而READ COMMITTED则不会。</p>
+
+<p>READ COMMITTED事务隔离级别:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “100” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “100” FOR UPDATE; <br /> 不会被阻塞</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“100”); <br /> 不会被阻塞</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">6</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“100”); <br /> 不会被阻塞</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">7</td>
+      <td style="text-align: left">COMMIT;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">8</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">COMMIT;</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>所以说， 当事务隔离级别为READ COMMITTED时， 无法使用Next-Key Lock来帮助我们实现类似于<code class="highlighter-rouge">update_or_create</code>或者是<code class="highlighter-rouge">get_or_create</code>等方法， 因为在并发条件下会造成重复数据创建， 除非表中存在唯一索引。 这也是Django框架官网中所提到的Multiply records问题。 感兴趣的小伙伴可访问官网获取更多详细内容:</p>
+
+<blockquote>
+  <p>https://docs.djangoproject.com/en/2.2/ref/models/querysets/#get-or-create</p>
+</blockquote>
+
+<p>REPEATABLE READ事务隔离级别:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE; <br /> 不会被阻塞</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“200”); <br /> 阻塞, 等待事务B的结束</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">6</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“200”); <br /> ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction，死锁发生</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>当在REPEATABLE READ事务隔离级别级别下实现<code class="highlighter-rouge">get_or_create</code>方法时，会产生死锁问题， 原因就在于锁定的记录并不存在， 多个事务可同时对其添加悲观锁， 但是插入语句的执行位置是不确定的， 所以就会有死锁问题的出现。解决此类问题的一个方法就是使用指数退避方式的重试。</p>
+
+<h4 id="5-死锁">5. 死锁</h4>
+
+<p>通常来讲， 如果我们的SQL执行计划较为简单， 几乎所有的执行均为单条语句执行时， 死锁基本与我们无关。 但是当执行计划稍加复杂， 事务执行的语句较多时， 就会出现死锁问题。 一个最经典的死锁场景即为AB-BA死锁。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">时间</th>
+      <th style="text-align: left">会话A</th>
+      <th style="text-align: left">会话B</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">BEGIN;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE;</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">BEGIN;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “400” FOR UPDATE;</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “400” FOR UPDATE<br /> 阻塞, 等待事务B的结束</td>
+      <td style="text-align: left"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: left">6</td>
+      <td style="text-align: left"> </td>
+      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE; <br /> ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction，死锁发生</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>当MySQL检测到死锁时， 会根据其事务权重选择性的回滚其中一个事务。 但是， 权重的判定完全由MySQL决定， 业务系统无法人为的干预， 如果某一个事务在业务系统中非常重要， 但是MySQL却回滚了该事务， 而业务系统仅捕捉了该异常并向外扩散的话， 并不是我们期望的结果。 所以， 在绝大多数场景下， 指数退避的重试策略要更好一些。 或者对于关键性的业务逻辑， 使用Redis等消息队列进行串行化操作。</p>
+
+<p>另外一个死锁场景则是上一小节中我们所见到的并发执行<code class="highlighter-rouge">if not exist then create</code>模式所带来的死锁问题， 该模式在业务场景下其实非常常见。</p>
+
+<h4 id="reference">Reference</h4>
+<ul>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-isolation-levels.html</li>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-locking.html</li>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-deadlocks.html</li>
+</ul>
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>MySQL中的联合索引与覆盖索引</title>
+	  <link>//MySQL-union-index-and-cover-index</link>
+	  <author></author>
+	  <pubDate>2019-09-01T21:39:25+00:00</pubDate>
+	  <guid>//MySQL-union-index-and-cover-index</guid>
+	  <description><![CDATA[
+	     <p>在上一篇文章中， 通过解析InnoDB存储引擎的<code class="highlighter-rouge">.ibd</code>数据存储文件得到了数据与索引的真实组织方式: 数据通过聚集索引在逻辑上连续存放， 二级索引保存数据主键ID(Row ID)， 多棵B+Tree组合起来提供高效的索引数据查询。 除辅助索引(二级索引)外， 联合索引与覆盖索引在日常中也会经常用到。</p>
+
+<!---more--->
+
+<h4 id="1-联合索引">1. 联合索引</h4>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">union_test</span> <span class="p">(</span>
+	<span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+	<span class="n">user_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+	<span class="n">order_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+	<span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+	<span class="k">KEY</span> <span class="n">ix_union_order_id_user_id</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0000"</span><span class="p">,</span> <span class="nv">"A0000"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0000"</span><span class="p">,</span> <span class="nv">"A0001"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0001"</span><span class="p">,</span> <span class="nv">"A0003"</span><span class="p">);</span>
+<span class="p">...</span>
+</code></pre></div></div>
+
+<p>在创建表结构以及插入部分测试数据之后， 我们依然使用<code class="highlighter-rouge">hexdump -C</code>来对<code class="highlighter-rouge">.ibd</code>文件进行分析， 从最基本的数据存储结构中更能够发现联合索引的存储特点。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>00010070  73 75 70 72 65 6d 75 6d  03 04 00 00 10 00 36 30  |supremum......60|
+00010080  30 35 38 41 31 34 80 00  00 01 03 04 07 00 18 05  |058A14..........|
+00010090  e2 30 30 33 36 41 32 30  80 00 00 02 03 04 08 00  |.0036A20........|
+000100a0  20 00 fb 30 30 34 33 41  31 33 80 00 00 03 03 04  | ..0043A13......|
+000100b0  00 00 28 01 67 30 30 35  39 41 32 31 80 00 00 04  |..<span class="o">(</span>.g0059A21....|
+000100c0  03 04 08 00 30 02 65 30  30 34 39 41 38 39 80 00  |....0.e0049A89..|
+000100d0  00 05 03 04 00 00 38 01  1f 30 30 35 31 41 35 34  |......8..0051A54|
+000100e0  80 00 00 06 02 04 06 00  40 05 76 30 30 32 33 41  |........@.v0023A|
+000100f0  36 80 00 00 07 03 04 00  00 48 02 0c 30 30 30 31  |6........H..0001|
+00010100  41 35 30 80 00 00 08 03  04 00 00 50 06 19 30 30  |A50........P..00|
+00010110  31 35 41 39 31 80 00 00  09 03 04 00 00 58 ff 83  |15A91........X..|
+00010120  30 30 34 32 41 37 32 80  00 00 0a 03 04 00 00 60  |0042A72........<span class="sb">`</span>|
+00010130  01 56 30 30 33 38 41 39  35 80 00 00 0b 03 04 00  |.V0038A95.......|
+00010140  00 68 03 4f 30 30 32 39  41 39 37 80 00 00 0c 03  |.h.O0029A97.....|
+00010150  04 05 00 70 05 41 30 30  35 37 41 31 31 80 00 00  |...p.A0057A11...|
+00010160  0d 03 04 00 00 78 02 c0  30 30 31 39 41 35 32 80  |.....x..0019A52.|
+</code></pre></div></div>
+
+<p>直接截取部分的联合索引内容进行分析， 索引数据从<code class="highlighter-rouge">00010078</code>开始:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">04</span>  <span class="cm">/* 倒序索引长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">36</span>
+<span class="mi">30</span> <span class="mi">30</span> <span class="mi">35</span> <span class="mi">38</span>  <span class="cm">/* 列1索引数据 */</span>
+<span class="mi">41</span> <span class="mi">31</span> <span class="mi">34</span>  <span class="cm">/* 列2索引数据 */</span>
+<span class="mi">80</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 主键id */</span>
+</code></pre></div></div>
+
+<p>可以看到， 联合索引的物理存储方式与单一索引的最大区别就是索引数据不是分开存储的。 所以， 联合索引要比两个或多个单独的索引占用更少的磁盘空间。</p>
+
+<p>事实上， 联合索引与单列索引在组织形式上没什么区别， 都是一棵B+Tree。 只不过联合索引的键值数量不是1， 而是大于等于2。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/union-index.png" alt="" /></p>
+
+<p>如上图所示， 联合索引的第1列数据将严格按照B+Tree的字典序进行排序， 第2列数据则在第一列数据有序的基础上进行排序。 可以认为， 联合索引的B+Tree结构就是对一个多维数组进行排序， 以Python为例:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 假设有如下数据</span>
+<span class="n">unsorted_list</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>  <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
+
+<span class="n">res</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">unsorted_list</span><span class="p">)</span>
+<span class="c"># Out: [(1, 2), (1, 3), (2, 4), (2, 5), (4, 1), (4, 2)]</span>
+</code></pre></div></div>
+
+<p>假设现在有两列数据a, b组合成为了联合索引， 那么当a列相同时， b列数据一定是有序存放的， 也就是说当执行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="k">table</span> <span class="k">WHERE</span> <span class="n">a</span> <span class="o">=</span> <span class="n">XX</span> <span class="k">AND</span> <span class="n">b</span> <span class="o">=</span> <span class="n">XX</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>其效率要高于a, b两个单独的索引列查询， 原因就在于其索引数据保存在同一棵B+Tree中， 使用更少的逻辑I/O就能将数据取出。</p>
+
+<p>在单独查询列a时， 依然可以使用联合索引进行查询， 但是在单独查询b列时， 则不可以使用联合索引。 因为b列数据并不是有序存放的。</p>
+
+<p>如上例所示， b列的数据为<code class="highlighter-rouge">[2, 3, 2, 4, 1, 2]</code>， 完全无序， 故使用:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="k">table</span> <span class="k">WHERE</span> <span class="n">b</span> <span class="o">=</span> <span class="n">XX</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>进行查询时将无法使用联合索引。 联合索引除了能加速查询以外， 还有另外一个好处， 就是加速<code class="highlighter-rouge">ORDER BY</code>的查询。</p>
+
+<p>这也很好理解， 因为在建立了联合索引以后， 第2列数据， 甚至是第n列数据， 将会有序的组成B+Tree， 如此一来就省去了排序的的时间。</p>
+
+<p>假设现在有4列数据a, b, c, d组成的联合索引(a, b, c, d)， 那么B+Tree的结构为a有序排列， b在a相同的情况下有序排列， c在b相同的情况下有序排列， d在c相同的情况下有序排列。 在查询时， 只要查询条件包含a字段， 均可以使用索引进行查询。</p>
+
+<h4 id="2-覆盖索引cover-index">2. 覆盖索引(Cover Index)</h4>
+<p>现在我们已经知道了InnoDB的物理存储方式是一个聚集索引+多个辅助索引组成， 辅助索引包含单列索引以及上面提到的联合索引。 在使用索引进行数据查询时， 首先在辅助索引树中找到该条数据对应的主键id(Row ID)， 而后根据主键id在聚集索引树中进行查询， 粗略的认为就是2次逻辑I/O。</p>
+
+<p>覆盖索引的本质就是不使用聚集索引， 只使用辅助索引就能够将所需要的数据查询出来， 最典型的例子就是<code class="highlighter-rouge">count(*)</code>。</p>
+
+<p>当某张表内存在二级索引时， <code class="highlighter-rouge">count(*)</code>将直接统计二级索引的数量并返回。 由于二级索引的B+Tree要比聚集索引更加的矮胖， 每页能够容纳更多的索引数据行， 所以其效率要高于扫描聚集索引。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="p">(</span>
+	<span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+	<span class="n">user_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+	<span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+	<span class="k">KEY</span> <span class="n">ix_user_id</span> <span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/count-with-cover-index.png" alt="" /></p>
+
+<p>如果表内有多个二级索引， 则<code class="highlighter-rouge">count(*)</code>将会选择长度最短的二级索引。 索引长度越短， 每页就能够容纳更多的数据， 就会有更少的逻辑I/O， 因此效率也就越高。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="k">ADD</span> <span class="n">order_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="k">ADD</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">order_id</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/count-with-shorter-cover-index.png" alt="" /></p>
+
+<p>覆盖索引严格意义上来讲是MySQL的查询优化器所做的优化， 并不是物理上存在的索引。 但是， 借助于覆盖索引的特点， 我们可以有目的的对某些查询进行优化。</p>
+
+<h4 id="3-小结">3. 小结</h4>
+<p>联合索引是优化多字段查询以及需要对某个字段进行排序的一种手段， 而覆盖索引则是MySQL查询优化器的一种优化策略， 并不能称为真正意义上的索引。</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
+	  <title>MySQL物理存储方式</title>
+	  <link>//MySQL-physical-structure</link>
+	  <author></author>
+	  <pubDate>2019-08-15T21:39:25+00:00</pubDate>
+	  <guid>//MySQL-physical-structure</guid>
+	  <description><![CDATA[
+	     <p>MySQL是基于磁盘进行数据存储的关系型数据库， 所有的数据、索引等数据均以磁盘文件的方式存储， 在有需要时载入内存读取。 为了加快数据查询的效率， 通常会在一些字段上添加索引， 但是许多文档都会告诉我们， 不要添加太多的索引， 索引不要太长， 使用数字或者空字符串来代替NULL值， 为什么会有这些建议? 这些建议又是否正确?  答案都能够从MySQL数据的物理存储方式中找到。</p>
+
+<!---more--->
+
+<h4 id="1-innodb文件格式">1. InnoDB文件格式</h4>
+<p>由于InnoDB是MySQL使用最为广泛的存储引擎， 所以本篇博文基于InnoDB存储引擎来讨论其数据存储方式。</p>
+
+<p>当我们创建一个table时， InnoDB会创建三个文件。 一个是表结构定义文件， 另一个为数据实际存储文件， 并且所有的索引也将存放在这个文件中。 最后一个文件保存该table所制定的字符集。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/innodb-table-structure.png" alt="" /></p>
+
+<h4 id="2-innodb行记录格式">2. InnoDB行记录格式</h4>
+<p>当我们使用SQL查询一条或者是多条数据时， 数据将会以一行一行的方式返回， 而实际上数据在文件中也的确是使用行记录的方式进行存储的。</p>
+
+<p>不同的InnoDB引擎版本可能有着不同的行记录格式来存放数据， 可以说， 行记录格式的变更将会直接影响到InnoDB的查询以及DML效率。 在MySQL 5.7版本中， 如果对某个table执行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SHOW</span> <span class="k">TABLE</span> <span class="n">STATUS</span> <span class="k">LIKE</span> <span class="nv">"table_name"</span> <span class="err">\</span><span class="k">G</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>将会得到该table的一系列信息， 在这里， 我们只需要知道<code class="highlighter-rouge">Row_format</code>的值即可， 5.7将会返回<code class="highlighter-rouge">Dynamic</code>。</p>
+
+<p>在官网上给出了不同格式的行记录格式之间的差别， 详细内容见官方文档:</p>
+
+<blockquote>
+  <p>https://dev.mysql.com/doc/refman/5.7/en/innodb-row-format.html</p>
+</blockquote>
+
+<p>在这里我们只需要知道<code class="highlighter-rouge">Dynamic</code>行记录格式在存储可变字符(Varchar)时， 与<code class="highlighter-rouge">Compact</code>行记录格式有着同样的表现即可。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/Compact-row-format.png" alt="" /></p>
+
+<p>Compact行记录格式将以上图的方式保存在文件中， 需要注意的是， 如果一个table中没有任何的varchar类型， 那么变长字段长度列表将为空。</p>
+
+<p>Compact行记录格式的首部是一个非NULL变长字段长度列表， 并且是按照列的顺序逆序放置的， 其长度表现为:</p>
+<ul>
+  <li>若列的长度小于255字节， 用1字节表示</li>
+  <li>若列的长度大于255字节， 用2字节表示</li>
+</ul>
+
+<p>变长字段的长度最大不会超过2字节， 这是因为MySQL中VARCAHR类型的最大长度限制为65535。 变长字段之后的第二个部分为NULL标识位， 该位指示了该行数据中是否存在NULL值， 有则用1表示， 本质上是一个bitmap。</p>
+
+<p>下面用一个实际的例子来具体分析Compact行记录格式的实际存储。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- 创建database</span>
+<span class="k">CREATE</span> <span class="k">SCHEMA</span> <span class="nv">`coco`</span> <span class="k">DEFAULT</span> <span class="n">CHARACTER</span> <span class="k">SET</span> <span class="n">latin1</span> <span class="p">;</span>
+
+<span class="c1">-- 创建table</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">one</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="c1">-- 插入代表性数据</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"a"</span><span class="p">,</span> <span class="nv">"AAA"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"b"</span><span class="p">,</span> <span class="nv">"BBB"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"c"</span><span class="p">,</span> <span class="k">NULL</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"d"</span><span class="p">,</span> <span class="nv">"DDD"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"e"</span><span class="p">,</span> <span class="nv">""</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">one</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"f"</span><span class="p">,</span> <span class="nv">"FFF"</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>而后在<code class="highlighter-rouge">/var/lib/mysql/coco</code>中即可找到该表的<code class="highlighter-rouge">.ibd</code>文件了， 使用<code class="highlighter-rouge">hexdump -C one.ibd</code>对其进行16进制的数据解析并查看。 由于数据太长， 所以仅截取部分数据:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000c070  73 75 70 72 65 6d 75 6d  03 01 00 00 00 10 00 1d  |supremum........|
+0000c080  80 00 00 01 00 00 00 08  d1 29 bd 00 00 01 35 01  |.........<span class="o">)</span>....5.|
+0000c090  10 61 41 41 41 03 01 00  00 00 18 00 1c 80 00 00  |.aAAA...........|
+0000c0a0  02 00 00 00 08 d1 29 bd  00 00 01 35 01 1d 62 42  |......<span class="o">)</span>....5..bB|
+0000c0b0  42 42 01 02 00 00 20 00  1a 80 00 00 03 00 00 00  |BB.... .........|
+0000c0c0  08 d1 29 bd 00 00 01 35  01 2a 63 03 01 00 00 00  |..<span class="o">)</span>....5.<span class="k">*</span>c.....|
+0000c0d0  28 00 1d 80 00 00 04 00  00 00 08 d1 29 bd 00 00  |<span class="o">(</span>...........<span class="o">)</span>...|
+0000c0e0  01 35 01 37 64 44 44 44  00 01 00 00 00 30 00 1a  |.5.7dDDD.....0..|
+0000c0f0  80 00 00 05 00 00 00 08  d1 29 bd 00 00 01 35 01  |.........<span class="o">)</span>....5.|
+0000c100  44 65 03 01 00 00 00 38  ff 66 80 00 00 06 00 00  |De.....8.f......|
+0000c110  00 08 d1 29 bd 00 00 01  35 01 51 66 46 46 46 00  |...<span class="o">)</span>....5.QfFFF.|
+</code></pre></div></div>
+
+<p>实际存储数据从<code class="highlighter-rouge">0000c078</code>开始， 使用Compact行记录格式对其进行整理:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">01</span> <span class="cm">/* 变长字段长度列表, 逆序, 第一行varchar数据为('a', 'AAA') */</span>
+<span class="mi">00</span> <span class="cm">/* NULL标识位, 该值表示该行未有NULL值的列 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">1</span><span class="n">d</span> <span class="cm">/* 记录头(Record Header)信息, 固定长度为5字节 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="cm">/* Row ID, 这里即为该行数据的主键值(paimary key)，长度为4 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">08</span> <span class="n">d1</span> <span class="mi">29</span> <span class="cm">/* Transaction ID, 即事务ID, 默认为6字节 */</span>
+<span class="n">bd</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">35</span> <span class="mi">01</span> <span class="mi">10</span> <span class="cm">/* 回滚指针, 默认为7字节 */</span>
+<span class="mi">61</span> <span class="cm">/* 列1数据'a' */</span>
+<span class="mi">41</span> <span class="mi">41</span> <span class="mi">41</span> <span class="cm">/* 列2数据'AAA' */</span>
+</code></pre></div></div>
+
+<p>第2行数据与第1行数据大同小异， 值得关注的是包含有NULL值以及空值的行， 即第3行和第5行， 首先来看第3行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">01</span> <span class="cm">/* 由于该行中只有一列数据类型为varchar，并且非NULL, 所以列表长度为1 */</span>
+<span class="mi">02</span> <span class="cm">/* 02转换为2进制结果为10, 表示第二列数据为NULL(注意是逆序) */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span> <span class="mi">00</span> <span class="mi">1</span><span class="n">a</span> <span class="cm">/* 记录头(Record Header)信息, 固定长度为5字节 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span> <span class="cm">/* 第3行数据的主键id */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">08</span> <span class="n">d1</span> <span class="mi">29</span>  <span class="cm">/* Transaction ID, 即事务ID, 默认为6字节 */</span>
+<span class="n">bd</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">35</span>  <span class="mi">01</span> <span class="mi">2</span><span class="n">a</span> <span class="cm">/* 回滚指针, 默认为7字节 */</span>
+<span class="mi">63</span> <span class="cm">/* 列1数据'c' */</span>
+</code></pre></div></div>
+
+<p>可以非常明显的看到， NULL值并没有在文件中进行存储， 而是仅使用NULL标识位来标记某一列是否为NULL。 所以说， NULL值不会占据任何的物理存储空间， 相反， varchar类型的NULL值还会少占用变长字段长度列表空间。</p>
+
+<p>再来看空字符串所在的第5行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 表示第2列的varchar长度为0 */</span>
+<span class="mi">00</span>  <span class="cm">/* 该行没有NULL值的列 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">30</span> <span class="mi">00</span> <span class="mi">1</span><span class="n">a</span>  <span class="cm">/* 记录头(Record Header)信息, 固定长度为5字节 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">05</span>  <span class="cm">/* 第5行数据的主键id */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">08</span> <span class="n">d1</span> <span class="mi">29</span>  <span class="cm">/* Transaction ID, 即事务ID, 默认为6字节 */</span>
+<span class="n">bd</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">35</span> <span class="mi">01</span> <span class="mi">44</span>   <span class="cm">/* 回滚指针, 默认为7字节 */</span>
+<span class="mi">65</span>  <span class="cm">/* 列1数据'e' */</span>
+</code></pre></div></div>
+
+<p>可以看到， 空字符串和NULL值一样， 也不占用任何的磁盘存储空间。 只不过与NULL值不同的是， 在首部的变长字符长度列表中仍然占据存储空间， 但是值为0。</p>
+
+<h4 id="3-数据的聚集索引组织方式">3. 数据的聚集索引组织方式</h4>
+<p>有些人将聚集索引(Cluster Index)理解成为主键， 或者是主键索引， 这是不准确的。 聚集索引并不是一种索引结构， 而是一种数据的组织方式， 用唯一且不为空的主键来对所有的数据进行组织。 主键， 是最为常见的聚集索引对外表现的形式。</p>
+
+<p>聚集索引最大的特点就在于数据在逻辑上是一定是连续的， 但是在物理是并不一定连续。 比如我们常见的自增主键， 当我们对查询语句不做任何处理时， 默认就是按照主键的递增顺序返回的。</p>
+
+<p>而辅助索引， 或者是二级索引， 是由程序员人为的在某些列上所添加的索引。 辅助索引所代表的数据在逻辑上不一定连续， 物理存储上也不一定连续。</p>
+
+<p>MySQL使用B+Tree来组织数据和索引(关于B+Tree的详细内容， 可见下方传送门)， 在非叶子节点中保存着索引和指针， 在叶子节点保存着数据。 情况又分两种:</p>
+<ul>
+  <li>聚集索引的叶子节点保存着实际的数据，即一行完整的数据</li>
+  <li>辅助索引的叶子节点保存着该行数据的主键ID</li>
+</ul>
+
+<p><a href="https://smartkeyerror.com/%E9%82%A3%E4%BA%9B%E6%9C%89%E8%B6%A3%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95-04-B-Tree%E4%B8%8EB-Tree.html">那些有趣的数据结构与算法(04)–B-Tree与B+Tree</a></p>
+
+<p>也就是说， 假设聚集索引和辅助索引的B+Tree树高均为3的话， 使用主键查询需要3次逻辑I/O。 而使用辅助索引则需要6次逻辑I/O才能找到该行数据。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/Cluster-Index.png" alt="" /></p>
+
+<p>还记得在上面的Compact行记录格式中的行记录头， 也就是Record Header信息吗?  Record Header的最后两个字节表示下一行数据的偏移量， 其实这个就是B+Tree中的指针。 例如第一行的起始位置为c078， Record Header最后两个字节为001d， 加起来等于c095， 刚好是第二行的起始位置。</p>
+
+<p>在上面的例子中， 我们创建了这样的一张表:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">one</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>其中<code class="highlighter-rouge">nickname</code>字段被我们添加了辅助索引， 同样地， 可以使用<code class="highlighter-rouge">.ibd</code>文件来具体对其结构进行分析。 使用<code class="highlighter-rouge">hexdump -C one.ibd</code>解析文件并找到辅助索引开始的地方:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00010060</span>  <span class="mi">02</span> <span class="mi">00</span> <span class="mi">37</span> <span class="mi">69</span> <span class="mi">6</span><span class="n">e</span> <span class="mi">66</span> <span class="mi">69</span> <span class="mi">6</span><span class="n">d</span>  <span class="mi">75</span> <span class="mi">6</span><span class="n">d</span> <span class="mi">00</span> <span class="mi">07</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">b</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">..</span><span class="mi">7</span><span class="n">infimum</span><span class="p">......</span><span class="o">|</span>
+<span class="mi">00010070</span>  <span class="mi">73</span> <span class="mi">75</span> <span class="mi">70</span> <span class="mi">72</span> <span class="mi">65</span> <span class="mi">6</span><span class="n">d</span> <span class="mi">75</span> <span class="mi">6</span><span class="n">d</span>  <span class="mi">03</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">e</span> <span class="mi">41</span>  <span class="o">|</span><span class="n">supremum</span><span class="p">.......</span><span class="n">A</span><span class="o">|</span>
+<span class="mi">00010080</span>  <span class="mi">41</span> <span class="mi">41</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span> <span class="mi">03</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">42</span> <span class="mi">42</span> <span class="mi">42</span>  <span class="o">|</span><span class="n">AA</span><span class="p">...........</span><span class="n">BBB</span><span class="o">|</span>
+<span class="mi">00010090</span>  <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">02</span> <span class="mi">01</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span>  <span class="mi">00</span> <span class="mi">19</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span> <span class="mi">03</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">.......</span> <span class="p">........</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">a0</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">28</span> <span class="mi">00</span> <span class="mi">19</span> <span class="mi">44</span> <span class="mi">44</span> <span class="mi">44</span>  <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">04</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">..(..</span><span class="n">DDD</span><span class="p">........</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">b0</span>  <span class="mi">30</span> <span class="n">ff</span> <span class="n">cc</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">05</span> <span class="mi">03</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">38</span> <span class="n">ff</span> <span class="n">b2</span> <span class="mi">46</span> <span class="mi">46</span>  <span class="o">|</span><span class="mi">0</span><span class="p">..........</span><span class="mi">8</span><span class="p">..</span><span class="n">FF</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">c0</span>  <span class="mi">46</span> <span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">06</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="n">F</span><span class="p">...............</span><span class="o">|</span>
+<span class="mi">000100</span><span class="n">d0</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span>  <span class="o">|</span><span class="p">................</span><span class="o">|</span>
+</code></pre></div></div>
+
+<p>索引数据从00010078的位置开始， 逐行进行分析即可:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span>  <span class="cm">/* 当前索引字段的长度 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">e</span> <span class="cm">/* 不知道是啥 */</span>
+<span class="mi">41</span> <span class="mi">41</span> <span class="mi">41</span>   <span class="cm">/* 索引值 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 指向的主键id */</span>
+</code></pre></div></div>
+
+<p>第2行与第1行基本类似， 现在来看看比较特殊的第3行与第5行。 第3行索引数据内容:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span> <span class="mi">00</span> <span class="mi">19</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span>  <span class="cm">/* 指向的主键id */</span>
+</code></pre></div></div>
+
+<p>当索引的内容为NULL值时， 辅助索引的文件格式也变得奇怪了起来， 和第一行完全不一样， 再来看看第5行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span>  <span class="cm">/* 当前索引字段的长度 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">30</span> <span class="n">ff</span> <span class="n">cc</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">05</span>  <span class="cm">/* 指向的主键id */</span>
+</code></pre></div></div>
+
+<p>和正常索引内容基本类似， 空字符串仍然没有表示， 仅使用了00表示该字段长度为0。</p>
+
+<h4 id="4-辅助索引叶子节点存储方式">4. 辅助索引叶子节点存储方式</h4>
+<p>在MySQL中， 数据管理的最小单元为页(page)， 而并非一行一行的数据。 数据保存在页中， 当我们使用主键查找一行数据时， 其实MySQL并不能直接返回这一行数据， 而是将该行所在的页载入内存， 然后在内存页中进行查找。</p>
+
+<p>通常情况下页大小为16K， 在某些情况下可能会对页进行压缩， 使得页大小为8K或者是4K。 由于B+Tree的特点， 使得每一页内最少为2行数据， 再少就将退化成链表， 显然出于效率的考量不会让此种情况出现。 故而一行数据大小至多为16K， 通过该特性， 就可以研究二级索引的叶子节点是什么样子的了。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">two</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">8000</span><span class="p">),</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">(</span><span class="mi">2000</span><span class="p">))</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'A'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">,</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">'c'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'C'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">'d'</span><span class="p">,</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">5</span><span class="p">,</span> <span class="s1">'e'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'E'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">'f'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'F'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">7</span><span class="p">,</span> <span class="s1">'g'</span><span class="p">,</span> <span class="k">NULL</span><span class="p">;</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">8</span><span class="p">,</span> <span class="s1">'h'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'H'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">9</span><span class="p">,</span> <span class="s1">'i'</span><span class="p">,</span> <span class="n">REPEAT</span><span class="p">(</span><span class="s1">'G'</span><span class="p">,</span> <span class="mi">8000</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">two</span> <span class="k">SELECT</span> <span class="mi">10</span><span class="p">,</span> <span class="s1">'i'</span><span class="p">,</span> <span class="nv">""</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>由于索引长度的限制， 这里仅取nickname的前2000个字符进行索引， 并插入一些具有代表性的数据。 同样使用<code class="highlighter-rouge">hexdump -C two.ibd</code>对索引结构进行分析:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>00010070  73 75 70 72 65 6d 75 6d  d0 87 00 05 00 10 07 e6  |supremum........|
+00010080  41 41 41 41 41 41 41 41  41 41 41 41 41 41 41 41  |AAAAAAAAAAAAAAAA|
+<span class="k">*</span>
+00010850  80 00 00 01 01 00 00 18  07 e6 80 00 00 02 d0 87  |................|
+00010860  00 00 00 20 07 e6 43 43  43 43 43 43 43 43 43 43  |... ..CCCCCCCCCC|
+00010870  43 43 43 43 43 43 43 43  43 43 43 43 43 43 43 43  |CCCCCCCCCCCCCCCC|
+<span class="k">*</span>
+00011030  43 43 43 43 43 43 80 00  00 03 01 00 00 28 0f c2  |CCCCCC.......<span class="o">(</span>..|
+00011040  80 00 00 04 d0 87 00 00  00 30 07 dc 45 45 45 45  |.........0..EEEE|
+00011050  45 45 45 45 45 45 45 45  45 45 45 45 45 45 45 45  |EEEEEEEEEEEEEEEE|
+<span class="k">*</span>
+00011810  45 45 45 45 45 45 45 45  45 45 45 45 80 00 00 05  |EEEEEEEEEEEE....|
+00011820  d0 87 00 00 00 38 0f c2  46 46 46 46 46 46 46 46  |.....8..FFFFFFFF|
+00011830  46 46 46 46 46 46 46 46  46 46 46 46 46 46 46 46  |FFFFFFFFFFFFFFFF|
+<span class="k">*</span>
+00011ff0  46 46 46 46 46 46 46 46  80 00 00 06 01 00 00 40  |FFFFFFFF.......@|
+00012000  0f c3 80 00 00 07 d0 87  00 00 00 48 e0 62 48 48  |...........H.bHH|
+00012010  48 48 48 48 48 48 48 48  48 48 48 48 48 48 48 48  |HHHHHHHHHHHHHHHH|
+<span class="k">*</span>
+000127d0  48 48 48 48 48 48 48 48  48 48 48 48 48 48 80 00  |HHHHHHHHHHHHHH..|
+000127e0  00 08 d0 87 00 00 00 50  f8 24 47 47 47 47 47 47  |.......P.<span class="nv">$GGGGGG</span>|
+000127f0  47 47 47 47 47 47 47 47  47 47 47 47 47 47 47 47  |GGGGGGGGGGGGGGGG|
+<span class="k">*</span>
+00012fb0  47 47 47 47 47 47 47 47  47 47 80 00 00 09 00 00  |GGGGGGGGGG......|
+00012fc0  00 00 58 d0 bb 80 00 00  0a 00 00 00 00 00 00 00  |..X.............|
+00012fd0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+</code></pre></div></div>
+
+<p>从上表中可以看到， 索引数据起始点为00010078， 逐行进行分析可以发现， NULL值和空值的表现形式与上一小节分析的基本相同。</p>
+
+<p>NULL值行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">07</span> <span class="n">e6</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">02</span>  <span class="cm">/* 主键id */</span>
+
+<span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">28</span> <span class="mi">0</span><span class="n">f</span> <span class="n">c2</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">04</span>  <span class="cm">/* 主键id */</span>
+
+<span class="mi">01</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">40</span> <span class="mi">0</span><span class="n">f</span> <span class="n">c3</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">07</span>  <span class="cm">/* 主键id */</span>
+</code></pre></div></div>
+
+<p>空字符串行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">58</span> <span class="n">d0</span> <span class="n">bb</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">0</span><span class="n">a</span>  <span class="cm">/* 主键id */</span>
+</code></pre></div></div>
+
+<p>所以说， 分析到这里， 我们完全有理由说NULL值要比空值占用更少的物理存储空间， 包含索引存储空间。 但是， 这是在我们所定义表结构时允许字段值为NULL的前提下， 当我们显式的指定IS NOT NULL时， 情况又会不一样。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">three</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+    <span class="n">name</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+    <span class="n">nickname</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
+    <span class="k">KEY</span> <span class="p">(</span><span class="n">nickname</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
+
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"a"</span><span class="p">,</span> <span class="nv">"AAA"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"b"</span><span class="p">,</span> <span class="nv">""</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"c"</span><span class="p">,</span> <span class="nv">"CCC"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"d"</span><span class="p">,</span> <span class="nv">"DDD"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"e"</span><span class="p">,</span> <span class="nv">"EEE"</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"f"</span><span class="p">,</span> <span class="nv">""</span><span class="p">);</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">three</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nickname</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"g"</span><span class="p">,</span> <span class="nv">"GGG"</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">hexdump -C three.ibd</code>可得:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000c070  73 75 70 72 65 6d 75 6d  03 01 00 00 10 00 1c 80  |supremum........|
+0000c080  00 00 01 00 00 00 08 dd  21 ba 00 00 01 2f 01 10  |........!..../..|
+0000c090  61 41 41 41 00 01 00 00  18 00 19 80 00 00 02 00  |aAAA............|
+0000c0a0  00 00 08 dd 22 bb 00 00  01 31 01 10 62 03 01 00  |....<span class="s2">"....1..b...|
+0000c0b0  00 20 00 1c 80 00 00 03  00 00 00 08 dd 25 bd 00  |. ...........%..|
+0000c0c0  00 01 35 01 10 63 43 43  43 03 01 00 00 28 00 1c  |..5..cCCC....(..|
+0000c0d0  80 00 00 04 00 00 00 08  dd 28 bf 00 00 01 36 01  |.........(....6.|
+0000c0e0  10 64 44 44 44 03 01 00  00 30 00 1c 80 00 00 05  |.dDDD....0......|
+0000c0f0  00 00 00 08 dd 29 c0 00  00 01 37 01 10 65 45 45  |.....)....7..eEE|
+0000c100  45 00 01 00 00 38 00 19  80 00 00 06 00 00 00 08  |E....8..........|
+0000c110  dd 2a a1 00 00 01 12 01  10 66 03 01 00 00 40 ff  |.*.......f....@.|
+0000c120  4f 80 00 00 07 00 00 00  08 dd 2b a2 00 00 01 15  |O.........+.....|
+0000c130  01 10 67 47 47 47 00 00  00 00 00 00 00 00 00 00  |..gGGG..........|
+</span></code></pre></div></div>
+
+<p>数据从c078开始， 同样进行逐行分析:</p>
+
+<p>第一行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">01</span>  <span class="cm">/* 逆序可变字符长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">1</span><span class="k">c</span>  <span class="cm">/* 记录头信息(Record Header), c078+001c=c094 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 主键id */</span>
+<span class="c1">-- Transaction ID + Roll Pointer</span>
+<span class="mi">61</span>  <span class="cm">/* 列1数据 */</span>
+<span class="mi">41</span> <span class="mi">41</span> <span class="mi">41</span>  <span class="cm">/* 列2数据 */</span>
+</code></pre></div></div>
+
+<p>第二行数据</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 逆序可变字符长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">18</span> <span class="mi">00</span> <span class="mi">19</span>  <span class="cm">/* 记录头信息(Record Header), c094+0019=c0ad */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">02</span>  <span class="cm">/* 主键id */</span>
+<span class="c1">-- Transaction ID + Roll Pointer</span>
+<span class="mi">62</span>  <span class="cm">/* 列1数据, 列2数据为空值, 故无记录 */</span>
+</code></pre></div></div>
+
+<p>第三行数据:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">01</span>  <span class="cm">/* 逆序可变字符长度列表 */</span>
+<span class="mi">00</span> <span class="mi">00</span> <span class="mi">20</span> <span class="mi">00</span> <span class="mi">1</span><span class="k">c</span>  <span class="cm">/* 记录头信息(Record Header), c0ad+001c=c0c9 */</span>
+<span class="mi">80</span> <span class="mi">00</span> <span class="mi">00</span> <span class="mi">03</span>  <span class="cm">/* 主键id */</span>
+<span class="c1">-- Transaction ID + Roll Pointer</span>
+<span class="mi">63</span>  <span class="cm">/* 列1数据 */</span>
+<span class="mi">43</span> <span class="mi">43</span> <span class="mi">43</span>  <span class="cm">/* 列2数据 */</span>
+</code></pre></div></div>
+
+<p>可以看到， 将<strong>所有</strong>的列设置为NOT NULL之后， 存储内容少了一个NULL标识位， 此时该table的存储效率要高于最初的表结构。</p>
+
+<p>所以说， 如果想要真正的节省表空间存储大小， 需要将<strong>所有</strong>的字段都设置为NOT NULL约束， 否则在存储时仍然需要NULL标识位来标记哪一列数据为非NULL， 即使所有的列都有数据。</p>
+
+<p>最后， NULL真的比空字符串占用更少的空间吗? 答案是不一定。 如果在定义表结构时指定了NOT NULL， 那么数据中就不可能出现NULL值， 也就无从比起。 如果在定义表结构时没有指定NOT NULL， 那么NULL将会比空字符串占用更少的空间。</p>
+
+<h4 id="5-总结">5. 总结</h4>
+<p>经过对<code class="highlighter-rouge">.ibd</code>文件的分析， 想必对数据以及索引的组织方式有了一个更加清晰的了解， 并且也能够判断出各种各样优化建议到底是否正确了。</p>
+
+<p>使用数字或者是空串来代替NULL值? 没有必要， 有时还会适得其反， 而且对于添加了二级索引的NULL值， 查询仍然会使用索引。 正确的做法就是在定义表结构的时候就将NULL值扼杀在摇篮里， 如此一来能够节省一部分的磁盘空间以及一定程度上的效率提升。</p>
+
+<p>为什么索引不能太多? 因为每添加一个索引， <code class="highlighter-rouge">.ibd</code>文件中就需要多维护一个B+Tree索引树， 如果某一个table中存在10个索引， 那么就需要维护10棵B+Tree， 写入效率会降低， 并且会浪费磁盘空间。</p>
+
+<p>B+Tree中的指针是用什么实现的? 使用文件偏移量实现， 指向下一行或者是下一个索引的起始位置。</p>
+
+	  ]]></description>
+	</item>
+
 	<item>
 	  <title>数据变更操作日志设计</title>
 	  <link>//change-log-system-design</link>
@@ -1557,777 +2332,6 @@ smart@Zero:~<span class="nv">$ </span><span class="nb">sudo </span>ansible-vault
 <p>分布式缓存设计是一个相当庞大的话题， 单靠一篇博文没有办法将其完整的描述， 以及对各种问题给出确切的解决方法， 所以本文也仅是在宏观角度上去分析一些最为常见的问题。</p>
 
 <p>对于中小型服务而言， 我认为将缓存设计成为分布式并不是一个很好的选择， 能够进行垂直拓展的服务尽量先进行垂直拓展， 当垂直拓展满足不了需求之后， 再考虑分布式服务设计。</p>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>一文理解Flask Web开发</title>
-	  <link>//Flask-Web</link>
-	  <author></author>
-	  <pubDate>2019-03-31T09:49:09+00:00</pubDate>
-	  <guid>//Flask-Web</guid>
-	  <description><![CDATA[
-	     <p>Flask作为Python语言中最为轻量的Web框架， 由于其核心内容的简洁以及良好的可拓展性， 一直受到广泛的开发者所喜爱。 对比于Django， Flask并没有”我给你的就是最好的， 别管那么多， 拿着用就好”的思想， 而是让开发者自己做出选择， 自己设计开发一个组件， 或者挑选一个你喜欢的第三方库。</p>
-
-<!---more--->
-
-<h4 id="1-标准web开发流程">1. 标准Web开发流程</h4>
-<p>不管开发人员使用什么样的语言， Python也好， Java也好， 又或者什么样的Web框架， 从宏观上来看， 它们的开发流程都是基本相同的。</p>
-
-<p>当服务器收到一个请求时， 首先做的就是对HTTP请求中的参数进行解析， 包括请求的URL， 请求方法， 参数以及Cookie等参数， 将其置于框架的一个内部数据结构中， 便于后续的使用。 在处理完请求参数后， 会在请求正式进入视图函数之前做一些额外处理， 例如验证CSRF-Token， 验证用户Cookie是否合法， 请求的IP是否处于白名单中， 如果验证信息未通过， 则直接返回相应的HTTP状态码以及相关信息， 增强网站的安全性。 在所有的验证通过之后， Web框架根据URL找到对应的视图函数并进行处理， 在处理过程中可能会涉及数据库， Redis以及消息队列的使用， 并很可能存在异步任务的触发。</p>
-
-<p>在视图函数处理过程中， 很有可能因为某些操作而导致异常的产生， 此时Web应用应该判断异常产生的由来， 并进行统一的异常处理。 不管是数据库连接异常， 还是用户表单验证未通过， 都应该给出一个统一的应答， 这样便于前端的数据处理， 也能够让用户知道到底发生了什么。</p>
-
-<p>很多时候为了便于开发人员的错误筛查， 都会在请求返回时添加日志的输出， 包括请求的URL， 请求方法， 参数， 服务器处理该请求的总时间， 请求响应状态码等信息。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/Flask/%E6%A0%87%E5%87%86Web%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B.png" alt="" /></p>
-
-<h4 id="2-一个最简单的flask-demo">2. 一个最简单的Flask Demo</h4>
-<p>在了解了一般性的标准Web开发流程之后， 接下来就是使用Flask来完整构建这个流程。 项目是由简入繁的， 博客也同样如此。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span>
-
-<span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>                                 <span class="c"># ①</span>
-
-<span class="n">app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s">"/api/hello"</span><span class="p">)</span>                              <span class="c"># ②</span>
-<span class="k">def</span> <span class="nf">hello</span><span class="p">():</span>
-    <span class="k">return</span> <span class="s">"Hello World~"</span>
-
-<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
-    <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s">"127.0.0.1"</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>  <span class="c"># ③</span>
-</code></pre></div></div>
-
-<p>①: 通过传入当前<code class="highlighter-rouge">.py</code>文件的名称构建Flask核心对象， 此时app对象就有了Flask所有的核心功能， 包括添加视图函数， 添加额外的处理函数等。</p>
-
-<p>②: 通过app对象的<code class="highlighter-rouge">route</code>方法， 使用语法糖对视图函数进行了装饰， 并传入<code class="highlighter-rouge">/api/hello</code>这个URI作为参数。 简单的理解就是当我们请求<code class="highlighter-rouge">/api/hello</code>路径时， 请求会使用<code class="highlighter-rouge">hello</code>函数作为视图函数进行处理。</p>
-
-<p>③: 运行Flask框架， 并绑定本地<code class="highlighter-rouge">127.0.0.1:8080</code>， 以调试模式运行。</p>
-
-<p>不管是路由注册， 还是以本地运行Flask， 都需要Flask核心对象的参与， 在Demo中也就是app对象。 在大型的Flask应用中， 同样如此， Flask核心对象将会作为中间枢纽， 由各种组件向其进行注册。</p>
-
-<h4 id="3-blueprint">3. Blueprint</h4>
-<p>对于一个中型应用而言， 通常会对各种接口进行业务上的分类。 例如一个商城， 会有user模块， product模块， order模块， coupon模块等等。 除了这些业务需要， 还有一些内部调用的接口， 比如用户分析， 订单分析等。 如果将这些接口都写在同一个文件中， 可以预见的是， 文件长度将会达到上万行。</p>
-
-<p>所以， 不管我们使用什么样的标准来对接口进行分类， 分类都是必须要做的。 在解释Flask蓝图之前， 以Django为例， 这样更加便于理解。</p>
-
-<p>在Django中， 模块的区分是采用app来实现的。 用户Cookie的处理是一个app， 订单是一个app， 商品相关的接口也将组成一个app。 Django在<code class="highlighter-rouge">settings.py</code>中提供了<code class="highlighter-rouge">INSTALLED_APPS</code>来帮我们自动地管理这些app， 当我们使用<code class="highlighter-rouge">django-admin startapp app_name</code>来创建一个app时， 实际上是创建了一个python package， 而在Django中， 正是通过管理python package来完成对app的管理。</p>
-
-<p>我们只需要将package的名称添加至<code class="highlighter-rouge">INSTALLED_APPS</code>列表中即可， 剩下的模块查找工作由Django处理。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">INSTALLED_APPS</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s">'django.contrib.admin'</span><span class="p">,</span>
-    <span class="s">'django.contrib.auth'</span><span class="p">,</span>
-    <span class="o">...</span>
-    <span class="s">'user'</span><span class="p">,</span>
-    <span class="s">'order'</span><span class="p">,</span>
-    <span class="s">'product'</span><span class="p">,</span>
-    <span class="s">'cupon'</span>
-<span class="p">]</span>
-</code></pre></div></div>
-
-<p>而在Flask中， 虽然也提供了类似的机制， 但是其实现方式远没有Django这么直观， 相反的， 这也是Flask中比较难以理解的部分。</p>
-
-<p>Blueprint就是Flask中协助我们将接口拆分成不同app的工具， 并由Flask核心对象完成对这些app的收集。 <strong>在Flask中， 并不是使用package这一粒度进行管理， 而是单一的<code class="highlighter-rouge">py</code>文件</strong>。 正是因为粒度从package缩小至了单独的<code class="highlighter-rouge">py</code>文件， 所以Blueprint的使用才看起来很复杂。</p>
-
-<p>在有了这一基本的理解之后， 使用Blueprint就非常的简单了。 假如在<code class="highlighter-rouge">user</code>模块中， 有两个视图函数文件， 分别命令为<code class="highlighter-rouge">auth.py</code>和<code class="highlighter-rouge">info.py</code>， 其文件组织如下:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">—</span> <span class="n">user</span>
- <span class="o">|--</span> <span class="n">__init__</span><span class="o">.</span><span class="n">py</span>
- <span class="o">|--</span> <span class="n">auth</span><span class="o">.</span><span class="n">py</span>
- <span class="o">|--</span> <span class="n">info</span><span class="o">.</span><span class="n">py</span>
-</code></pre></div></div>
-
-<p>在<code class="highlighter-rouge">auth.py</code>以及<code class="highlighter-rouge">info.py</code>中均包含了一些视图函数， 由于我们对接口进行的功能拆分， 所以此时Flask核心对象就需要由Blueprint对象代替:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># auth.py</span>
-
-<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Blueprint</span>
-
-<span class="n">bp</span> <span class="o">=</span> <span class="n">Blueprint</span><span class="p">(</span><span class="s">"auth"</span><span class="p">,</span> <span class="n">__name__</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="s">"/api/auth"</span><span class="p">)</span>
-
-<span class="n">bp</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s">"/login"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s">"POST"</span><span class="p">])</span>
-<span class="k">def</span> <span class="nf">login</span><span class="p">():</span>
-    <span class="o">...</span>
-
-<span class="n">bp</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s">"/logout"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s">"GET"</span><span class="p">])</span>
-<span class="k">def</span> <span class="nf">logout</span><span class="p">():</span>
-    <span class="o">...</span>
-</code></pre></div></div>
-
-<p>同样地， 对<code class="highlighter-rouge">info.py</code>如法炮制:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># info.py</span>
-
-<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Blueprint</span>
-
-<span class="n">bp</span> <span class="o">=</span> <span class="n">Blueprint</span><span class="p">(</span><span class="s">"info"</span><span class="p">,</span> <span class="n">__name__</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="s">"/api/info"</span><span class="p">)</span>
-
-<span class="n">bp</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s">"/nick_name"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s">"GET"</span><span class="p">])</span>
-<span class="k">def</span> <span class="nf">get_nick_name</span><span class="p">():</span>
-    <span class="o">...</span>
-</code></pre></div></div>
-
-<p>现在对<code class="highlighter-rouge">user.py</code>和<code class="highlighter-rouge">info.py</code>进行了Blueprint方式地重写， 那么如何将其与Flask核心对象产生挂接? 答案是在user模块的<code class="highlighter-rouge">__init__.py</code>中对其进行注册:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># user.__init__.py</span>
-
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">auth</span><span class="p">,</span> <span class="n">info</span>
-
-<span class="k">def</span> <span class="nf">register_user</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
-    <span class="n">app</span><span class="o">.</span><span class="n">register_blueprint</span><span class="p">(</span><span class="n">auth</span><span class="o">.</span><span class="n">bp</span><span class="p">)</span>
-    <span class="n">app</span><span class="o">.</span><span class="n">register_blueprint</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">bp</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>此后， 只需要在创建Flask核心对象的文件中将<code class="highlighter-rouge">register_user</code>函数导入， 并传入核心对象进行调用即可。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># app.py</span>
-
-<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span>
-
-<span class="kn">from</span> <span class="nn">myFlaskDemo.user</span> <span class="kn">import</span> <span class="n">register_user</span>
-
-<span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
-
-<span class="n">register_user</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>无论有多少个<code class="highlighter-rouge">app</code>， 都可以通过这样的方式将其注册进Flask核心对象之中， 只不过因为Blueprint是对单一的<code class="highlighter-rouge">py</code>文件进行管理的， 所以就需要比Django做更多的工作来完成这件事情， 其本质上， 都是让Flask核心对象发现这些视图函数而已。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/Flask/Blueprint%E5%AE%9E%E9%99%85%E4%BD%9C%E7%94%A8.png" alt="" /></p>
-
-<h4 id="4-请求的参数处理">4. 请求的参数处理</h4>
-<p>在使用<code class="highlighter-rouge">POST</code>方法进行请求时， 通常是使用JSON的方式进行参数传递， 那么如果我们想要取出相应的数据的话， 就势必需要对JSON数据进行<code class="highlighter-rouge">json.loads</code>操作， 转换成Python字典。 这个过程每个处理<code class="highlighter-rouge">POST</code>请求的视图函数都需要进行， 非常的麻烦， 所以我们需要想办法在请求进入视图函数之前就将数据保存在某一个地方。</p>
-
-<p>这个时候就需要用到<code class="highlighter-rouge">before_request</code>这个函数， 同样是由Flask核心对象所提供。 <code class="highlighter-rouge">before_request</code>接收一个函数， 并在每次请求到达视图函数之前执行它。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span><span class="p">,</span> <span class="n">request</span>
-<span class="kn">from</span> <span class="nn">werkzeug.datastructures</span> <span class="kn">import</span> <span class="n">ImmutableMultiDict</span><span class="p">,</span> <span class="n">CombinedMultiDict</span>
-
-<span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
-
-<span class="k">def</span> <span class="nf">get_request_params_from_json</span><span class="p">():</span>
-    <span class="n">json_data</span> <span class="o">=</span> <span class="bp">None</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">get_json</span><span class="p">(</span><span class="n">silent</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-        <span class="n">json_data</span> <span class="o">=</span> <span class="n">ImmutableMultiDict</span><span class="p">(</span><span class="n">json_data</span><span class="p">)</span>
-    <span class="n">request</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">CombinedMultiDict</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="p">[</span><span class="n">json_data</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="p">]))</span>
-
-<span class="n">app</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">get_request_params_from_json</span><span class="p">)</span>
-</code></pre></div></div>
-
-<h4 id="5-约定返回格式">5. 约定返回格式</h4>
-<p>数据返回格式的统一与否是检验一个Web API是否合格的最低标准， 这是一个对前端， 自己以及同事都有利的东西， 所以目前已经成为了一种标准。</p>
-
-<p>就目前来说， 用的最多的格式就是<code class="highlighter-rouge">code, message, data</code>， 即:</p>
-
-<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
-    </span><span class="s2">"code"</span><span class="p">:</span><span class="w"> </span><span class="err">成功码</span><span class="w"> </span><span class="err">or</span><span class="w"> </span><span class="err">错误码</span><span class="p">,</span><span class="w">
-    </span><span class="s2">"message"</span><span class="p">:</span><span class="w"> </span><span class="err">错误信息</span><span class="w"> </span><span class="err">or</span><span class="w"> </span><span class="err">''</span><span class="p">,</span><span class="w">
-    </span><span class="s2">"data"</span><span class="p">:</span><span class="w"> </span><span class="err">...</span><span class="w">
-</span><span class="p">}</span><span class="w">
-</span></code></pre></div></div>
-
-<p>以<code class="highlighter-rouge">RESTful API</code>而言， 通过HTTP响应的状态码来判断当前访问的结果， 但是呢， 部分的前端程序员对此非常不感冒， 觉得处理HTTP-code相当麻烦。 所有的请求， 不管是表单验证我失败， 还是用户未登录而访问受保护的资源， 这些情况统统给我返回200， 然后在<code class="highlighter-rouge">message</code>字段中标明原因。</p>
-
-<p>很多时候系统出现的问题， 真的就不是技术问题， 而是眼界问题。 通常我们需要定义两个函数， <code class="highlighter-rouge">success</code>以及<code class="highlighter-rouge">fail</code>函数， 接收<code class="highlighter-rouge">code, message, data</code>参数， 调用方根据情况进行参数传递即可:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">success</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-    <span class="n">resp</span> <span class="o">=</span> <span class="p">{</span><span class="s">'code'</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span> <span class="s">'message'</span><span class="p">:</span> <span class="s">''</span><span class="p">,</span> <span class="s">'data'</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">resp</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">http_code</span><span class="p">,</span> <span class="n">mimetype</span><span class="o">=</span><span class="s">'application/json'</span><span class="p">})</span>
-
-<span class="k">def</span> <span class="nf">fail</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
-    <span class="n">resp</span> <span class="o">=</span> <span class="p">{</span><span class="s">'code'</span><span class="p">:</span> <span class="n">code</span><span class="p">,</span> <span class="s">'message'</span><span class="p">:</span> <span class="n">message</span><span class="p">,</span> <span class="s">'data'</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
-</code></pre></div></div>
-
-<h4 id="6-请求日志的记录">6. 请求日志的记录</h4>
-<p>这部分内容是我认为最有价值的一小节， 无数个被产品打断的瞬间， 告知某个用户的某次操作异常， 而又没有准确日志的记录， 无从排查的教训。 所以在写这部分内容时， 坐在轮椅上的我格外激动…</p>
-
-<p>血一样的教训告诉我， 日志记录一定要全面， 谁请求了哪个URL， 请求方法是什么， 请求参数是什么， 请求响应时间多多少， 这些通通都要记录， 少一个都不行。</p>
-
-<p>下面给出一个示例:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">record_request_log</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="n">now_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-    <span class="n">request_start_time</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s">'request_start_time'</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
-    <span class="n">user_id</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s">'user_id'</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
-
-    <span class="n">format_str</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s">'</span><span class="si">%(remote_addr)</span><span class="s">s request: [</span><span class="si">%(status)</span><span class="s">s] </span><span class="si">%(method)</span><span class="s">s, url: </span><span class="si">%(url)</span><span class="s">s, '</span>
-        <span class="s">'args: </span><span class="si">%(args)</span><span class="s">s, json: </span><span class="si">%(json)</span><span class="s">s, '</span>
-        <span class="s">'request_start_time: </span><span class="si">%(request_start_time)</span><span class="s">s, response_time: </span><span class="si">%(response_time)</span><span class="s">s, '</span>
-        <span class="s">'user_id: </span><span class="si">%(user_id)</span><span class="s">s, '</span>
-    <span class="p">)</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-        <span class="n">remote_addr</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">remote_addr</span><span class="p">,</span>
-        <span class="n">status</span><span class="o">=</span><span class="n">response</span><span class="o">.</span><span class="n">status</span><span class="p">,</span>
-        <span class="n">method</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
-        <span class="n">url</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">,</span>
-        <span class="n">args</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="p">,</span>
-        <span class="n">json</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">get_json</span><span class="p">(</span><span class="n">silent</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
-        <span class="n">request_start_time</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">"</span><span class="si">%</span><span class="s">Y-</span><span class="si">%</span><span class="s">m-</span><span class="si">%</span><span class="s">d </span><span class="si">%</span><span class="s">H:</span><span class="si">%</span><span class="s">M:</span><span class="si">%</span><span class="s">S"</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">localtime</span><span class="p">())),</span>
-        <span class="n">response_time</span> <span class="o">=</span> <span class="n">now_time</span> <span class="o">-</span> <span class="n">request_start_time</span> <span class="k">if</span> <span class="n">request_start_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="s">""</span>
-        <span class="n">user_id</span><span class="o">=</span><span class="n">user_id</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">'response'</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">format_str</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">response</span>
-
-<span class="n">app</span><span class="o">.</span><span class="n">after_request</span><span class="p">(</span><span class="n">record_request_log</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>同时， 为了让日志的记录更加完整， 例如ERROR日志记录到文件， 或者是通过Kafka发送给ELK日志分析平台， 所以需要对日志的格式进行额外的配置:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># log_config.py</span>
-
-<span class="n">DEFAULT_LOGGING_CONFIGS</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s">'version'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="s">'disable_existing_loggers'</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
-    <span class="s">'formatters'</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s">'standard'</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s">'format'</span><span class="p">:</span> <span class="s">'</span><span class="si">%(asctime)</span><span class="s">s [</span><span class="si">%(threadName)</span><span class="s">s] [</span><span class="si">%(name)</span><span class="s">s:</span><span class="si">%(funcName)</span><span class="s">s] '</span>
-                      <span class="s">'[line:</span><span class="si">%(lineno)</span><span class="s">d] [</span><span class="si">%(levelname)</span><span class="s">s]- </span><span class="si">%(message)</span><span class="s">s'</span><span class="p">}</span>
-    <span class="p">},</span>
-    <span class="s">'handlers'</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s">'error'</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s">'level'</span><span class="p">:</span> <span class="s">'ERROR'</span><span class="p">,</span>
-            <span class="s">'class'</span><span class="p">:</span> <span class="s">'logging.handlers.RotatingFileHandler'</span><span class="p">,</span>
-            <span class="s">'filename'</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s">'log'</span><span class="p">,</span> <span class="s">'error.log'</span><span class="p">),</span>
-            <span class="s">'maxBytes'</span><span class="p">:</span> <span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="o">*</span><span class="mi">5</span><span class="p">,</span>
-            <span class="s">'backupCount'</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
-            <span class="s">'formatter'</span><span class="p">:</span> <span class="s">'standard'</span><span class="p">,</span>
-        <span class="p">},</span>
-        <span class="s">'console'</span><span class="p">:{</span>
-            <span class="s">'level'</span><span class="p">:</span> <span class="s">'INFO'</span><span class="p">,</span>
-            <span class="s">'class'</span><span class="p">:</span> <span class="s">'logging.StreamHandler'</span><span class="p">,</span>
-            <span class="s">'formatter'</span><span class="p">:</span> <span class="s">'standard'</span>
-        <span class="p">},</span>
-    <span class="p">},</span>
-    <span class="s">'loggers'</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s">'root'</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s">'handlers'</span><span class="p">:</span> <span class="p">[</span><span class="s">'error'</span><span class="p">,</span> <span class="s">'console'</span><span class="p">],</span>
-            <span class="s">'level'</span><span class="p">:</span> <span class="s">'INFO'</span><span class="p">,</span>
-            <span class="s">'propagate'</span><span class="p">:</span> <span class="bp">False</span>
-        <span class="p">},</span>
-        <span class="s">'response'</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s">'handlers'</span><span class="p">:</span> <span class="p">[</span><span class="s">'error'</span><span class="p">,</span> <span class="s">'console'</span><span class="p">],</span>
-            <span class="s">'level'</span><span class="p">:</span> <span class="s">'INFO'</span><span class="p">,</span>
-            <span class="s">'propagate'</span><span class="p">:</span> <span class="bp">False</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-
-<span class="c"># app.py</span>
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">import</span> <span class="nn">logging.config</span>
-
-<span class="k">def</span> <span class="nf">create_app</span><span class="p">():</span>
-    <span class="o">...</span>
-
-    <span class="n">init_log</span><span class="p">()</span>
-
-    <span class="k">return</span> <span class="n">app</span>
-
-<span class="k">def</span> <span class="nf">init_log</span><span class="p">():</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">dictConfig</span><span class="p">(</span><span class="n">DEFAULT_LOGGING_CONFIGS</span><span class="p">)</span>
-</code></pre></div></div>
-
-<h4 id="7-flask中的应用上下文与请求上下文">7. Flask中的应用上下文与请求上下文</h4>
-<p>在<code class="highlighter-rouge">AppContext</code>以及<code class="highlighter-rouge">RequestContext</code>中， 使用最多的仍然是<code class="highlighter-rouge">RequestContext</code>， 意思为请求上下文。 那么请求上下文是个什么东西?</p>
-
-<p>在SpringBoot以及Django框架中， request对象是通过函数参数进行传递的， 比如在Django中， 通常会有这样的代码:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">SomeUsefulAPIView</span><span class="p">(</span><span class="n">APIView</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span><span class="err">；</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">data</span>
-        <span class="o">...</span>
-</code></pre></div></div>
-
-<p>然而在Flask中， 却不是这样的:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">flask_restful</span> <span class="kn">import</span> <span class="n">Resource</span>
-<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">request</span>
-
-<span class="k">class</span> <span class="nc">SomeUsefulAPIView</span><span class="p">(</span><span class="n">Resource</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">print</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>request对象是通过import进行导入的， 而不是通过参数进行传递的， 这里其实就是请求上下文的表现形式。 在当前的请求线程中， Flask会保存request对象， 并能够在任意文件中通过导入的方式进行使用， 其底层依赖于werkzeug第三方库的<code class="highlighter-rouge">LocalStack</code>。</p>
-
-<p>更进一步地， <code class="highlighter-rouge">LocalStack</code>封装底层的<code class="highlighter-rouge">Local</code>实现， 而<code class="highlighter-rouge">Local</code>对象， 其实就是一个大字典。 首先来看现象:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">time</span>
-<span class="kn">import</span> <span class="nn">threading</span>
-<span class="kn">from</span> <span class="nn">werkzeug.local</span> <span class="kn">import</span> <span class="n">Local</span>
-
-<span class="n">foo</span> <span class="o">=</span> <span class="n">Local</span><span class="p">()</span>
-
-<span class="n">foo</span><span class="o">.</span><span class="n">bar</span> <span class="o">=</span> <span class="mi">15</span>
-
-<span class="k">def</span> <span class="nf">another_threading</span><span class="p">():</span>
-    <span class="c"># 开启线程对foo对象的属性进行修改</span>
-    <span class="n">foo</span><span class="o">.</span><span class="n">bar</span> <span class="o">=</span> <span class="mi">20</span>
-
-    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="c"># 确保主线程打印出变量</span>
-
-    <span class="k">print</span><span class="p">(</span><span class="s">"another_thread: {}"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">foo</span><span class="o">.</span><span class="n">bar</span><span class="p">))</span>
-
-<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
-    <span class="n">t</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">another_threading</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">())</span>
-    <span class="n">t</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
-    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c"># 确保t线程执行完毕</span>
-    <span class="c"># 打印主线程变量值</span>
-    <span class="k">print</span><span class="p">(</span><span class="s">"main thread: {}"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">foo</span><span class="o">.</span><span class="n">bar</span><span class="p">))</span>  <span class="c"># 15</span>
-    <span class="n">foo</span><span class="o">.</span><span class="n">bar</span> <span class="o">=</span> <span class="mi">25</span>
-</code></pre></div></div>
-
-<p>可以看到， 在主线程中， <code class="highlighter-rouge">foo.bar</code>的值并没有受到另外一个线程的影响， 而在t线程中， 也没有受到主线程的影响， 这就是<code class="highlighter-rouge">Local</code>对象的作用: 同一个对象， 在不同的线程中拥有完全独立自主权， 并且其值不会受到其它线程的影响。</p>
-
-<p>现在来看<code class="highlighter-rouge">Local</code>类的源码， 主要是使用Python类字典的功能， 重写<code class="highlighter-rouge">__getattr__</code>以及<code class="highlighter-rouge">__setattr__</code>方法:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Local</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s">"__storage__"</span><span class="p">,</span> <span class="s">"__ident_func__"</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="nb">object</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">"__storage__"</span><span class="p">,</span> <span class="p">{})</span>  <span class="c"># 初始化__storage__变量为字典结构</span>
-        <span class="nb">object</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">"__ident_func__"</span><span class="p">,</span> <span class="n">get_ident</span><span class="p">)</span>
-        <span class="c"># get_ident为Python内置的函数， 其作用为获取当前线程的线程id</span>
-
-    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__storage__</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">__ident_func__</span><span class="p">()][</span><span class="n">name</span><span class="p">]</span>
-        <span class="k">except</span> <span class="nb">KeyError</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="nb">AttributeError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-        <span class="n">ident</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ident_func__</span><span class="p">()</span>  <span class="c"># 函数调用， 获取id值</span>
-        <span class="n">storage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__storage__</span>  <span class="c"># storage其实就是一个dict</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="c"># 适用于 {"140672512972544": {"bar": "25"}}的结构</span>
-            <span class="n">storage</span><span class="p">[</span><span class="n">ident</span><span class="p">][</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-        <span class="k">except</span> <span class="nb">KeyError</span><span class="p">:</span>
-            <span class="n">storage</span><span class="p">[</span><span class="n">ident</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">value</span><span class="p">}</span>
-</code></pre></div></div>
-
-<p>所以说， 在上面的测试代码中， <code class="highlighter-rouge">storage</code>变量的内容为:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span>
-    <span class="s">"线程id-1"</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s">"foo"</span><span class="p">:</span> <span class="mi">25</span>
-    <span class="p">},</span>
-    <span class="s">"线程id-2"</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s">"foo"</span><span class="p">:</span> <span class="mi">20</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>那么<code class="highlighter-rouge">LocalStack</code>就很好理解了， 这是一个先进后出的栈结构， 并且栈内容在不同的线程中也是不同的。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/1526973096301.png" alt="" /></p>
-
-<p>如上图所示， 每一个请求在进入时， 都会将request对象压入当前线程的栈中， 那么在该请求的生命周期内， 任意地方都可以将该对象从栈中获取， 并且保证在当前线程中， request请求对象不会被其它线程对象所污染。</p>
-
-<p>所以， 基于此特性， Flask只能使用多线程+协程的方式进行部署， 而不能使用以epoll为底层实现的Reactor模型部署。 所以从这方面来讲的话， 使用Flask解决C10K的问题几乎不能实现。</p>
-
-<h4 id="8-flask-aop的使用">8. Flask AOP的使用</h4>
-<p>经常听到别人搞Java的说SpringBoot的AOP多么多么NB， 多么多么厉害， 然而写Python的却是微微一笑， 这东西我们都用烂了。</p>
-
-<p>AOP， 全称Aspect Oriented Programming， 面向切面编程， 在Python中， 装饰器就是一个最佳的面向切面编程的实现。 面向切面编程的含义就是抽离相似逻辑， 将相似的逻辑进行封装并复用， 说白了， 其实就是函数的调用:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">aspect_function</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
-    <span class="k">print</span><span class="p">(</span><span class="s">"在f函数调用之前要做的事情"</span><span class="p">)</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="n">f</span><span class="p">()</span>  <span class="c"># 调用函数</span>
-        <span class="k">print</span><span class="p">(</span><span class="s">"在f函数调用之后要做的事情"</span><span class="p">)</span>
-    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="k">print</span><span class="p">(</span><span class="s">"调用f函数时出现异常时的处理逻辑"</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p><code class="highlighter-rouge">aspect_function</code>函数接收一个函数对象， 并且在其调用之前， 调用之后以及调用出现异常时均作出相同的操作， 那么这些内容其实就是一个切面， 一个所有<code class="highlighter-rouge">f</code>函数调用之前， 之后都需要做的事情。</p>
-
-<p>上面的例子稍加改动， 就是一个装饰器， 可以通过语法糖的形式来实现复用。 不管是在Django的全局异常处理， 还是在Flask中， 模型都是这样的。</p>
-
-<p>AOP在Web框架中最常见的场景就是全局异常处理。 在视图函数中， 经常会有一些意想不到的异常抛出， 如果直接返回给用户500的话会很不友好， 所以尽量的将异常使用日志的方式记录下来， 并且返回给用户可读的内容。 而针对每一个视图函数都写一个大大的<code class="highlighter-rouge">try..except</code>太累了， 此时就有了<code class="highlighter-rouge">errorhandler</code>函数。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">setup_error_handler</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
-
-    <span class="nd">@app.errorhandler</span><span class="p">(</span><span class="nb">Exception</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">error_exception</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
-        <span class="k">print</span><span class="p">(</span><span class="s">"Wrong"</span><span class="p">)</span>
-        <span class="k">return</span> <span class="s">"Some wrong happened"</span>
-
-<span class="n">setup_error_handler</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>一个最简单的全局异常处理就此诞生， 并且由于我们传入了所有异常的爹， 即<code class="highlighter-rouge">Exception</code>类， 所以所有的Python异常都能够捕捉， 再结合前面的统一返回格式， 初步的全局异常处理就成型了。</p>
-
-<h4 id="9-flask-migrate的使用">9. Flask-migrate的使用</h4>
-<p>在日常的业务开发中， 数据库的模型不可能一成不变， 总会有新的需求导致数据模型的更改。 而在有ORM模型的Web框架中， 数据库的模型是应该随着应用层的模型代码而变动的。 也就是说， 当我们想要添加/删除某一个字段时， 不能直接在数据库中进行<code class="highlighter-rouge">alter table</code>操作， 而是修改应用层代码， 而后通过某种方式将这些改变映射到数据库中。</p>
-
-<p>在Django中， 提供了内置的<code class="highlighter-rouge">python manage.py makemigrations/migrate</code>帮助我们完成这件事， 而在Flask中， 需要使用第三方库<code class="highlighter-rouge">flask-migrate</code>以及<code class="highlighter-rouge">flask-scrip</code>。</p>
-
-<p>首先来定义一个简单的模型:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">TimeMixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="n">created</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
-    <span class="n">updated</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">,</span> <span class="n">onupdate</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
-    <span class="n">deleted</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">Boolean</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
-
-<span class="k">class</span> <span class="nc">User</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">Model</span><span class="p">,</span> <span class="n">TimeMixin</span><span class="p">):</span>
-    <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">autoincrement</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-    <span class="n">nickname</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">(</span><span class="mi">24</span><span class="p">),</span> <span class="n">nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
-    <span class="n">phone_number</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">(</span><span class="mi">11</span><span class="p">),</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-    <span class="n">email</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>当然， 在首次部署项目时， 可以在代码中直接使用<code class="highlighter-rouge">db.create_all(app)</code>的方式来完成数据模型的写入， 但是这种方式过于僵硬， 无法回滚， 也无法添加新的字段。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">pip</span> <span class="n">install</span> <span class="n">flask</span><span class="o">-</span><span class="n">sqlalchemy</span>
-<span class="n">pip</span> <span class="n">install</span> <span class="n">flask</span><span class="o">-</span><span class="n">migrate</span>
-<span class="n">pip</span> <span class="n">install</span> <span class="n">flask</span><span class="o">-</span><span class="n">script</span>
-</code></pre></div></div>
-
-<p>创建<code class="highlighter-rouge">manage.py</code>文件， 并写入以下内容:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">flask_script</span> <span class="kn">import</span> <span class="n">Manager</span>
-<span class="kn">from</span> <span class="nn">flask_migrate</span> <span class="kn">import</span> <span class="n">Migrate</span><span class="p">,</span> <span class="n">MigrateCommand</span>
-
-<span class="kn">from</span> <span class="nn">app</span> <span class="kn">import</span> <span class="n">create_app</span><span class="p">,</span> <span class="n">db</span>
-
-<span class="n">migrate</span> <span class="o">=</span> <span class="n">Migrate</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span>
-
-<span class="n">manager</span> <span class="o">=</span> <span class="n">Manager</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="n">manager</span><span class="o">.</span><span class="n">add_command</span><span class="p">(</span><span class="s">'db'</span><span class="p">,</span> <span class="n">MigrateCommand</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">'__main__'</span><span class="p">:</span>
-    <span class="n">manager</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
-</code></pre></div></div>
-
-<ul>
-  <li>初始化migrations package:</li>
-</ul>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">db</span> <span class="n">init</span>
-</code></pre></div></div>
-
-<ul>
-  <li>创建migration文件(相当于Django中的makemigrations)</li>
-</ul>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">db</span> <span class="n">migrate</span> <span class="o">-</span><span class="n">m</span> <span class="s">"initial migrate"</span>
-</code></pre></div></div>
-
-<ul>
-  <li>将migration文件映射至数据库中(相当于Django中的migrate)</li>
-</ul>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">python</span> <span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">db</span> <span class="n">upgrade</span>
-</code></pre></div></div>
-
-<p>此后对模型的修改， 只需要执行<code class="highlighter-rouge">python manage.py db migrate -m "Some useful message"</code>以及<code class="highlighter-rouge">python manage.py db upgrade</code>即可。</p>
-
-<h4 id="10-小结">10. 小结</h4>
-<p>其实Web开发讲究的就是一个套路， 当把一个Web框架理解清楚了之后， 其余的都大同小异， 当然这里指的是同步类Web框架， 诸如Tornado,  Netty则不属于此列， 它们由于底层机制的不同， 要更为复杂一些。</p>
-
-<p>有时候看待Web框架也需要使用AOP的思想， 抽离相似的逻辑， 并用此逻辑去学习各种各样的框架， 这种方式在我看来比首先深入了解细节要更加高效， 因为实现细节必定有所差异， 而本质原理却基本类似。</p>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>那些有趣的数据结构与算法(03)--并查集</title>
-	  <link>//UnionFind</link>
-	  <author></author>
-	  <pubDate>2019-03-25T15:02:02+00:00</pubDate>
-	  <guid>//UnionFind</guid>
-	  <description><![CDATA[
-	     <p>在《算法》(第四版)的第一章最后一小节中， 也就是”案例研究: union-find算法”这一小节， 我看到了并查集。 在我完整的阅读了所有的算法内容之后， 脑子里只剩下两个字: 优美。</p>
-
-<!---more--->
-
-<h4 id="1-为什么需要union-find算法">1. 为什么需要union-find算法</h4>
-<p>小A的人际关系非常之广， 拥有非常多的朋友， 同时， 他的朋友也有很多朋友。 如果两个人是朋友关系的话就记为a-b。</p>
-
-<p>小A的人际关系可以表示为： A-C A-E A-F A-P A-M A-O A-K…而他的一些朋友的人际关系可以表示为 S-W M-I M-O M-T O-Y O-C E-G…小A朋友的朋友的人际关系可以表示为 K-P K-B X-U Z-O…</p>
-
-<p>通过这样的方式整理出了小A的所有人际关系连接， 以及小A的朋友的人际关系连接。 现在我想要知道， 某一位同学能不能推荐给小A。 例如A-C C-F， 小C是A, F的共同好友， 尽管A, F两人不是朋友关系， 但是由于小C这层枢纽的存在， 很有可能使得他们成为朋友。 也就是说， 需要判断A， F两者之间的连通性， 从而生成推荐朋友的功能。</p>
-
-<p>在一个大型网络系统中， 如果节点A与节点C连接， 记为A-C。 如果节点A既与节点C由于节点B连接的话， 我们可以说节点B和节点C是连接的。 给定相当数量节点连接情况， 判断出系统中任意两个节点是否连接。</p>
-
-<p>很明显的， union-find算法就是解决这一类问题的: 动态连接问题。 连接问题在上面已经描述过了， 那么动态是什么意思？ 人和人之间的人际关系不是一成不变的， 系统中节点的连接状态也不是一成不变的。 在某些情况下， 两个完全不相关的人成为了朋友， 此时我们就需要处理这些连接， 并重新判断连接性， 这就是动态性。</p>
-
-<h4 id="2-设计union-find算法">2. 设计union-find算法</h4>
-<p>既然是解决系统中的连接性， 那么最基本的API就是判断两个元素是否处于连接状态， 如果两个元素的标识位是相同的， 我们就可以判断它们是连通的， 所以需要额外的一个查找API。 此外， 还要提供将两个元素连接的API。</p>
-
-<p>那么整体的API设计就是这样:</p>
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">UnionFind</span><span class="o">:</span>
-    <span class="n">UnionFind</span><span class="o">(</span><span class="kt">int</span> <span class="n">N</span><span class="o">)</span>                  <span class="c1">// 初始化节点</span>
-    <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span>          <span class="c1">// 连接p, q</span>
-    <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span>                   <span class="c1">// 查找p的标志位</span>
-    <span class="kt">boolean</span> <span class="nf">connected</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span>   <span class="c1">// 判断p, q是否连接</span>
-</code></pre></div></div>
-
-<p>整体的算法基于什么样的基本数据结构呢？ 数组， 链表还是树？ 数组的下标以及数组中所存储的元素会有一种对应。 例如<code class="highlighter-rouge">data[0] = 1</code>， 我们可以认为0这个节点的标识是1。 如果又有<code class="highlighter-rouge">data[12] = 1</code>， 节点12的标识位也是1， 此时可以判断节点0和节点12是连接的。</p>
-
-<p>如果采用数组实现， 连接p, q两个节点又该如何操作？ 一个非常简单的做法就是将节点p的标志位设置为节点q的标志位， 使两者的标识位同步即可。</p>
-
-<p>在数组初始化的时候就有:
-<img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2009-37-46.png" alt="" /></p>
-
-<p>那么<code class="highlighter-rouge">UnionFind</code>类的初始化过程就非常简单了， 申请容量为N的数组， 逐一赋值即可:</p>
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">UnionFind</span><span class="o">:</span>
-    <span class="kd">private</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">data</span><span class="o">;</span>
-    <span class="n">UnionFind</span><span class="o">(</span><span class="kt">int</span> <span class="n">N</span><span class="o">)</span> <span class="o">{</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="n">N</span><span class="o">];</span>
-        <span class="k">for</span><span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">N</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
-            <span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">i</span><span class="o">;</span>
-        <span class="o">}</span>
-    <span class="o">}</span>
-</code></pre></div></div>
-
-<h5 id="21-quick-find算法">2.1 quick-find算法</h5>
-<p>quick-find算法的思路是这样的: 使用数组的索引作为节点， 数组索引所对应的值作为节点标识。 在连接p, q两个节点时， 首先查找p, q两个节点的标识位， 将所有与p连接的节点的标识位改为q的标识位。 图示过程如下:</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/quick-find.png" alt="" /></p>
-
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">return</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">];</span>  <span class="c1">// 返回节点p的标志位</span>
-<span class="o">}</span>
-
-<span class="kd">public</span> <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span> <span class="o">{</span>
-    <span class="kt">int</span> <span class="n">pID</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
-    <span class="kt">int</span> <span class="n">qID</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">q</span><span class="o">);</span>
-    <span class="k">if</span> <span class="o">(</span><span class="n">pID</span> <span class="o">==</span> <span class="n">qID</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
-
-    <span class="c1">// 遍历所有与节点q标识位相同的节点, 并将其标识位改为q的标识位</span>
-    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">data</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
-        <span class="k">if</span> <span class="o">(</span><span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">==</span> <span class="n">pID</span><span class="o">)</span>
-            <span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">qID</span><span class="o">;</span>
-    <span class="o">}</span>
-<span class="o">}</span>
-</code></pre></div></div>
-
-<p>为什么这个算法称为quick-find呢？ 因为在查找过程中， 采用的是直接取数组下标的方式， 时间复杂度为O(1)， 而union操作则需要遍历整个数组， 其时间复杂度为O(n)。</p>
-
-<h5 id="22-quick-union算法实现">2.2 quick-union算法实现</h5>
-<p>虽然quick-find算法拥有较高的查找效率， 但是其union操作效率较低， 所以通常会使用quick-union算法来实现并查集。</p>
-
-<p>quick-union算法的思路是将每一个元素看成是一个节点， 将数组整理成为一个树结构， 并由孩子节点指向父亲节点。</p>
-
-<p>在初始化数组的时候， 我们说数组的索引代表了节点本身， 而数组的索引值代表了节点的标识位。 而现在， 数组的索引值不再代表节点的标识位了， 而是代表其父节点。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-10-29.png" alt="" /></p>
-
-<p>如上图所示， 首先我们将节点3与节点2连接， 按照孩子指向父亲的原则， <code class="highlighter-rouge">data[3] = 2</code>。 再将节点1与节点3进行连接， 此时节点3不直接与节点1进行连接， 而是与节点1的父亲节点进行连接， 也就是节点2， 所以就有<code class="highlighter-rouge">data[1] = 2</code>。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-14-17.png" alt="" /></p>
-
-<p>在上图中， 我们让节点8和节点2进行连接， 它们不会直接连接， 因为节点8还有父节点5， 让节点5和节点2进行连接。 由于节点5和节点2都是父节点， 所以节点5可以直接指向节点2。 此时数组内的数据情况为:</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-20-51.png" alt="" /></p>
-
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
-    <span class="c1">// 循环查找父节点</span>
-    <span class="k">while</span> <span class="o">(</span><span class="n">p</span> <span class="o">!=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">])</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">];</span>
-    <span class="k">return</span> <span class="n">p</span><span class="o">;</span>
-<span class="o">}</span>
-
-<span class="kd">public</span> <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span> <span class="o">{</span>
-    <span class="c1">// 此时find操作得到的结果是两个节点的根节点</span>
-    <span class="kt">int</span> <span class="n">pRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
-    <span class="kt">int</span> <span class="n">qRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">q</span><span class="o">);</span>
-
-    <span class="k">if</span> <span class="o">(</span><span class="n">pRoot</span> <span class="o">==</span> <span class="n">qRoot</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
-
-    <span class="n">data</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">qRoot</span><span class="o">;</span>  <span class="c1">// 使p的父节点指向q的父节点</span>
-<span class="o">}</span>
-</code></pre></div></div>
-
-<h4 id="3-quick-union算法的优化">3. quick-union算法的优化</h4>
-<h5 id="31-基于树高的优化">3.1 基于树高的优化</h5>
-<p>B-Tree之所以非常高效的原因， 是因为其树高最多只有4层(树叶因子如果是500的话， 此时可容纳250T的数据)， 那么对于我们的数组树结构来说， 虽然没有指针， 但是逻辑上仍然是一颗树， 所以对树高的优化非常有必要。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-43-00.png" alt="" /></p>
-
-<p>如上图所示， 如果是左侧根节点指向右侧根节点的话， 整体树高为4。 而如果是右侧根节点指向左侧根节点的话， 整体树高为3。 所以我们需要额外的增加一些数据， 来记录每棵树的树高。</p>
-
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">UnionFind</span><span class="o">:</span>
-    <span class="kd">private</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">data</span><span class="o">;</span>
-    <span class="kd">private</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">rank</span><span class="o">;</span>
-
-    <span class="n">UnionFind</span><span class="o">(</span><span class="kt">int</span> <span class="n">N</span><span class="o">)</span> <span class="o">{</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="n">N</span><span class="o">];</span>
-        <span class="n">rank</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="n">N</span><span class="o">]</span>
-        <span class="nf">for</span><span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">N</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
-            <span class="n">data</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">i</span><span class="o">;</span>
-            <span class="n">rank</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>  <span class="c1">// 初始化时每棵树的高度均为1</span>
-        <span class="o">}</span>
-    <span class="o">}</span>
-</code></pre></div></div>
-
-<p>那么在<code class="highlighter-rouge">union</code>方法中， 就需要进行一些比较。 将树高低的指向树高高的即可。</p>
-
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">union</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">,</span> <span class="kt">int</span> <span class="n">q</span><span class="o">)</span> <span class="o">{</span>
-    <span class="kt">int</span> <span class="n">pRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
-    <span class="kt">int</span> <span class="n">qRoot</span> <span class="o">=</span> <span class="n">find</span><span class="o">(</span><span class="n">q</span><span class="o">);</span>
-
-    <span class="k">if</span> <span class="o">(</span><span class="n">pRoot</span> <span class="o">==</span> <span class="n">qRoot</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
-
-    <span class="k">if</span> <span class="o">(</span><span class="n">rank</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">&lt;</span> <span class="n">rank</span><span class="o">[</span><span class="n">qRoot</span><span class="o">])</span>
-        <span class="n">data</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">qRoot</span><span class="o">;</span>
-    <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">rank</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">&gt;</span> <span class="n">rank</span><span class="o">[</span><span class="n">qRoot</span><span class="o">])</span>
-        <span class="n">data</span><span class="o">[</span><span class="n">qRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">pRoot</span><span class="o">;</span>
-    <span class="k">else</span> <span class="o">{</span>  <span class="c1">// 当两棵树的树高相同时， 谁指向谁都一样， 树高必定会增加</span>
-        <span class="n">data</span><span class="o">[</span><span class="n">pRoot</span><span class="o">]</span> <span class="o">=</span> <span class="n">qRoot</span><span class="o">;</span>
-        <span class="n">rank</span><span class="o">[</span><span class="n">qRoot</span><span class="o">]</span> <span class="o">++;</span>
-    <span class="o">}</span>
-<span class="o">}</span>
-</code></pre></div></div>
-
-<h5 id="32-路径压缩">3.2 路径压缩</h5>
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/union-find/Screenshot%20from%202019-03-12%2010-56-03.png" alt="" /></p>
-
-<p>图中3种树结构都表达了同一个意思， 节点5， 7， 10， 8互相连接， 且根节点都为5。 虽然表达的意思相同， 但是它们在union和find操作上的效率却不尽相同。 很明显的， 最右侧的树有着最高的操作效率， 这也是路径压缩需要做的事情。</p>
-
-<p>这个过程其实很简单， 只需要执行<code class="highlighter-rouge">data[p] = data[data[p]]</code>即可。 也就是说， 让某一个节点指向父节点的父节点， 这样一来树高就能减少一层。</p>
-
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">int</span> <span class="nf">find</span><span class="o">(</span><span class="kt">int</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">while</span> <span class="o">(</span><span class="n">p</span> <span class="o">!=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">])</span> <span class="o">{</span>
-        <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">[</span><span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">]];</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="n">data</span><span class="o">[</span><span class="n">p</span><span class="o">];</span>
-    <span class="o">}</span>
-    <span class="k">return</span> <span class="n">p</span><span class="o">;</span>
-<span class="o">}</span>
-</code></pre></div></div>
-
-<h4 id="4-小结">4. 小结</h4>
-<p>union-find算法主要是为了解决连通问题， 从实际角度上来讲， 使用频率并不是很高。 但是其利用数组所构建的树结构却是整个算法最为精妙的部分， 同时也体现出了数组这个基本数据结构的强大威力。</p>
-
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>那些有趣的数据结构与算法(02)--Bitmap</title>
-	  <link>//Bitmap</link>
-	  <author></author>
-	  <pubDate>2019-03-18T15:02:02+00:00</pubDate>
-	  <guid>//Bitmap</guid>
-	  <description><![CDATA[
-	     <p>在我刚接触Python这门开发语言时， 并没有想用它做Web后端开发， 而是拿来写爬虫。 第一个接触的爬虫框架就是Scrapy。 网络爬虫绕不开的一个话题就是URL去重问题。 在Scrapy原生框架下， 使用的是集合来对URL进行去重的。 集合本身采用哈希表实现， 是一种典型的以空间换时间的数据结构， 当URL数量极为庞大时， 使用这种策略的去重很有可能导致内存溢出而造成服务器宕机的问题。 此时， Bitmap走进了我的视线。</p>
-
-<!---more--->
-
-<h4 id="1-什么是bitmap">1. 什么是Bitmap</h4>
-<p>现代计算机使用二进制来作为信息存储和传输的基本单位， 由于计算机是老美发明的， 他们只需要使用A-Z这26个英文字母， 再加上一些字符， 就可以表达所有的文字内容了。 所以就有了ASCII编码， 使用8个bit(位)来表示一个byte(字节)。</p>
-
-<p>例如”Hey”这个字符， 是由3个字节所组成的， 分别是’H’, ‘e’, ‘y’， 所对应的ASCII码分别是72， 101， 121。 将其转换成二进制， 分别为01001000， 01100101， 01111001。 也就是说， “Hey”这个单词， 在底层存储时， 是使用010010000110010101111001来进行存储的。</p>
-
-<p>在了解了这些内容之后， 再来看如何通过Bitmap来进行URL去重。 假如对于<code class="highlighter-rouge">https://smartkeyerror.com/</code>这个URL， 我们对其进行某种编码操作， 让它变成一个数字， 例如12； 对于<code class="highlighter-rouge">https://smartkeyerror.com/categories/</code>这个URL采用同样的编码方式， 将其变为一个数字， 例如7…以此类推， 有10亿个URL， 就有10亿个数字。</p>
-
-<p>在上面我们得到了两个数字， 一个是12， 一个是7， 分别代表了两个URL。 接下来构建一个以位为单位的数组， 将这两个URL所代表的数字作为数组索引， 修改其值为1， 得到的结果就是这样的：</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/BitMap%E7%BC%96%E7%A0%81.png" alt="" /></p>
-
-<p>如果爬虫再次爬取了<code class="highlighter-rouge">https://smartkeyerror.com/</code>这个URL， 通过编码得到了12， 发现这个数组索引为12的元素值为1， 那么就知道这个URL已经被爬取过了， 不会再次进行爬取， 也就达到了去重的作用。</p>
-
-<p>在图中， 位所组成的数组有16个元素， 即能够表示16个URL， 占用空间仅有2个字节。 如果有10亿个URL， 占用空间为 10×10^8 / 8 = 125×10^6字节， 约为125M， 对内存要求非常之低。</p>
-
-<h4 id="2-bitmap的实现">2. Bitmap的实现</h4>
-<p>如果是自己使用Python或者是Java来实现Bitmap这种数据结构的话， 还是比较麻烦的， 所以能够捡现成的用最为合适， 如果现成的不符合特定的需求的话， 自己实现也不迟。</p>
-
-<p>Redis所实现的Bitmap接口相当的简单：</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 设置值</span>
-setbit key offset value
-<span class="c"># 获取值</span>
-getbit key offect
-</code></pre></div></div>
-
-<p>Bitmap除了能够用来进行数据去重以外， 还可以做一些统计功能。 例如用户每天对网站的访问情况， 使用用户id作为Bitmap的偏移量， 如果访问了， 将其值修改为1：</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>setbit user_access_2019-03-10 15 1
-setbit user_access_2019-03-10 25 1
-setbit user_access_2019-03-10 1688 1
-</code></pre></div></div>
-
-<p>上面的3条命令表示在2019-03-10这天， id为15， 25， 1688的用户访问了网站。 通过使用<code class="highlighter-rouge">bitcount</code>命令可以很方便的统计出当天总访问用户是多少：</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitcount user_access_2019-03-10
-</code></pre></div></div>
-
-<p>并且， Redis提供的Bitmap实现支持4种运算操作， 分别是and(交集), or(并集), not(非), xor(异或)， 并将结果保存至destkey中。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitop option destkey key1 key2 .....
-</code></pre></div></div>
-
-<p>例如， 查看2019-03-10和2019-03-09这两天都访问了网站的用户数量：</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitop and user_access_2019-03-09_10 user_access_2019-03-09 user_access_2019-03-10
-</code></pre></div></div>
-
-<h4 id="3-利用bitmap实现网站标签统计">3. 利用Bitmap实现网站标签统计</h4>
-<p>这几天在拉钩上更新了自己许久未更的简历， 发现多了一个功能: 综合能力。 这一项需要我们从众多的能力标签中选出5个符合自己能力的标签， 例如沟通协调能力， 自驱动， 抗压能力等等。 自然， 我们可以用一个数组列表来对这些标签进行存储并展示， 但是在数据统计时， 就会有些麻烦了。</p>
-
-<p>如果采用列表存储标签的方法来做的话， 想要统计给自己打上”自驱动”标签的用户数量是多少， 或者是哪个标签是用户作为喜爱的标签等等， 这些统计功能很难展开。</p>
-
-<p>这个时候Redis实现的Bitmap就派上用场了， 假如标签有self-driven， communication-skills， work-well-under-pressure等等， 同样采用用户id作为偏移量:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>setbit self-driven 15 1
-setbit self-driven 2544 1
-
-setbit communication-skills 15 1
-setbit communication-skills 268 1
-
-setbit work-well-under-pressure 125 1
-</code></pre></div></div>
-
-<p>统计”自驱动”标签的用户数量:</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitcount self-driven
-</code></pre></div></div>
-
-<p>统计最热门的标签:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bitcount self-driven
-bitcount communication-skills
-bitcount work-well-under-pressure
-<span class="c"># 得到结果之后将其整理成为一个字典， 扫描该字典即可得到结果</span>
-</code></pre></div></div>
-
-<h4 id="4-利用bitmap对大文件进行排序">4. 利用Bitmap对大文件进行排序</h4>
-<p>这一小节的应用就比较功利了， 因为对磁盘大文件进行排序， 并且限制了内存使用不能超过50M的情况下， 在日常开发中出现的频次还是极低的。</p>
-
-<p>问题描述: 一个最多包含1000万个正整数的文件， 每个数的大小都小于10000000， 且数据没有重复。 如何在内存使用小于50M的情况下， 对该文件进行排序。</p>
-
-<p>由于内存以及效率的限制(使用归并排序会造成多次磁盘读取)， 这个问题最佳的解决方案就是使用Bitmap。 在内存中建立一个包含有1000万个bit的数组， 依次写入文件中的数字， 而后再顺序输出即可。 伪代码如下:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 初始化bit数组</span>
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
-    <span class="n">bit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-
-<span class="c"># 数据逐行写入bit数组</span>
-<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">"file.txt"</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
-            <span class="k">break</span>
-        <span class="n">bit</span><span class="p">[</span><span class="n">data</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span> <span class="o">=</span> <span class="mi">1</span>
-
-<span class="c"># 数据逐个输出</span>
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
-    <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">write</span> <span class="n">i</span> <span class="n">on</span> <span class="n">output</span> <span class="nb">file</span>
-</code></pre></div></div>
-
-<h4 id="5-小结">5. 小结</h4>
-<p>我记得Bitmap这个数据结构在Java中有内置的实现， 并且Guava包也对Bitmap进行了实现和优化， 至于Python,  似乎只有第三方包实现了该结构。 总的来说我们不用从零开始去编写， Redis也为我们提供了丰富的API。</p>
-
-<p>Bitmap最常用的场景依然是海量数据的去重以及判断某一个数是否在海量数据当中， 除此之外就是日常的小功能实现， 例如标签统计， 网站访客信息记录等等。</p>
-
 
 	  ]]></description>
 	</item>
