@@ -11,7 +11,7 @@ name: '知其然, 知其所以然'
 description: ""
 
 short_url: 'smartkeyerror.com/'
-google_analytics: UA-69281367-1
+google_analytics: UA-150652886-1
 disqus:
 # edit baseurl to simply '/' if using as your personal page (instead of a project page)
 baseurl: /
