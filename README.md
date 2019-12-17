@@ -6,6 +6,7 @@
 
 ## 归档
 
+- 2019/12/17 [Linux操作系统-文件I/O](https://smartkeyerror.com/Linux-IO)
 - 2019/09/18 [MySQL中的悲观锁与常见的死锁场景](https://smartkeyerror.com/MySQL-Lock)
 - 2019/09/01 [MySQL中的联合索引与覆盖索引](https://smartkeyerror.com/MySQL-union-index-and-cover-index)
 - 2019/08/15 [MySQL物理存储方式](https://smartkeyerror.com/MySQL-physical-structure)
