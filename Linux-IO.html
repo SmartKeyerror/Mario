@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Linux操作系统-文件I/O</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Linux-IO" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Linux操作系统-文件I/O" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//Linux-IO" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Linux操作系统-文件I/O" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Linux-IO" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Linux操作系统-文件I/O",
+    "url": "https://smartkeyerror.com//Linux-IO",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Linux操作系统-文件I/O</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2019-12-17">17 Dec 2019</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/Linux'>Linux</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在操作系统中， 最为复杂同时也最为重要的功能就是文件I/O。 一台PC可以不连接互联网， 但是一定需要程序的载入、文件的打开， 而这些操作与I/O均密不可分。 包括软件开发中， 数据库与I/O的关系密切相关， 有时衡量一个DB的效率， 其实就是在衡量其I/O效率。 理解文件I/O， 就是在理解我们常用应用软件， 如MySQL、Redis、Nginx、ES、Prometheus等的核心。</p>
+
+<!---more--->
+
+<h4 id="1-处于内核态的系统调用">1. 处于内核态的系统调用</h4>
+
+<p>操作系统的本质就是帮助用户更加高效的管理硬件， 向上提供统一的接口， 向下兼容不同的硬件， 使得用户并不需要关心硬件， 如硬盘的细节， 只需要关心操作系统为我们提供的抽象: 文件系统。 然而引入操作系统的代价就是用户对硬件的所有操作， 例如打开一个文件， 运行一个程序， 均需经由操作系统来完成， 如此以来， 就有了系统调用。</p>
+
+<p>系统调用存在的原因就在于操作系统不允许用户直接访问硬件， 如果用户有此需求， 则需将想要访问的地址与内容告诉操作系统， 由操作系统进行硬件的访问， 最后由操作系统将结果返回给用户。</p>
+
+<p>操作系统也是软件， 也是由一行行的代码所组成， 所以必定运行在内存中， 只不过操作系统所运行的内存受到保护， 用户无法直接对其进行操作而已。 当用户想要打开一个文件时， 将文件路径告知操作系统， 此时操作系统将会接管CPU的执行， 并将CPU的某标识位标记为内核态， 执行一系列的I/O操作， 取出结果并将结果发送给用户内存空间后， 再将CPU的执行权交给用户。 从本质上来看， 系统调用其实就是一次进程切换， 只不过所花费的时间要比普通的进程间切换大得多而已。</p>
+
+<p>接下来将会看到， 为了”对抗”系统调用所带来的巨大代价， 先贤们实现了各种各样增加I/O效率的方式。 但是， 没有哪一种方式能够”一招吃遍天下鲜”， 不同的应用场景会有不同的最佳解决方式。</p>
+
+<h4 id="2-linux通用io模型">2. Linux通用I/O模型</h4>
+
+<p>Linux为系统用户提供了一些通用的IO函数， 包括<code class="highlighter-rouge">open</code>、<code class="highlighter-rouge">read</code>、<code class="highlighter-rouge">write</code>等方法， 当用户每次调用这些方法时， 都将产生一次系统调用， 此时程序运行由用户态切换至内核态， 内核做完自己应该完成的事情之后， 将结果保存至用户指定的位置中， 并再由内核态切换至用户态， 使用户继续执行下面的代码。</p>
+
+<p><code class="highlighter-rouge">open</code>方法既能打开一个已经存在的文件， 也能创建并打开一个新的文件。 其原型如下:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">open</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">pathname</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="p">...</span><span class="cm">/* mode_t mode */</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>具体的方法使用请参见Linux manual page。 <code class="highlighter-rouge">open</code>方法在成功时将返回该文件的文件描述符， 用于在后续函数调用中指代该文件， 该文件描述符在进程中唯一， 即使打开的是同一个文件， 两者的文件描述符也不相同。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"hole.txt"</span><span class="p">,</span> <span class="n">O_WDONLY</span><span class="p">);</span>   <span class="c1">// 3
+</span>    <span class="kt">int</span> <span class="n">fd2</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"hole.txt"</span><span class="p">,</span> <span class="n">O_WDONLY</span><span class="p">);</span>  <span class="c1">// 4
+</span>    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>对于用户自定义的文件， 文件描述符通常都是从3开始， 0、1、2这三个描述符分别代表标准输入、标准输出以及标准错误， 定义于<code class="highlighter-rouge">unistd.h</code>头文件中。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* Standard file descriptors.  */</span>
+<span class="cp">#define	STDIN_FILENO	0	</span><span class="cm">/* Standard input.  */</span><span class="cp">
+#define	STDOUT_FILENO	1	</span><span class="cm">/* Standard output.  */</span><span class="cp">
+#define	STDERR_FILENO	2	</span><span class="cm">/* Standard error output.  */</span><span class="cp">
+</span></code></pre></div></div>
+
+<p><code class="highlighter-rouge">read</code>系统调用此报告文件描述符fd所指代的打开文件中读取数据， 其定义为:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include&lt;unistd.h&gt;
+</span>
+<span class="kt">ssize_t</span> <span class="n">read</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">buffer</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">count</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>count参数指定最多能读取的字节数， buffer参数提供用来存放数据的内存缓冲区地址(由用户所提供)， 缓冲区至少应有count字节。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#define MAX_READ 20
+</span><span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="n">MAX_READ</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+
+<span class="kt">ssize_t</span> <span class="n">num_read</span><span class="p">;</span>
+<span class="n">num_read</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">MAX_READ</span><span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">num_read</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+
+<span class="n">buffer</span><span class="p">[</span><span class="n">num_read</span><span class="p">]</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">"The input data was: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">buffer</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>从标准输入中读取数据和从文件中读取数据会有些许差异， 因为在默认情况下， 从终端读取字符会在遇到换行符(\n)时<code class="highlighter-rouge">read</code>调用就会结束， 而对于普通文件， 则不会这样。</p>
+
+<p>现在来进一步地了解<code class="highlighter-rouge">read</code>系统调用背后所发生的事情。 当程序调用<code class="highlighter-rouge">read</code>方法时， 产生系统调用， 则当前程序执行的状态由用户态切换至内核态， 操作系统将所需要的文件内容读取至内核某缓冲区中。 同时， 由于I/O是一个相对来说代价较大的操作， 为了减少读取磁盘的数据， 操作系统还会额外的读取更多的内容进入内核缓冲区， 下次读取这些内容时， 直接从缓冲区中读取， 不再从磁盘中读取， 从而提升整体效率。 数据进入内核缓冲区后， 内核需要将数据复制到用户缓冲区中， 也就是<code class="highlighter-rouge">read</code>方法所传递的<code class="highlighter-rouge">void *buffer</code>中。 传输完毕后由内核态切换至用户态， <code class="highlighter-rouge">read</code>系统调用完成。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/Linux/IO/Linux%20Read.png" alt="" /></p>
+
+<p>在执行<code class="highlighter-rouge">read</code>系统调用时， 总计发生了2次用户态切换， 额外的一次数据复制(Kernal to User)。 并且， Kernal buffer中保存了多于用户当前所需的数据， 用于加快下一次的<code class="highlighter-rouge">read</code>调用。</p>
+
+<p><code class="highlighter-rouge">write</code>系统调用将数据写入一个打开的文件中， 当调用成功时， 返回实际写入文件的字节数。 与<code class="highlighter-rouge">read</code>系统调用相同， <code class="highlighter-rouge">write</code>调用在返回成功时， 仅是将数据写入到内核缓冲区中， 再由内核寻找适当的时机将该部分数据真正地写入到磁盘中。</p>
+
+<p>采用这一设计可以有效的减少内核必须执行的磁盘传输次数， 因为可能调用10次<code class="highlighter-rouge">write</code>系统调用， 内核仅进行一次磁盘写入， 不仅减少了单个<code class="highlighter-rouge">write</code>系统调用所需时间， 并且提高了操作系统整体的运作效率。</p>
+
+<p>这一机制所带来的唯一问题就是由于数据在某一时刻仅暂存于内核缓冲区中， 当系统发生断电或者是意外宕机时， 该部分数据就会丢失。 对于数据库等对数据要求非常严格的系统， 这种数据丢失是无法接受的。 所以， 内核额外的提供了<code class="highlighter-rouge">fsync</code>等强制刷新数据至磁盘的系统调用。</p>
+
+<p><code class="highlighter-rouge">fsync</code>系统调用将使缓冲区数据和与打开文件描述符fd相关的所有元数据都刷新到磁盘上， 调用<code class="highlighter-rouge">fsync</code>会强制使文件处于Synchronized I/O file integrity completion状态。 所以， 当程序想要确保数据完全写入磁盘时， 可在<code class="highlighter-rouge">write</code>调用后执行<code class="highlighter-rouge">fsync</code>调用， 进行强制刷盘。</p>
+
+<h4 id="3-c标准io函数库">3. C标准I/O函数库</h4>
+
+<p>上面所提到的<code class="highlighter-rouge">open</code>， <code class="highlighter-rouge">read</code>等系统调用均有Linux/Unix系统所提供， 如Windows等操作系统并不支持此类调用。 为了解决不同操作系统底层提供的通用I/O函数不同的问题， ANSI C制定了一系列的标准I/O函数， 其目的就是为了解决代码的可移植性问题以及屏蔽I/O细节(缓冲区大小的选择， 文件锁实现等)。</p>
+
+<p>标准I/O函数库中最常用的方法为<code class="highlighter-rouge">fopen</code>， <code class="highlighter-rouge">fgets</code>,  <code class="highlighter-rouge">fputs</code>以及<code class="highlighter-rouge">printf</code>， <code class="highlighter-rouge">fprintf</code>。 <code class="highlighter-rouge">fopen</code>和<code class="highlighter-rouge">open</code>的作用类似， 以某种模式(只读、只写等)打开一个文件， 唯一不同的是<code class="highlighter-rouge">open</code>返回<code class="highlighter-rouge">int</code>类型的文件描述符， 而<code class="highlighter-rouge">fopen</code>返回<code class="highlighter-rouge">FILE</code>类型的指针。</p>
+
+<p>为了更好的理解<code class="highlighter-rouge">FILE</code>文件对象， 首先需要了解C标准I/O库的过程。 C标准I/O库的底层实现， 同样是基于Linux提供的通用I/O函数， 只不过标准库对其进行了封装而已。</p>
+
+<p>C标准库除了帮助用户处理平台可移植性问题以外， 还会帮助用户减少系统调用的次数， 但是会额外的增加数据在内存间的复制次数。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/Linux/IO/C%20Standard%20Libary.png" alt="" /></p>
+
+<p>如上图所示，与Linux通用I/O相比， C标准I/O库自身也维护一个类似于内核缓冲的缓冲池， 内核缓冲区的数据并不会直接被复制到用户缓冲区中， 而是复制到标准库缓冲区中。 并且， 所复制的字节数也远大于用户所需要的字节数(count)， 当下次进行内容读取时， 直接从标准缓冲区中读取， 而不需要进行系统调用从内核缓冲区中读取。</p>
+
+<p>该方式从整体上减少了系统调用的次数， 额外的增加了一次用户空间的数据复制， 由于标准I/O函数对系统调用进行了二次封装， 所以解决了可移植性问题。</p>
+
+<p><code class="highlighter-rouge">fputc</code>以及<code class="highlighter-rouge">fputs</code>分别向所关联的文件流中写入单个字符或者是一串字符。 由于标准IO缓冲区的存在， 调用该方法时仅是将数据写入到C标准IO缓冲区中， 而后C标准库根据相应的条件决定何时执行<code class="highlighter-rouge">write</code>系统调用， 将数据写入内核缓冲区。 此后， 内核将决定在适当的时机将数据真正地写入磁盘。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/Linux/IO/fputc.png" alt="" /></p>
+
+<h5 id="31-c标准io缓冲">3.1 C标准I/O缓冲</h5>
+
+<p>标准IO库提供了3种类型的缓冲: 全缓冲、行缓冲以及不带缓冲。</p>
+
+<p>在全缓冲类型下， C函数库只有在完全填满标准IO缓冲区后才进行实际的IO操作， 磁盘文件通常是全缓冲的。 也就是说， 当程序使用<code class="highlighter-rouge">fopen</code>打开一个磁盘文件并调用<code class="highlighter-rouge">fputs</code>进行数据写入时， 数据可能仅写入了标准IO缓冲区中。 在随后的<code class="highlighter-rouge">fputs</code>调用中， 若C标准IO函数发现缓冲区已满， 则进行一次系统调用， 将数据写入至内核缓冲区中。</p>
+
+<p>在行缓冲区类型下， 在输入和输出中遇到换行符(\n)时， 标准IO库执行实际的IO操作。 当一个流涉及到终端时(如标准输出)， 通常时行缓冲的， 例如<code class="highlighter-rouge">printf</code>函数。</p>
+
+<p>不带缓冲则表示只要向标准缓冲区中写入数据， 标准库就会立即进行系统调用， 将数据写入内核缓冲。 标准错误通常是不带缓冲的， 原因在于期望能够尽快的看到错误的产生。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include&lt;stdio.h&gt;
+#include&lt;unistd.h&gt;
+#include&lt;fcntl.h&gt;
+</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"This is printf out | "</span><span class="p">);</span>
+
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"This is a error output | "</span><span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">"BiuBiu</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">"Hello Aean: "</span><span class="p">);</span>
+
+    <span class="kt">char</span> <span class="o">*</span><span class="n">s</span> <span class="o">=</span> <span class="s">"I would have written you a short letter. | "</span><span class="p">;</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="mi">43</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>编译并运行上述代码， 将会得到:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>This is a error output | This is <span class="nb">printf </span>out | BiuBiu
+I would have written you a short letter. | Hello Aean:
+</code></pre></div></div>
+
+<p>当标准IO函数与系统调用混合使用时， 将会看到与代码期望完全不同的结果。 尽管<code class="highlighter-rouge">printf</code>函数在<code class="highlighter-rouge">fprintf</code>之前执行， 但由于<code class="highlighter-rouge">printf</code>为行缓冲， 而标准错误为不带缓冲， 所以标准错误信息将在标准输出信息打印之前打印。 <code class="highlighter-rouge">write</code>函数为系统调用， 输出的时机要优先于不带换行符的标准输出。</p>
+
+<p>标准IO函数库同时也提供了<code class="highlighter-rouge">fflush</code>函数， 用于将标准缓冲区的数据强制刷新至内核， 如果我们在<code class="highlighter-rouge">printf</code>函数调用后调用<code class="highlighter-rouge">fflush</code>， 则会在标准错误输出之前看到输出。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"This is printf out | "</span><span class="p">);</span>
+    <span class="n">fflush</span><span class="p">(</span><span class="n">stdout</span><span class="p">);</span>
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"This is a error output | "</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>其结果为:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>This is <span class="nb">printf </span>out | This is a error output
+</code></pre></div></div>
+
+<p>使用过Docker部署Python项目的小伙伴儿可能对环境变量<code class="highlighter-rouge">PYTHONUNBUFFERED</code>感到很熟悉， 官方文档解释如下:</p>
+
+<blockquote>
+  <p>Force stdin, stdout and stderr to be totally unbuffered. On systems where it matters, also put stdin, stdout and stderr in binary mode.</p>
+</blockquote>
+
+<p>简单来说， 在Docker中使用该变量， 能够更快的使日志输出， 并且在容器crash的情况下， 也能看到必要的日志信息。</p>
+
+<p>更详细的解释:</p>
+
+<blockquote>
+  <p>Setting PYTHONUNBUFFERED=TRUE or PYTHONUNBUFFERED=1 (they are equivalent) allows for log messages to be immediately dumped to the stream instead of being buffered. This is useful for receiving timely log messages and avoiding situations where the application crashes without emitting a relevant message due to the message being “stuck” in a buffer.
+As for performance, there can be some (minor) loss that comes with using unbuffered I/O. To mitigate this, I would recommend limiting the number of log messages. If it is a significant concern, one can always leave buffered I/O on and manually flush the buffer when necessary.</p>
+</blockquote>
+
+<p>有关Linux通用IO以及C标准IO库的缓冲区， 可用下图清晰总结。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/Linux/IO/IO%20buffer.png" alt="" /></p>
+
+<p>原图来源于Linux/Unix系统编程手册， P200。</p>
+
+<h4 id="4-内存映射io">4. 内存映射I/O</h4>
+
+<p>现代操作系统大多数均采用分段+分页的方式来管理内存空间， 其目的就在于使得每一个进程的地址空间独立， 并且使系统能够运行超过其内存空间总数的各种进程。</p>
+
+<p>分页内存管理的基本思想就是映射， 思想和哈希表基本类似: 将一个大范围的空间映射至一个小范围空间内。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/Linux/IO/virtaul%20memory.png" alt="" /></p>
+
+<p>当程序想要访问的虚拟地址没有在页表项建立映射时， 系统将发起一个”缺页异常”， 由操作系统建立页表项并建立虚拟地址页与物理地址页的映射关系。 如此一来， 能够使得不常用的数据或者是内存片段被细粒度地换置至磁盘中， 内存中保留常用的数据。</p>
+
+<p><code class="highlighter-rouge">mmap</code>方法的原理与虚拟内存映射基本相同， 将进程的一部分地址空间与磁盘文件建立映射关系， 将文件当做是内存中的一个数组使用， 减少<code class="highlighter-rouge">read</code>, <code class="highlighter-rouge">write</code>以及<code class="highlighter-rouge">lseek</code>的调用。</p>
+
+<p>需要注意的是， 内存映射一个文件并不会导致整个文件被读取到内存中， 就如同虚拟内存空间不会都在物理地址空间一样， 而是仅仅为需要的文件数据保留映射关系。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">mmap</span>
+
+<span class="k">def</span> <span class="nf">memory_map</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="n">mmap</span><span class="o">.</span><span class="n">ACCESS_WRITE</span><span class="p">):</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="n">fd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">O_RDWR</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mmap</span><span class="o">.</span><span class="n">mmap</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="n">access</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="k">with</span> <span class="n">memory_map</span><span class="p">(</span><span class="s">'hello.txt'</span><span class="p">)</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">15</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p>此外，使用内存映射I/O的读写并不一定会比C标准I/O库或者是Linux通用I/O更加高效， 其原因在于虽然<code class="highlighter-rouge">mmap</code>减少了用户态的切换以及减少了数据的复制， 但是增加了处理缺页错误、建立页表项的时间， 并且各个平台对于<code class="highlighter-rouge">mmap</code>的实现也各有不同， 其优点就在于更加简洁的随机读取以及数据写入。</p>
+
+<h4 id="5-异步io">5. 异步I/O</h4>
+
+<p>异步I/O的实现通常会有两种: 当文件可读/可写时， 内核向进程发送一个信号， 或者是内核调用进程提供的回调函数。 在Linux下， AIO有2种实现: 基于线程模拟异步I/O的glibc AIO， 以及由内核实现的Kernel AIO。</p>
+
+<p>对于glibc AIO而言， 是在用户空间使用多线程来模拟实现的， 并不能真正的称之为异步I/O， 但是能够在任意的文件系统、任意的操作系统上运行。</p>
+
+<p>而Kernel AIO采用信号通知的方式实现异步I/O， 只能在Linux操作系统上运行， 基本没有可移植性。 此外， 一个最重要的问题就是Kernel AIO要求用户必须使用<code class="highlighter-rouge">O_DIRECT</code>模式打开文件， 即绕过内核高速缓冲区， 直接将数据传递至文件或者是磁盘设备， 这种方式又称为直接I/O(direct I/O)。</p>
+
+<p>对于大多数应用而言， 使用直接I/O可能会大大的降低性能， 并且会有诸多不便之处。 其原因在于内核针对缓冲区高速缓存做了不少优化， 包括按顺序读取， 在成簇磁盘块上执行I/O， 允许访问同一文件的多个进程共享内核缓冲区。 并且， 直接I/O由于直接将数据传输至磁盘， 所以必须遵守磁盘的一些限制， 包括但不限于: 用于传递数据的缓冲区其内存边界必须对齐为块大小的整数倍， 待传输的数据长度必须是块大小的整数倍…</p>
+
+<p>正是因为诸多限制， 不管是glibc AIO， 还是Kernel AIO， 在绝大部分的应用中都未曾使用， 看起来AIO就是专门为数据库应用所提供的实现。</p>
+
+<h4 id="6-zero-copysendfile">6. Zero Copy(sendfile)</h4>
+
+<p><code class="highlighter-rouge">sendfile</code>系统调用用于在两个文件描述符之间传输数据， 在Linux Kernel 2.6.33以前， <code class="highlighter-rouge">sendfile</code>只能将数据从一个具体的文件发送到一个<code class="highlighter-rouge">socket</code>中。 而在此版本之后， <code class="highlighter-rouge">sendfile</code>的接收方可以是任意的文件， 但是输入端只能是存在于虚拟内存空间的文件描述符， <code class="highlighter-rouge">socket</code>则不在此列。</p>
+
+<p>方法原型为:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;sys/sendfile.h&gt;
+</span>
+<span class="kt">ssize_t</span> <span class="n">sendfile</span> <span class="p">(</span><span class="kt">int</span> <span class="n">__out_fd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">__in_fd</span><span class="p">,</span> <span class="kt">off_t</span> <span class="o">*</span><span class="n">__offset</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">__count</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>一个简单的文件复制示例:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include&lt;fcntl.h&gt;
+#include&lt;unistd.h&gt;
+#include &lt;sys/stat.h&gt;
+#include &lt;sys/sendfile.h&gt;
+</span>
+<span class="kt">int</span> <span class="nf">get_file_size</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span> <span class="n">filename</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">stat</span> <span class="n">statbuf</span><span class="p">;</span>
+    <span class="n">stat</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">statbuf</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">statbuf</span><span class="p">.</span><span class="n">st_size</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">size</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// 省去错误判断
+</span>    <span class="kt">int</span> <span class="n">foo</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"foo.txt"</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="n">bar</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"bar.txt"</span><span class="p">,</span> <span class="n">O_WRONLY</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="n">foo_size</span> <span class="o">=</span> <span class="n">get_file_size</span><span class="p">(</span><span class="s">"foo.txt"</span><span class="p">);</span>
+    <span class="n">sendfile</span><span class="p">(</span><span class="n">bar</span><span class="p">,</span> <span class="n">foo</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">foo_size</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>另外需要注意的是， <code class="highlighter-rouge">sendfile</code>在文件之间传输数据时， 并不支持<code class="highlighter-rouge">O_APPEND</code> flags， 只能覆盖写入。</p>
+
+<p><code class="highlighter-rouge">sendfile</code>系统调用完全在内核空间进行， 数据不会从内核空间拷贝至用户空间， 并且能够得到DMA的硬件支持， 因而速度很快。</p>
+
+<h4 id="7-总结">7. 总结</h4>
+
+<p>对于非数据库类型的应用而言， 文件I/O的可选范围并不广， 即与其花费大量时间调试异步I/O， 不如直接选择C标准库I/O， 因为同时监听成百上千的文件读写并不常见。 对于频繁随机读取和写入的文件而言， 可以使用内存映射I/O来减少<code class="highlighter-rouge">lseek</code>的调用， 而<code class="highlighter-rouge">sendfile</code>系统调用更多地应用于文件至socket的数据传输。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Linux操作系统-文件I/O&amp;url=https://smartkeyerror.comLinux-IO"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comLinux-IO"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comLinux-IO"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/MySQL-Lock">
+            <section class="post">
+                <h2>MySQL中的悲观锁与常见的死锁场景</h2>
+                <p>在MySQL中， 锁机制是并发条件下保护数据一致性与稳定性的一个非常重要的机制， 并且事务的实现也依赖于于锁机制。 其锁定的数据不单包括数据行记录， 同时也包括缓冲池中的LRU列表数据、日志数据等。 悲观锁(FOR UPDATE)则是日常开发中使用最多的一种锁， 但是， 由于事务隔离级别的多样性导致了悲观锁在使用时常常会有不同的表现， 死锁在程序员稍不注意时就会发生。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2019</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-150652886-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>
