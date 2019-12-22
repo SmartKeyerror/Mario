@@ -194,7 +194,7 @@
 
 <p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/Linux/IO/Linux%20Read.png" alt="" /></p>
 
-<p>在执行<code class="highlighter-rouge">read</code>系统调用时， 总计发生了2次用户态切换， 额外的一次数据复制(Kernal to User)。 并且， Kernal buffer中保存了多于用户当前所需的数据， 用于加快下一次的<code class="highlighter-rouge">read</code>调用。</p>
+<p>在执行<code class="highlighter-rouge">read</code>系统调用时， 总计发生了2次用户态切换， 额外的一次数据复制(kernel to User)。 并且， kernel buffer中保存了多于用户当前所需的数据， 用于加快下一次的<code class="highlighter-rouge">read</code>调用。</p>
 
 <p><code class="highlighter-rouge">write</code>系统调用将数据写入一个打开的文件中， 当调用成功时， 返回实际写入文件的字节数。 与<code class="highlighter-rouge">read</code>系统调用相同， <code class="highlighter-rouge">write</code>调用在返回成功时， 仅是将数据写入到内核缓冲区中， 再由内核寻找适当的时机将该部分数据真正地写入到磁盘中。</p>
 
