@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>Golang中的interface</title>
+        
+          <description>&lt;p&gt;Golang除了方便使用的协程以外，最令我感到惊讶的就是&lt;code class=&quot;highlighter-rouge&quot;&gt;interface&lt;/code&gt;，接口。在其它语言中，接口承担的主要作用为解耦和协议，但是在Golang中，&lt;code class=&quot;highlighter-rouge&quot;&gt;interface&lt;/code&gt;还作为一种”通用”类型广泛使用于标准库和第三方库中。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Wed, 25 Dec 2019 08:25:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Golang-interface</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Golang-interface</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>Linux操作系统-文件I/O</title>
         
           <description>&lt;p&gt;在操作系统中， 最为复杂同时也最为重要的功能就是文件I/O。 一台PC可以不连接互联网， 但是一定需要程序的载入、文件的打开， 而这些操作与I/O均密不可分。 包括软件开发中， 数据库与I/O的关系密切相关， 有时衡量一个DB的效率， 其实就是在衡量其I/O效率。 理解文件I/O， 就是在理解我们常用应用软件， 如MySQL、Redis、Nginx、ES、Prometheus等的核心。&lt;/p&gt;
