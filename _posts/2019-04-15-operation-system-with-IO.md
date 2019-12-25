@@ -133,7 +133,7 @@ if __name__ == "__main__":
 所以说， `mmap`拥有处理大文件的高效能力， 因为数据不再需要从内核空间拷贝至用户空间， 而是进行数据的映射。
 
 #### 5. sendfile
-关于`sendfile`函数的内容， 在[分布式系统基础学习(04)--Nginx](https://smartkeyerror.com/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%9F%BA%E7%A1%80%E5%AD%A6%E4%B9%A0-04-Nginx.html)这一博文中已有描述， 此处不再赘述。
+关于`sendfile`函数的内容， 在[分布式系统基础学习(04)--Nginx](https://smartkeyerror.com/Nginx)这一博文中已有描述， 此处不再赘述。
 
 #### 6. 阻塞与非阻塞
 为了引出事件驱动I/O模型， 关于阻塞和非阻塞的概念仍然有必要再次进行整理。
