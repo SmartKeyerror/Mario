@@ -13,10 +13,10 @@
    
 	<item>
 	  <title>MySQL中的悲观锁与常见的死锁场景</title>
-	  <link>//MySQL-Lock</link>
+	  <link>//MySQL-Pessimistic-Lock</link>
 	  <author></author>
 	  <pubDate>2019-09-18T21:39:25+00:00</pubDate>
-	  <guid>//MySQL-Lock</guid>
+	  <guid>//MySQL-Pessimistic-Lock</guid>
 	  <description><![CDATA[
 	     <p>在MySQL中， 锁机制是并发条件下保护数据一致性与稳定性的一个非常重要的机制， 并且事务的实现也依赖于于锁机制。 其锁定的数据不单包括数据行记录， 同时也包括缓冲池中的LRU列表数据、日志数据等。 悲观锁(FOR UPDATE)则是日常开发中使用最多的一种锁， 但是， 由于事务隔离级别的多样性导致了悲观锁在使用时常常会有不同的表现， 死锁在程序员稍不注意时就会发生。</p>
 
