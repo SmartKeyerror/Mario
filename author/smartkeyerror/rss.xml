@@ -12,6 +12,676 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>MySQL-InnoDB中的锁</title>
+	  <link>//MySQL-InnoDB-Lock</link>
+	  <author></author>
+	  <pubDate>2020-01-31T10:06:25+00:00</pubDate>
+	  <guid>//MySQL-InnoDB-Lock</guid>
+	  <description><![CDATA[
+	     <p>锁在InnoDB存储引擎中的使用远比我们想象中的更加频繁，及时是一条最为简单的<code class="highlighter-rouge">update set</code>语句，其中也涉及到了各种锁的使用。包括常说的一致性锁定读，解决幻读等场景中，同样包含了锁的大量使用。</p>
+
+<!---more--->
+
+<h4 id="1-latch和lock">1. Latch和Lock</h4>
+
+<p>在InnoDB存储引擎中，Latch(门闩)是用来保证并发线程操作临界资源的正确性，保证某些操作的原子性。通常又分为Mutex(互斥量)和RWLock(读写锁)，例如Python中<code class="highlighter-rouge">threading.Lock</code>，Java中<code class="highlighter-rouge">synchronized</code>，Golang中的<code class="highlighter-rouge">sync.Mutex</code>，Latch通常应用于操作缓冲池中的LRU列表元素(添加、删除以及移动)，部分场景下的<code class="highlighter-rouge">AUTO_INCREMENT</code>实现。用户通常不会直接地与Latch打交道，并且没有死锁检测。</p>
+
+<p>Lock作用于事务之中，用来锁定表、页、行，锁的添加与释放通常会在事务的起始和结束时进行。数据库中的幻读问题解决就是通过Lock实现的，而非Latch。并且Lock存在死锁检测机制，当发生死锁时，会在某些情况下告知用户，例如在使用一致性锁定读(SELECT…FOR UPDATE)时产生的死锁，会直接抛出1213的Deadlock异常。</p>
+
+<p>尽管Latch与Lock操作的对象均为数据，但是Latch更为底层，操作的对象更加细小。Lock的对象相对于Latch而言，则更加”粗放”，例如表、页数据，此外最重要的是Lock的作用域为事务，Latch则不是。</p>
+
+<h4 id="2-innodb存储引擎中的lock">2. InnoDB存储引擎中的Lock</h4>
+
+<p>为了方便叙述，下面均使用锁来指代InnoDB中的Lock(仍然要说明，Lock以及Latch都可以称为锁，这里只是为了方便叙述)。</p>
+
+<p>InnoDB引擎支持行锁以及表锁，既可以锁定某一行，同时也可以锁定一整张表，先从行级锁说起。</p>
+
+<p>InnoDB引擎实现了两种标准的行级锁:</p>
+<ul>
+  <li>共享行级锁(S Lock, Share Lock)</li>
+  <li>排他行级锁(X Lock, Exclusive Lock)</li>
+</ul>
+
+<p>可以认为S Lock和X Lock分别表示读锁和写锁，如同RWLock一样。S Lock允许并发地读取数据，X Lock既限制并发地读取，同时也限制并发地修改。所以说，当某一行数据中存在S锁时，只能再次添加S锁，若想要添加X锁，则需要等待S锁的释放。行级锁X以及S Lock的兼容性如下:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">-</th>
+      <th style="text-align: center">X</th>
+      <th style="text-align: center">S</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">X</td>
+      <td style="text-align: center">不兼容</td>
+      <td style="text-align: center">不兼容</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">S</td>
+      <td style="text-align: center">不兼容</td>
+      <td style="text-align: center">兼容</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>同时，InnoDB支持表级锁，为了支持表级锁与行级锁这两个不同粒度的锁，InnoDB支持一种额外的上锁方式，称之为意向锁(Intention Lock)。</p>
+
+<p>为了更好的理解意向锁，首先假设没有意向锁，只有表锁和行锁。当事务A在更新某一条数据时，会在该数据行上添加X锁。此时另外事务B申请整个表的写锁，如果事务B申请成功，那么它就能修改表中任意一行数据，这与事务持有的X锁冲突。</p>
+
+<p>如果数据库想要避免该冲突，那么需要让事务B阻塞，直到事务A提交释放X锁。转而需要判断事务B阻塞的条件: ①当前表是否被其它事务添加表锁 ②判断表中是否存在行锁。这两个条件判断均可以在表层面实现，而无需遍历所有数据，只需要定义好数据结构即可。一个最简单的实现就是为表锁和行锁添加两个标识位，该标识位在添加和释放锁时进行原子更新，例如:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>table_s_lock <span class="o">=</span> <span class="nb">false
+</span>table_x_lock <span class="o">=</span> <span class="nb">false
+</span>row_s_lock <span class="o">=</span> <span class="nb">true
+</span>row_x_lock <span class="o">=</span> <span class="nb">true</span>
+</code></pre></div></div>
+
+<p>当某一行添加X锁时，将<code class="highlighter-rouge">row_x_lock</code>置为true，若其余事务想要添加表级别的X锁，则必须等待<code class="highlighter-rouge">row_x_lock</code>更新为false。反之若事务已经添加了表级别的X锁，将<code class="highlighter-rouge">table_x_lock</code>置为true，事务B若想在某一行添加X锁，则需要等待<code class="highlighter-rouge">table_s_lock</code>以及<code class="highlighter-rouge">table_x_lock</code>均更新为false。</p>
+
+<p>虽然上面的标识位能够解决问题，但仍然有些奇怪，奇怪的点在于标识位的判断粒度不同。我们更加希望表级锁与表级锁进行兼容性判断，行级锁与行级锁进行兼容性判断，而不是表级锁与行级锁进行兼容性判断。由此，就有了意向锁的诞生。</p>
+
+<p>意向锁(Intention Lock)将锁定的对象分为多个粒度，当想要对细粒度的数据进行加锁时，那么首先需要对粗粒度的对象添加意向锁。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/intention-Lock.png" alt="" /></p>
+
+<p>例如，若需要对页上的记录R添加X锁，则需要分别对数据库、表、页添加意向锁IX，添加成功后才会对记录R添加X锁，若其中任何一部分导致等待，那么该操作需要等待粗粒度上锁环节的完成。现在来看在有了意向锁之后InnoDB存储引擎如何支持多粒度的锁。</p>
+
+<p>意向锁同样分为两种: 共享和排他</p>
+
+<ul>
+  <li>意向共享锁(IS, Intention Share Lock)</li>
+  <li>意向排他锁(IX, Intention Exclusive Lock)</li>
+</ul>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/intention-lock-example.png" alt="" /></p>
+
+<p>如上图所示，事务A为了给记录R添加X锁(排他锁)，则需要依次对数据库、表、页添加意向排他锁(IX)，假设添加均成功，最终记录R添加了X锁。此时事务B想要向表A中添加表级别的排他锁，由于表A中存在IX锁，与表级别的X锁并不兼容，故事务B等待，等待表A中IX锁的释放。可以看到，在有了意向锁之后，锁的兼容性比较将处理同粒度水平，而不是跨粒度进行比较。这让我想起了一个段子:</p>
+
+<blockquote>
+  <p>不要跟傻逼争论，他会把你拉到他的水平上，然后用他丰富的经验打败你</p>
+</blockquote>
+
+<p>InnoDB存储引擎中意向锁和表级锁的兼容性如下:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">-</th>
+      <th style="text-align: center">IX</th>
+      <th style="text-align: center">IS</th>
+      <th style="text-align: center">X(表级别)</th>
+      <th style="text-align: center">S(表级别)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">IX</td>
+      <td style="text-align: center">兼容</td>
+      <td style="text-align: center">兼容</td>
+      <td style="text-align: center">不兼容</td>
+      <td style="text-align: center">不兼容</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">IS</td>
+      <td style="text-align: center">兼容</td>
+      <td style="text-align: center">兼容</td>
+      <td style="text-align: center">不兼容</td>
+      <td style="text-align: center">兼容</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">X(表级别)</td>
+      <td style="text-align: center">不兼容</td>
+      <td style="text-align: center">不兼容</td>
+      <td style="text-align: center">不兼容</td>
+      <td style="text-align: center">不兼容</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">S(表级别)</td>
+      <td style="text-align: center">不兼容</td>
+      <td style="text-align: center">兼容</td>
+      <td style="text-align: center">不兼容</td>
+      <td style="text-align: center">兼容</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>在MySQL 5.5以上、5.7.14以下的版本中，用户可以通过<code class="highlighter-rouge">INFORMATION_SCHEMA</code>下的<code class="highlighter-rouge">INNODB_TRX</code>、<code class="highlighter-rouge">INNODB_LOCKS</code>以及<code class="highlighter-rouge">INNODB_LOCK_WAITS</code>这三张表简单地监控并分析可能存在的锁问题。</p>
+
+<p>在MySQL 8.0版本中，则需要使用<code class="highlighter-rouge">performance_schema</code>下的<code class="highlighter-rouge">data_locks</code>以及<code class="highlighter-rouge">data_lock_waits</code>获取相关的锁以及锁等待信息。</p>
+
+<p>而MySQL版本在5.7.14到8.0之间的用户，只能通过其它手段间接的获取上述信息。</p>
+
+<h5 id="21-创建通用例程">2.1 创建通用例程</h5>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="nv">`user`</span> <span class="p">(</span>
+  <span class="nv">`id`</span> <span class="n">int</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+  <span class="nv">`nickname`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`password`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">128</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`user_id`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`mobile`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`mobile_area`</span> <span class="n">smallint</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">comment</span> <span class="nv">"手机号码区域"</span><span class="p">,</span>
+  <span class="nv">`gender`</span> <span class="n">tinyint</span> <span class="k">DEFAULT</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="nv">`avatar`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">128</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">DEFAULT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`account_id`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`created_at`</span> <span class="n">datetime</span> <span class="k">DEFAULT</span> <span class="k">CURRENT_TIMESTAMP</span><span class="p">,</span>
+  <span class="nv">`updated_at`</span> <span class="n">datetime</span> <span class="k">DEFAULT</span> <span class="k">CURRENT_TIMESTAMP</span> <span class="k">ON</span> <span class="k">UPDATE</span> <span class="k">CURRENT_TIMESTAMP</span><span class="p">,</span>
+  <span class="nv">`deleted_at`</span> <span class="n">datetime</span><span class="p">,</span>
+  <span class="nv">`status`</span> <span class="n">tinyint</span> <span class="k">DEFAULT</span> <span class="mi">1</span> <span class="k">comment</span> <span class="nv">"用户状态"</span><span class="p">,</span>
+  <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="nv">`id`</span><span class="p">),</span>
+  <span class="k">KEY</span> <span class="nv">`user_id`</span> <span class="p">(</span><span class="nv">`user_id`</span><span class="p">),</span>
+  <span class="k">KEY</span> <span class="nv">`mobile`</span> <span class="p">(</span><span class="nv">`mobile`</span><span class="p">),</span>
+  <span class="k">KEY</span> <span class="nv">`account_id`</span> <span class="p">(</span><span class="nv">`account_id`</span><span class="p">),</span>
+  <span class="k">KEY</span> <span class="nv">`created_at`</span> <span class="p">(</span><span class="nv">`created_at`</span><span class="p">),</span>
+  <span class="k">KEY</span> <span class="nv">`updated_at`</span> <span class="p">(</span><span class="nv">`updated_at`</span><span class="p">),</span>
+  <span class="k">UNIQUE</span> <span class="p">(</span><span class="nv">`user_id`</span><span class="p">),</span>
+  <span class="k">UNIQUE</span> <span class="p">(</span><span class="nv">`account_id`</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">AUTO_INCREMENT</span><span class="o">=</span><span class="mi">1</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">utf8mb4</span> <span class="k">COLLATE</span><span class="o">=</span><span class="n">utf8mb4_general_ci</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>这是一张非常普通但又普遍的用户信息表，其中包含了唯一主键，唯一辅助索引以及普通辅助索引。</p>
+
+<h5 id="22-innodb_trx">2.2 INNODB_TRX</h5>
+<p><code class="highlighter-rouge">INNODB_TRX</code>表中主要记录了当前正在执行的事务信息，包括只读事务。首先来看字段和字段所表示的含义:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>字段名称</th>
+      <th>字段含义</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>TRX_ID</td>
+      <td>InnoDB存储引擎内部的唯一事务ID</td>
+    </tr>
+    <tr>
+      <td>TRX_WEIGHT</td>
+      <td>事务权重(与事务修改的行数和锁定的行数有关)，当两个事务执行发生死锁时，InnoDB会选择权重较低的事务进行回滚</td>
+    </tr>
+    <tr>
+      <td>TRX_STATE</td>
+      <td>当前的事务执行状态，包括RUNNING, LOCK WAIT, ROLLING BACK, 以及COMMITTING，LOCK WAIT表示当前事务正等待某个锁的释放</td>
+    </tr>
+    <tr>
+      <td>TRX_STARTED</td>
+      <td>事务开始时间，格式如2000-01-01 14:01:08</td>
+    </tr>
+    <tr>
+      <td>TRX_REQUESTED_LOCK_ID</td>
+      <td>当前事务所等待的锁ID，该字段只有在状态为LOCK WAIT才有值，否则为NULL。可与<code class="highlighter-rouge">INNODB_LOCKS</code>通过LOCK_ID字段进行关联查询，获取更为详细的锁信息。</td>
+    </tr>
+    <tr>
+      <td>TRX_WAIT_STARTED</td>
+      <td>当前事务等待锁的起始时间，在状态为LOCK WAIT时才有值，否则为NULL。</td>
+    </tr>
+    <tr>
+      <td>TRX_QUERY</td>
+      <td>当前事务<strong>正在</strong>执行的SQL语句(不是事务所有的执行语句)</td>
+    </tr>
+    <tr>
+      <td>TRX_OPERATION_STATE</td>
+      <td>事务的当前操作状态，包括PREPARING, UPDATING, DELETING, COMMITTING以及NULL，该字段在绝大部分情况下均为NULL，捕捉某一事务的瞬间执行状态还是比较困难的(除非是大事务)</td>
+    </tr>
+    <tr>
+      <td>TRX_TABLES_IN_USE</td>
+      <td>正在执行的SQL语句所操作的表数量，是一个动态变化值，通常很难观测</td>
+    </tr>
+    <tr>
+      <td>TRX_TABLES_LOCKED</td>
+      <td>当前事务在各个表中添加行锁的表数量</td>
+    </tr>
+    <tr>
+      <td>TRX_LOCK_STRUCTS</td>
+      <td>当前事务持有的锁数量</td>
+    </tr>
+    <tr>
+      <td>TRX_LOCK_MEMORY_BYTES</td>
+      <td>当前事务中锁结构的内存总占用</td>
+    </tr>
+    <tr>
+      <td>TRX_ROWS_LOCKED</td>
+      <td>当前事务锁住的近似数据总行数</td>
+    </tr>
+    <tr>
+      <td>TRX_ROWS_MODIFIED</td>
+      <td>当前事务插入、修改的总行数</td>
+    </tr>
+    <tr>
+      <td>TRX_CONCURRENCY_TICKETS</td>
+      <td>表示当前事务在换出之前所能做的工作之和</td>
+    </tr>
+    <tr>
+      <td>TRX_ISOLATION_LEVEL</td>
+      <td>当前事务隔离级别，包括READ UNCIMMITTED、READ COMMITTED、READ REPEATABLE以及SERIALIZABLE</td>
+    </tr>
+    <tr>
+      <td>TRX_UNIQUE_CHECKS</td>
+      <td>当前事务是否开启唯一性检查</td>
+    </tr>
+    <tr>
+      <td>TRX_FOREIGN_KEY_CHECKS</td>
+      <td>当前事务是否开启外键检查</td>
+    </tr>
+    <tr>
+      <td>TRX_LAST_FOREIGN_KEY_ERROR</td>
+      <td>当前事务执行时最后发生的外键错误</td>
+    </tr>
+    <tr>
+      <td>TRX_ADAPTIVE_HASH_LATCHED</td>
+      <td>当前事务是否锁定了自适应哈希索引</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>在这20多个字段中，较为重要的包括事务ID，事务执行状态，事务等待锁的起始时间，事务锁定的近似总行数。</p>
+
+<h5 id="23-innodb_locks">2.3 INNODB_LOCKS</h5>
+
+<p><code class="highlighter-rouge">INNODB_LOCKS</code>表中记录了当前所有未释放的锁，包括行锁、页锁以及表锁，当某个事务发生严重的锁等待时，通常会在该表中查找蛛丝马迹，确定问题的根源。</p>
+
+<p>但是，<code class="highlighter-rouge">INNODB_LOCKS</code>和<code class="highlighter-rouge">INNODB_LOCK_WAITS</code>这两张表在5.7.14以上版本中被废弃不用，在8.0版本中使用<code class="highlighter-rouge">data_locks</code>以及<code class="highlighter-rouge">data_lock_waits</code>进行代替，故以下内容均采用MySQL 8.0版本进行描述。</p>
+
+<h5 id="24-data_locks">2.4 data_locks</h5>
+
+<table>
+  <thead>
+    <tr>
+      <th>字段名称</th>
+      <th>字段含义</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ENGINE</td>
+      <td>申请或持有锁的存储引擎类型</td>
+    </tr>
+    <tr>
+      <td>ENGINE_LOCK_ID</td>
+      <td>存储引擎内部的锁ID，该值会发生动态变化，外部系统不应该依赖该值</td>
+    </tr>
+    <tr>
+      <td>ENGINE_TRANSACTION_ID</td>
+      <td>持有锁的事务ID，与INNODB_TRX中的TRX_ID对应</td>
+    </tr>
+    <tr>
+      <td>THREAD_ID</td>
+      <td>持有锁的线程ID</td>
+    </tr>
+    <tr>
+      <td>EVENT_ID</td>
+      <td>事件ID，该字段将于下方进行详细描述</td>
+    </tr>
+    <tr>
+      <td>OBJECT_SCHEMA</td>
+      <td>锁所在的schema(database)</td>
+    </tr>
+    <tr>
+      <td>OBJECT_NAME</td>
+      <td>锁所在的表名称</td>
+    </tr>
+    <tr>
+      <td>PARTITION_NAME</td>
+      <td>锁所在分片名称</td>
+    </tr>
+    <tr>
+      <td>SUBPARTITION_NAME</td>
+      <td>锁所在的子分片名称</td>
+    </tr>
+    <tr>
+      <td>INDEX_NAME</td>
+      <td>被添加锁的索引名称</td>
+    </tr>
+    <tr>
+      <td>OBJECT_INSTANCE_BEGIN</td>
+      <td>锁的内存空间起始地址</td>
+    </tr>
+    <tr>
+      <td>LOCK_TYPE</td>
+      <td>锁类型，包含TABLE和RECORD</td>
+    </tr>
+    <tr>
+      <td>LOCK_MODE</td>
+      <td>锁的模式，包括S,X,IS,IX,AUTO_INC以及UNKNOWN</td>
+    </tr>
+    <tr>
+      <td>LOCK_STATUS</td>
+      <td>锁的状态，InnoDB引擎中包括GRANTED(已添加)和WAITING(等待中)</td>
+    </tr>
+    <tr>
+      <td>LOCK_DATA</td>
+      <td>锁覆盖的范围，该字段将于下方详细描述</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>以一个具体的例子为例:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">Mario</span><span class="p">.</span><span class="k">user</span> <span class="k">where</span> <span class="n">id</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">for</span> <span class="k">update</span><span class="p">;</span>
+
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
+<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+               <span class="n">ENGINE</span><span class="p">:</span> <span class="n">INNODB</span>
+       <span class="n">ENGINE_LOCK_ID</span><span class="p">:</span> <span class="mi">140374385659344</span><span class="p">:</span><span class="mi">1453</span><span class="p">:</span><span class="mi">140374295256456</span>
+<span class="n">ENGINE_TRANSACTION_ID</span><span class="p">:</span> <span class="mi">632837</span>
+            <span class="n">THREAD_ID</span><span class="p">:</span> <span class="mi">56</span>
+             <span class="n">EVENT_ID</span><span class="p">:</span> <span class="mi">28</span>
+        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
+          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
+       <span class="n">PARTITION_NAME</span><span class="p">:</span> <span class="k">NULL</span>
+    <span class="n">SUBPARTITION_NAME</span><span class="p">:</span> <span class="k">NULL</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">NULL</span>
+<span class="n">OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140374295256456</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="k">TABLE</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">IX</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="k">NULL</span>
+<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+               <span class="n">ENGINE</span><span class="p">:</span> <span class="n">INNODB</span>
+       <span class="n">ENGINE_LOCK_ID</span><span class="p">:</span> <span class="mi">140374385659344</span><span class="p">:</span><span class="mi">532</span><span class="p">:</span><span class="mi">4</span><span class="p">:</span><span class="mi">2</span><span class="p">:</span><span class="mi">140374295253576</span>
+<span class="n">ENGINE_TRANSACTION_ID</span><span class="p">:</span> <span class="mi">632837</span>
+            <span class="n">THREAD_ID</span><span class="p">:</span> <span class="mi">56</span>
+             <span class="n">EVENT_ID</span><span class="p">:</span> <span class="mi">28</span>
+        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
+          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
+       <span class="n">PARTITION_NAME</span><span class="p">:</span> <span class="k">NULL</span>
+    <span class="n">SUBPARTITION_NAME</span><span class="p">:</span> <span class="k">NULL</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
+<span class="n">OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140374295253576</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">1</span>
+</code></pre></div></div>
+
+<p>当我们使用<code class="highlighter-rouge">FOR UPDATE</code>一致性锁定读向id为1的行添加一个写锁时，可以看到<code class="highlighter-rouge">data_locks</code>中生成了两条记录。从<code class="highlighter-rouge">LOCK_TYPE</code>以及<code class="highlighter-rouge">LOCK_MODE</code>来看，第一条为表级别意向排他锁(IX)，第二条为行记录排他锁(X)。注意到X锁后面还有一个说明: <code class="highlighter-rouge">REC_NOT_GAP</code>，表示排他非间隙行锁，这是行锁的一种实现，将在后面小节中描述。</p>
+
+<p><code class="highlighter-rouge">LOCK_DATA</code>在IX项中为NULL，这是因为在InnoDB存储引擎中，该字段只会在<code class="highlighter-rouge">LOCK_TYPE</code>为<code class="highlighter-rouge">RECORD</code>时才有实际值，对于<code class="highlighter-rouge">TABLE</code>类型的锁而言，该值为NULL。<code class="highlighter-rouge">LOCK_DATA</code>根据不同的加锁方式会有不同具体值。当我们使用主键ID(primary key)进行加锁时，<code class="highlighter-rouge">LOCK_DATA</code>仅包含聚簇索引行记录，此时<code class="highlighter-rouge">LOCK_DATA</code>的值通常为主键ID。当我们使用辅助索引对记录加锁时，锁住的范围则会包括辅助索引+聚簇索引，所以此时<code class="highlighter-rouge">data_locks</code>会生成3条记录(表级别意向锁+索引记录锁+聚簇索引记录锁)，此时<code class="highlighter-rouge">LOCK_DATA</code>的值为”辅助索引字段值+主键ID”</p>
+
+<p>例如:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">Mario</span><span class="p">.</span><span class="k">user</span> <span class="k">where</span> <span class="n">user_id</span> <span class="o">=</span> <span class="nv">"168236477"</span> <span class="k">for</span> <span class="k">update</span><span class="p">;</span>
+
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
+<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
+          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
+          <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">NULL</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="k">TABLE</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">IX</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="k">NULL</span>
+<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
+          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="n">user_id_2</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="cm">/* LOCK_DATA为FieldValue+记录对应的主键ID。由于user_id为unique，故此处仅一条记录 */</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="s1">'168236477'</span><span class="p">,</span> <span class="mi">3</span>
+<span class="o">***************************</span> <span class="mi">3</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
+          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">3</span>
+</code></pre></div></div>
+
+<h5 id="25-data_lock_waits">2.5 data_lock_waits</h5>
+
+<p><code class="highlighter-rouge">data_lock_waits</code>相比于<code class="highlighter-rouge">INNODB_TRX</code>以及<code class="highlighter-rouge">data_locks</code>而言则要更复杂一些，该表实际上是一个ManyToMany的关系表，记录了<code class="highlighter-rouge">data_locks</code>中锁之间的等待以及依赖关系，同时也记录了锁所对应的事务/会话信息。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>字段名称</th>
+      <th>字段含义</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ENGINE</td>
+      <td>存储引擎类型</td>
+    </tr>
+    <tr>
+      <td>REQUESTING_ENGINE_LOCK_ID</td>
+      <td>存储引擎内锁ID，对应于data_locks表中的ENGINE_LOCK_ID</td>
+    </tr>
+    <tr>
+      <td>REQUESTING_ENGINE_TRANSACTION_ID</td>
+      <td>存储引擎内事务ID</td>
+    </tr>
+    <tr>
+      <td>REQUESTING_THREAD_ID</td>
+      <td>线程ID</td>
+    </tr>
+    <tr>
+      <td>REQUESTING_EVENT_ID</td>
+      <td>事件ID</td>
+    </tr>
+    <tr>
+      <td>REQUESTING_OBJECT_INSTANCE_BEGIN</td>
+      <td>锁的内存空间起始地址</td>
+    </tr>
+    <tr>
+      <td>BLOCKING_ENGINE_LOCK_ID</td>
+      <td>等待释放的锁ID</td>
+    </tr>
+    <tr>
+      <td>BLOCKING_ENGINE_TRANSACTION_ID</td>
+      <td>等待结束的事务ID</td>
+    </tr>
+    <tr>
+      <td>BLOCKING_THREAD_ID</td>
+      <td>等待结束的线程ID</td>
+    </tr>
+    <tr>
+      <td>BLOCKING_EVENT_ID</td>
+      <td>等待结束的事件ID</td>
+    </tr>
+    <tr>
+      <td>BLOCKING_OBJECT_INSTANCE_BEGIN</td>
+      <td>等待结束的锁的内存空间起始地址</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>例如:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_lock_waits</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
+<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+                          <span class="n">ENGINE</span><span class="p">:</span> <span class="n">INNODB</span>
+       <span class="n">REQUESTING_ENGINE_LOCK_ID</span><span class="p">:</span> <span class="mi">140678484647376</span><span class="p">:</span><span class="mi">532</span><span class="p">:</span><span class="mi">4</span><span class="p">:</span><span class="mi">2</span><span class="p">:</span><span class="mi">140678365511992</span>
+<span class="n">REQUESTING_ENGINE_TRANSACTION_ID</span><span class="p">:</span> <span class="mi">635403</span>
+            <span class="n">REQUESTING_THREAD_ID</span><span class="p">:</span> <span class="mi">48</span>
+             <span class="n">REQUESTING_EVENT_ID</span><span class="p">:</span> <span class="mi">15</span>
+<span class="n">REQUESTING_OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140678365511992</span>
+         <span class="n">BLOCKING_ENGINE_LOCK_ID</span><span class="p">:</span> <span class="mi">140678484646504</span><span class="p">:</span><span class="mi">532</span><span class="p">:</span><span class="mi">4</span><span class="p">:</span><span class="mi">2</span><span class="p">:</span><span class="mi">140678365506120</span>
+  <span class="cm">/*等待ID为635400的事务释放锁*/</span>
+  <span class="n">BLOCKING_ENGINE_TRANSACTION_ID</span><span class="p">:</span> <span class="mi">635400</span>
+              <span class="n">BLOCKING_THREAD_ID</span><span class="p">:</span> <span class="mi">47</span>
+               <span class="n">BLOCKING_EVENT_ID</span><span class="p">:</span> <span class="mi">12</span>
+  <span class="n">BLOCKING_OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140678365506120</span>
+</code></pre></div></div>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/data_lock_waits.png" alt="" /></p>
+
+<h4 id="3-innodb存储引擎行锁算法">3. InnoDB存储引擎行锁算法</h4>
+
+<p>InnoDB存储引擎存在3种行锁算法，分别为:</p>
+
+<ul>
+  <li>Record Lock: 单个行记录上的锁</li>
+  <li>Gap Lock: 间隙锁，锁定一个范围，单不包含记录本身</li>
+  <li>Next-Key Lock: Record Lock+Gap Lock，锁定一个范围，并且锁定记录本身</li>
+</ul>
+
+<p>Record Lock表示单个行记录上的锁，这非常好理解，例如我们<code class="highlighter-rouge">update</code>一条或多条数据时，事务会为这一条或者多条数据均添加X锁。当使用主键ID进行更新时，记录仅包含聚簇索引行记录。当使用辅助索引进行更新时，将会锁住聚簇索引记录+辅助索引记录。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">update</span> <span class="k">user</span> <span class="k">set</span> <span class="n">status</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">where</span> <span class="n">id</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
+<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+<span class="cm">/* ...................表级别的意向排他锁，此处省略.............. */</span>
+<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+        <span class="cm">/* 省略部分非关键信息 */</span>
+        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
+          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">1</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">commit</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>当使用主键ID进行一致性锁定读时，<code class="highlighter-rouge">data_locks</code>生成两条锁记录，一条为table IX，另一条为行记录的X锁，注意<code class="highlighter-rouge">LOCK_MODE</code>后面的附加声明: REC_NOT_GAP，表示当前锁的算法仅为行记录锁，非间隙锁。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">update</span> <span class="k">user</span> <span class="k">set</span> <span class="n">status</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">where</span> <span class="n">user_id</span> <span class="o">=</span> <span class="nv">"174269548"</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
+<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+<span class="cm">/* ...................表级别的意向排他锁，此处省略.............. */</span>
+<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
+          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="n">user_id_2</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="s1">'174269548'</span><span class="p">,</span> <span class="mi">1</span>
+<span class="o">***************************</span> <span class="mi">3</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
+          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
+<span class="n">OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140678365506464</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">1</span>
+</code></pre></div></div>
+
+<p>而使用辅助索引进行一致性锁定读时，除了table IX以及聚簇索引的X锁以外，还会有额外的辅助索引X锁，<code class="highlighter-rouge">LOCK_MODE</code>同样备注了非间隙锁的标识。</p>
+
+<p>间隙锁的存在主要是为了解决幻读问题，幻读是指当某事务读取一定范围内的数据时，其余事务在该范围内插入了一条或多条数据，或者删除了一条或多条数据，导致前一个事务读取的数据条数发生改变，如同出现幻觉，所以称为幻读。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="k">user</span> <span class="k">where</span> <span class="n">id</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="k">for</span> <span class="k">update</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
+<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+<span class="cm">/* ...................表级别的意向排他锁，此处省略.............. */</span>
+<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
+          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
+<span class="n">OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140678365506120</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="n">supremum</span> <span class="n">pseudo</span><span class="o">-</span><span class="n">record</span>
+<span class="o">***************************</span> <span class="mi">3</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
+          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
+<span class="n">OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140678365506120</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">3</span>
+</code></pre></div></div>
+
+<p>当我们对某一个范围使用一致性锁定读时，就可以看到间隙锁的产生。<code class="highlighter-rouge">LOCK_MODE</code>仅为X时，就表示当前锁添加了间隙锁。并且在<code class="highlighter-rouge">LOCK_DATA</code>有supremum pseudo-record的解释说明，该说明表示MySQL决定锁定最大间隙范围。在本例中，为id大于2的所有数据，故另一个事务执行:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">insert</span> <span class="k">into</span> <span class="k">user</span><span class="p">(</span><span class="n">id</span><span class="p">,</span> <span class="n">nickname</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">mobile</span><span class="p">,</span> <span class="n">mobile_area</span><span class="p">,</span> <span class="n">gender</span><span class="p">,</span> <span class="n">avatar</span><span class="p">,</span> <span class="n">account_id</span><span class="p">,</span> <span class="n">status</span><span class="p">)</span> <span class="k">values</span><span class="p">(</span><span class="mi">9999</span><span class="p">,</span> <span class="nv">"jojo"</span><span class="p">,</span> <span class="nv">"passwd"</span><span class="p">,</span> <span class="nv">"147523659"</span><span class="p">,</span> <span class="nv">"13555555555"</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="nv">"https://jojo.com"</span><span class="p">,</span> <span class="nv">"1753681429"</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>将会被阻塞，直至前一个事务释放间隙锁或者当前事务锁等待超时。</p>
+
+<p>在理解了间隙锁以后，Next-Key Lock就很容易理解了，锁定一个记录+一个范围。上面例子均有一个特点，就是不管是主键ID，还是user_id，它们都具有unique约束，而对于非唯一的辅助索引而言，即使是精确查询并加锁，也会添加Gap Lock，此时就是Next-Key Lock。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="k">user</span> <span class="k">where</span> <span class="n">updated_at</span> <span class="o">=</span> <span class="nv">"2020-01-23 21:32:52"</span> <span class="k">for</span> <span class="k">update</span><span class="p">;</span>
+<span class="cm">/*此时DB中仅存在一条数据更新时间为"2020-01-23 21:32:52"*/</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
+<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+<span class="cm">/* ...................表级别的意向排他锁，此处省略.............. */</span>
+<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="n">updated_at</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="n">supremum</span> <span class="n">pseudo</span><span class="o">-</span><span class="n">record</span>
+<span class="o">***************************</span> <span class="mi">3</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="n">updated_at</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">0</span><span class="n">x99A56F5834</span><span class="p">,</span> <span class="mi">1</span>
+<span class="o">***************************</span> <span class="mi">4</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
+           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
+            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
+            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
+          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
+            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">1</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">updated_at</code>字段仅添加了普通索引，并且值为”2020-01-23 21:32:52”的记录主键ID为1，从<code class="highlighter-rouge">data_locks</code>的最后一条记录也可以看出。在该表的第二行和第三行中分别添加了间隙锁，第三行的<code class="highlighter-rouge">LOCK_DATA</code>字段值为16进制数+主键ID。</p>
+
+<p>此外，<strong>需要尤为注意的是，<code class="highlighter-rouge">READ COMMITTED</code>事务隔离级别下，将不会有间隙锁的添加</strong>。在文章<a href="https://smartkeyerror.com/django-concurrent-data-process">Django处理数据并发问题</a>中描述了使用Django默认的<code class="highlighter-rouge">READ COMMITTED</code>事务隔离级别所带来的问题。</p>
+
+<h4 id="4-自增长与锁">4. 自增长与锁</h4>
+
+<p>自增长在数据库中是非常常见的属性，MySQL提供<code class="highlighter-rouge">AUTO_INCREMENT</code>属性使得列可具备自增长的功能。在InnoDB存储引擎内存结构中，对每个含有自增长值的表都有一个自增长计数器。</p>
+
+<p>最初自增长是采用特殊的表锁实现，称为AUTO_INC Locking，为了提高插入的性能，锁并不是在事务结束时才释放，而是在完成对自增长值插入的SQL语句后立即释放。虽然AUTO_INC Locking从一定程度上提高了并发插入的效率，但是仍存在性能问题: 事务必须等待前一个事务插入语句的结束。所以，后续就有了轻量级的互斥量自增长实现。</p>
+
+<p>互斥量的实现就是文章最开头所说的Latch，由硬件协助实现。该实现方式只有在确定所插入的行数时才会使用，否则，将仍然使用AUTO_INC Locking。</p>
+
+<h4 id="5-metadata-lock">5. Metadata Lock</h4>
+
+<p>Metadata Lock，又称为MDL，相较于行锁和表锁，其范围更广，对象包括数据库、表、行以及触发器和外键等，与InnoDB其它锁一样，在事务开始时获取，事务结束时释放，其设计目的在于保证在事务执行过程中表的结构不会被修改。</p>
+
+<p>通常来讲，只有在修改表结构的时候我们才会直接地与MDL打交道，例如向某张表添加一列，或者删除某一列。在DML执行非常频繁的应用中，当我们执行ALTER TABLE table ADD column时，很有可能出现整个MySQL挂掉的情况，其原因就在于表结构修改语句获取MDL时阻塞，导致后续对该表的查询、修改和删除等语句阻塞。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/MDL.png" alt="" /></p>
+
+<p>session A与session B会向表user添加只读MDL，而session C想要申请可写的MDL，由于前面两个事务均为提交，故只能阻塞。此时由于session C写锁的申请，导致session D以及后续的所有DML操作均会被阻塞，简单来说，此时表user不可读写。</p>
+
+<p>如果user表中的读写非常频繁，将会导致大量的查询或更新语句阻塞，且状态均为<code class="highlighter-rouge">waiting for metadata lock</code>。此时若客户端存在超时重试机制，那么会导致大量新的会话建立，最后达到MySQL线程数量的限制，导致整个DB不可用。</p>
+
+<p>在MySQL 5.6版本以上支持Online DDL，其过程如下:</p>
+<ul>
+  <li>ALTER TABLE table ADD column语句获取MDL写锁</li>
+  <li>获取成功后，将其降级为MDL读锁</li>
+  <li>执行真正的DDL操作，如添加、删除列，期间可以执行DML语句</li>
+  <li>升级MDL读锁为写锁</li>
+  <li>释放MDL写锁，整个DDL过程结束</li>
+</ul>
+
+<p>真正导致数据库不可读写的步骤为1、4，第3步为实际运行时间最长的步骤，不会影响表的读写操作，只要内存和磁盘容量足够，数据量再多也灭有关系。所以，DDL的关键影响因素不在于数据量，而是在于数据读写的QPS。这也是为什么表结构修改操作要放到月黑风高的凌晨进行操作的原因: 那时候访问量最少，而不是数据量最少。</p>
+
+<p>在更改表结构时造成大面积读写操作阻塞的另一个原因就是长事务，即长时间运行的事务。即使QPS非常小，但是系统中存在长事务，同样会造成DDL语句获取写锁阻塞，从而阻塞后续的读写语句。</p>
+
+<h4 id="6-reference">6. Reference</h4>
+
+<ul>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_latch</li>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-trx-table.html</li>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/data-locks-table.html</li>
+  <li>https://dev.mysql.com/doc/refman/8.0/en/data-lock-waits-table.html</li>
+</ul>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>Golang中的interface</title>
 	  <link>//Golang-interface</link>
 	  <author></author>
@@ -2084,322 +2754,6 @@ funcname <span class="s2">"foo"</span> <span class="s2">"bar"</span>
 <p>PS: 留一张思维导图作为自己的复习参考</p>
 
 <p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/ShellScript.png" alt="" /></p>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>DevOps基础(2)--Ansible自动化运维工具</title>
-	  <link>//Ansible</link>
-	  <author></author>
-	  <pubDate>2019-06-17T08:33:42+00:00</pubDate>
-	  <guid>//Ansible</guid>
-	  <description><![CDATA[
-	     <p>Shell脚本能够为我们提供一部分的系统运维功能， 例如定时任务， 由Jenkins所管理的边缘触发任务等等， 但是如果想要对多台服务器进行管理和运维， 就需要Ansible来协助完成。</p>
-
-<!---more--->
-
-<h4 id="1-ansible是什么">1. Ansible是什么?</h4>
-
-<p>Ansible是一个由Python语言编写的自动化运维工具， 底层基于SSH框架， 帮助运维以及开发人员进行批量的服务器管理。</p>
-
-<p>假设我们有10台服务器， 需要查看当前每台服务器的磁盘使用状况， 如果说采用传统的SSH登录， 然后输入密码， 进入远程服务器， 使用<code class="highlighter-rouge">df -h</code>来查看磁盘的使用状态的话， 这个过程需要持续10次。 就算我们将客户端的公钥上传至服务器使得我们可以免密登录远程服务器， 这个过程仍然是很花时间的。</p>
-
-<p>此时Ansible就发挥其作用了， 由于Ansible是基于SSH框架所实现的， 所以Ansible可以批量的进行远程服务器的SSH连接， 在该连接之上执行<code class="highlighter-rouge">df -h</code>， 并将结果返回给客户端。 而且Ansible还提供了多进程的方式进行工作， 进一步的提升执行效率以及节省运维人员的时间。</p>
-
-<h4 id="2-ansible的安装与配置">2. Ansible的安装与配置</h4>
-<p>正如前面所提到的， Ansible是由Python所编写的工具， 那么自然需要相应的Python环境或者是Python的虚拟环境。 在Linux操作系统中， 本身就包含了python2.7以及python3.6+的环境， 所以如果不使用虚拟环境的话， 可以直接使用</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip install ansible
-</code></pre></div></div>
-
-<p>进行安装。 在安装完成后， 目录<code class="highlighter-rouge">/etc/ansible</code>即会生成。 在该目录下， 只有两个文件:</p>
-<ul>
-  <li>ansible.cfg: ansible的全局配置文件</li>
-  <li>hosts: ansible默认的服务器配置文件， 有时又称为资产清单文件</li>
-</ul>
-
-<p>两个文件的配置都很简单且易懂。 对于hosts文件， 定义的格式以及具体的实例如下:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>group-name]
-server-ip/server-domain <span class="nv">ansible_ssh_user</span><span class="o">=</span>USERNAME
-
-<span class="o">[</span>local_server]
-192.168.1.106 <span class="nv">ansible_ssh_user</span><span class="o">=</span>smart
-</code></pre></div></div>
-
-<p>在上面的实例中， 定义了<code class="highlighter-rouge">local_server</code>这个主机组， 在该组下只有一台主机， IP地址为192.168.1.106， 并定义了ansible在当前主机执行任务时的用户名称为smart。</p>
-
-<p>而对于ansible.cfg文件， 更多的是定义默认的服务器配置文件路径， 执行的并发数， 以及客户端的公钥等。</p>
-
-<p>为了能够使用公钥登录服务器， 得先将客户端的公钥上传至服务器的authorized_keys文件中， 这个过程可以交给ssh来自动完成:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ssh-copy-id user@server-ip
-输入密码即可
-</code></pre></div></div>
-
-<p>将当前客户端的公钥地址配置在ansible.cfg中， 其余的配置保持默认即可:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">ansible_ssh_private_key_file</span><span class="o">=</span>/home/smart/.ssh/id_rsa.pub
-</code></pre></div></div>
-
-<h4 id="3-ansible的模块">3. ansible的模块</h4>
-
-<p>对于一个任务而言， 需要的要素就是谁在哪儿做什么。 在Ansible自动化管理中， 当然是由Ansible来做了， 任务执行的范围即定义在hosts服务器配置文件之中， 剩下的就是定义具体的任务了。</p>
-
-<p>Ansible提供了两种任务定义的方式， 一种叫ad-hoc， 一种叫playbooks。 ad-hoc就像是我们在Terminal中执行shell命令一样， 是一种临时的、无法保存成文件的任务执行方式。 而playbooks则是永久的、能够多次执行并保存成文件的任务， 相当于Shell脚本。</p>
-
-<p>在前一篇Shell脚本的文章有提到， Shell脚本的核心是一条一条的Linux命令， Shell语言只是提供粘合剂将它们组合形成一个整体。 对于Ansible而言， 其核心就是模块， 而playbook则是将多个模块组合在一起。</p>
-
-<p>那么Ansible模块又是什么? Ansible模块其实就是一个又一个的Python脚本， 为用户提供各种各样功能的脚本。 例如使用最为广泛的<code class="highlighter-rouge">copy</code>模块， 其作用是将本地的文件拷贝至服务器的目标目录中。</p>
-
-<p>如果我们自己来完成文件拷贝的需求， 可以使用</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>scp file_path user@server-ip:server_path
-</code></pre></div></div>
-
-<p>如果是对很多台服务器进行文件拷贝的话， 可以使用一个Shell脚本来完成:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-<span class="nb">set</span> <span class="nt">-xe</span>
-<span class="nb">exec</span> &amp;&gt; /home/smart/shell/file-copy.log
-
-<span class="nv">USER</span><span class="o">=</span><span class="s2">"admin"</span>
-<span class="nv">LOCAL_PATH</span><span class="o">=</span><span class="s2">"/home/smart/monitor"</span>
-<span class="nv">SERVER_PATH</span><span class="o">=</span><span class="s2">"/home/monitor"</span>
-
-<span class="k">for </span>server <span class="k">in </span>server_list
-<span class="k">do
-  </span>scp <span class="nt">-R</span> <span class="k">${</span><span class="nv">LOCAL_PATH</span><span class="k">}</span> <span class="k">${</span><span class="nv">USER</span><span class="k">}</span>@<span class="k">${</span><span class="nv">server</span><span class="k">}</span>:<span class="k">${</span><span class="nv">SERVER_PATH</span><span class="k">}</span>
-<span class="k">done</span>
-</code></pre></div></div>
-
-<p>而这么多行的Shell脚本， Ansible使用一个<code class="highlighter-rouge">copy</code>模块就可以完成， 这就是Ansible模块的威力。</p>
-
-<p>如果使用Ansible命令行的模式来完成文件拷贝的任务， 只需要一行命令:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ansible all <span class="nt">-m</span> copy <span class="nt">-a</span> <span class="s2">"src=/home/smart/monitor dest=/home/monitor"</span> <span class="nt">-f</span> 6
-</code></pre></div></div>
-
-<p><code class="highlighter-rouge">all</code>表示对hosts文件中的所有主机执行任务， 也可以执行组名， 例如<code class="highlighter-rouge">local_server</code>。 <code class="highlighter-rouge">-m</code>指定模块名称， 这里选用<code class="highlighter-rouge">copy</code>模块。 <code class="highlighter-rouge">-a</code>添加模块所需要的参数， 而<code class="highlighter-rouge">-f</code>则指定并行的数量， 通常会和客户端的CPU核心数相同。</p>
-
-<p>回到文章开始的地方， 对10台服务器执行<code class="highlighter-rouge">df -h</code>命令该怎么做? 由于这是一个Shell命令， 所以理所当然的使用<code class="highlighter-rouge">shell</code>模块， 传递给该模块的参数就是所要执行的命令:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ansible local_server <span class="nt">-m</span> shell <span class="nt">-a</span> <span class="s2">"df -h"</span>
-</code></pre></div></div>
-
-<p>将会得到这样的结果:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>192.168.1.106 | SUCCESS | <span class="nv">rc</span><span class="o">=</span>0 <span class="o">&gt;&gt;</span>
-Filesystem      Size  Used Avail Use% Mounted on
-udev            7.8G     0  7.8G   0% /dev
-tmpfs           1.6G  2.2M  1.6G   1% /run
-/dev/sdb3        95G   34G   57G  38% /
-tmpfs           7.9G  265M  7.6G   4% /dev/shm
-tmpfs           5.0M  4.0K  5.0M   1% /run/lock
-tmpfs           7.9G     0  7.9G   0% /sys/fs/cgroup
-</code></pre></div></div>
-
-<p>Ansible和Shell一样， 提供了非常多封装了各种各样功能的模块， 到目前为止， Ansible大概提供了约2100个模块， 几乎涵盖了服务器运维的所有方面。 所以我认为这进一步地印证了在Ansible中， 最为重要的并不是如何编写playbooks， 而是如何在这2100个模块中找到自己想要的， 并正确的使用它。</p>
-
-<blockquote>
-  <p>Ansible所有模块文档地址: <a href="https://docs.ansible.com/ansible/latest/modules/list_of_all_modules.html">ansible list of modules</a></p>
-</blockquote>
-
-<h4 id="4-ansible-playbooks">4. Ansible playbooks</h4>
-<p>通常来讲ad-hoc模式常常拿来做测试， 例如:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ansible all <span class="nt">-m</span> ping
-</code></pre></div></div>
-
-<p>来测试服务器的配置以及服务器的可达状态， 或者是说批量的添加用户并分配用户组等小功能。 在自动化部署这一需求下， 仍然会使用playbooks来组合测试、QA以及生产环境的相关任务。</p>
-
-<p>在playbooks下有两个很重要的概念: roles， tasks。 roles是一个或多个任务(task)的集成， 表示当前的任务所运行的环境。 通常都会分为dev， test， QA， prod， 主要用于环境区分。 而tasks则是变量列表和具体的任务列表的集成， 代表了真正要执行的任务。 所以， 一个playbooks的结构往往是这样的:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>├── dev.yaml
-├── inventory.cfg
-├── prod.yaml
-├── roles
-│   ├── dev
-│   │   ├── tasks
-│   │   │   └── main.yaml
-│   │   └── vars
-│   │       └── main.yaml
-│   ├── prod
-│   │   ├── tasks
-│   │   │   └── main.yaml
-│   │   └── vars
-│   │       └── main.yaml
-│   └── <span class="nb">test</span>
-│       ├── tasks
-│       │   └── main.yaml
-│       └── vars
-│           └── main.yaml
-└── test.yaml
-</code></pre></div></div>
-
-<p>看起来会很复杂， 其实非常的简单。 在根目录下， <code class="highlighter-rouge">dev|test|prod.yaml</code>是playbooks的主要入口文件， 而reoles目录下的<code class="highlighter-rouge">dev|test|prod</code>目录中则保存着对应环境的环境变量以及所要执行的任务。 <code class="highlighter-rouge">inventory.cfg</code>则保存着当前项目所设计的服务器资产清单， 包括开发， 测试， QA以及生产服务器的分组和ip。</p>
-
-<h5 id="41-入口文件testyaml">4.1 入口文件test.yaml</h5>
-<p>这里以<code class="highlighter-rouge">test.yaml</code>入口文件为例， 该配置文件其实非常的简单:</p>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">hosts</span><span class="pi">:</span> <span class="s">test</span>
-  <span class="na">roles</span><span class="pi">:</span>
-    <span class="pi">-</span> <span class="s">test</span>
-</code></pre></div></div>
-
-<p>没有更多内容了， 首先指定测试环境所用到的服务器组名， 其次指定测试环境的roles目录。 playbooks的运行是从入口文件开始的:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ansible-playbook <span class="nt">-i</span> inventory.cfg test.yaml
-</code></pre></div></div>
-
-<h5 id="42-任务列表文件">4.2 任务列表文件</h5>
-<p>对于一个task.yaml而言， 也非常简单: 组合多个模块。</p>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">print current date</span>
-  <span class="na">shell</span><span class="pi">:</span> <span class="s">date</span>
-
-<span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">copy file</span>
-  <span class="na">copy</span><span class="pi">:</span>
-    <span class="na">src</span><span class="pi">:</span> <span class="s">/home/monitor/test.log</span>
-    <span class="na">dest</span><span class="pi">:</span> <span class="s">/home/monitor</span>
-</code></pre></div></div>
-
-<p>只不过是将ad-hoc模式下变量传递的方式改写成yaml文件的格式而已， 本质上仍然是对模块的应用。 但是这种任务编写的方式提供了额外的拓展功能， 例如<code class="highlighter-rouge">chdir</code>改变当前任务的工作目录， <code class="highlighter-rouge">register</code>将当前任务的执行结果保存至某一个变量中， 可以用于后续的DEBUG。</p>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">print current date</span>
-  <span class="na">shell</span><span class="pi">:</span> <span class="s">date</span>
-  <span class="na">args</span><span class="pi">:</span>
-    <span class="na">chdir</span><span class="pi">:</span> <span class="s">/home/monitor</span>
-  <span class="na">register</span><span class="pi">:</span> <span class="s">date_result</span>
-<span class="s">-debug</span><span class="pi">:</span> <span class="s">var=date_result</span>
-</code></pre></div></div>
-
-<h5 id="43-变量列表文件">4.3 变量列表文件</h5>
-<p>出于编码的最佳规范， 一些变量或者是常量最好是保存至某一个文件中， 而后进行引用。 在playbooks中， 我们只需要将变量写入<code class="highlighter-rouge">vars/main.yaml</code>， 以及在<code class="highlighter-rouge">tasks/main.yaml</code>中使用即可， 至于中间是怎么工作的， 可以完全不用关心。</p>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># vars/main.yaml</span>
-<span class="na">home_path</span><span class="pi">:</span> <span class="s">/home/smartkeyerror</span>
-
-<span class="c1"># tasks/main.yaml</span>
-<span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">ls home_path</span>
-  <span class="na">shell</span><span class="pi">:</span> <span class="s">ls ""</span>
-  <span class="c1"># 如果使用进行变量引用的话， 必须添加""</span>
-</code></pre></div></div>
-
-<p>既然变量文件使用yaml的数据格式进行写入， 那么就可以使用dict数据结构来进行变量引用:</p>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># 定义</span>
-<span class="na">foo</span><span class="pi">:</span>
-  <span class="na">field1</span><span class="pi">:</span> <span class="s">A</span>
-  <span class="na">field2</span><span class="pi">:</span> <span class="s">B</span>
-
-<span class="c1"># 引用</span>
-<span class="s">foo["field1"]</span>
-<span class="s">foo.field1</span>
-</code></pre></div></div>
-
-<p>这种引用方式更多的是在模板(Template)中进行使用， <code class="highlighter-rouge">task.yaml</code>更多的是直接引用简单的变量。</p>
-
-<h4 id="5-jinja2模板">5. Jinja2模板</h4>
-<p>如果使用过Django或者是Flask等Python Web框架的小伙伴对Jinja2模板一定不会很陌生。</p>
-
-<p>Ansible中的Jinja2模板并不是用于HTML文件的数据填充与渲染， 而是当做配置文件的模板进行远程配置文件的填充。</p>
-
-<p>举一个并不是很恰当的例子， 但是能够说明问题。</p>
-
-<p>假设有如下Nginx配置文件:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>server <span class="o">{</span>
-    listen 80<span class="p">;</span>
-    server_name gitlab.zero.com<span class="p">;</span>
-    location / <span class="o">{</span>
-        proxy_pass http://127.0.0.1:8181<span class="p">;</span>
-    <span class="o">}</span>
-<span class="o">}</span>
-</code></pre></div></div>
-
-<p>一个非常简单gitlab端口转发配置， 现在我想要将<code class="highlighter-rouge">server_name</code>配置项的值放入到变量文件中， 然后将该配置文件上传至服务器中。 当然我们可以使用<code class="highlighter-rouge">copy</code>模块来完成， 但是copy模块没有办法在拷贝的文件中填充变量， 这个时候就需要使用到模板。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># nginx.gitlab.j2</span>
-
-server <span class="o">{</span>
-    listen 80<span class="p">;</span>
-    server_name <span class="p">;</span>
-    location / <span class="o">{</span>
-        proxy_pass http://127.0.0.1:8181<span class="p">;</span>
-    <span class="o">}</span>
-<span class="o">}</span>
-</code></pre></div></div>
-
-<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">generate gitlab nginx config to server</span>
-  <span class="na">template</span><span class="pi">:</span>
-    <span class="na">src</span><span class="pi">:</span> <span class="s">./templates/nginx.gitlab.j2</span>
-    <span class="na">dest</span><span class="pi">:</span> <span class="s">/etc/nginx/conf.d/gitlab.conf</span>
-</code></pre></div></div>
-
-<p>模板文件通常置于playbooks/templates目录中。 当执行完该playbooks之后， Ansible将会把填充好变量数据的Nginx配置文件置于应有的服务器目录下。</p>
-
-<p>当然， Jinja2模板的功能远不止于此， 还可以在模板文件中添加条件判断以及数据的迭代:</p>
-
-<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="p">{</span><span class="o">%</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">environment</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="o">%</span><span class="p">}</span>
-    <span class="p">{{</span><span class="n">key</span><span class="p">}}:</span> <span class="s">"{{value}}"</span>
-<span class="p">{</span><span class="o">%</span> <span class="n">endfor</span> <span class="o">%</span><span class="p">}</span>
-
-<span class="p">{</span><span class="o">%</span> <span class="k">if</span> <span class="n">used_kafka</span> <span class="o">%</span><span class="p">}</span>
-    <span class="o">...</span>
-<span class="p">{</span><span class="o">%</span> <span class="n">endif</span> <span class="o">%</span><span class="p">}</span></code></pre></figure>
-
-<h4 id="6-ansible-vault对变量文件进行加密">6. Ansible Vault对变量文件进行加密</h4>
-
-<p>有时为了保证变量文件的安全性， 以及在网络传输时的隐蔽性， 通常都需要对变量文件进行加密， 只有在使用变量文件时才对其进行解密。</p>
-
-<p><code class="highlighter-rouge">ansible-vault</code>命令就是Ansible提供给我们对文件进行加密的工具。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 变量文件只有一个变量配置</span>
-smart@Zero:~<span class="nv">$ </span><span class="nb">cat </span>main.yaml
-server_name: gitlab.zero.com
-
-<span class="c"># 使用ansible-vault encrypt file进行加密</span>
-smart@Zero:~<span class="nv">$ </span>ansible-vault encrypt main.yaml
-New Vault password:
-Confirm New Vault password:
-Encryption successful
-
-<span class="c"># 再次查看main.yaml</span>
-smart@Zero:~<span class="nv">$ </span><span class="nb">cat </span>main.yaml
-
-<span class="nv">$ANSIBLE_VAULT</span><span class="p">;</span>1.1<span class="p">;</span>AES256
-31356236643435613539353331383734376438373966393064666538636635643934663736636437
-3961316333633462376234386437346462333539393039310a663932663832306464316435646539
-36636665366233343266386466313831343165303238623163373237313764333363373662303862
-3561646430623230620a663964363462366435386139383666356330333336343535373336346232
-36386236373639666633666130653861636530613034623635626135313130366632
-</code></pre></div></div>
-
-<p>在这里使用了手工输入密码的方式进行加密与解密， 除此之外还可以将密码写入文件， 在进行加密解密时执行文件:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 生成密码文件</span>
-smart@Zero:~<span class="nv">$ </span><span class="nb">echo</span> <span class="s2">"mypassword"</span> <span class="o">&gt;</span> .password.conf
-
-<span class="c"># 修改文件权限以及所属用户组</span>
-smart@Zero:~<span class="nv">$ </span><span class="nb">sudo </span>chmod 600 .password.conf
-smart@Zero:~<span class="nv">$ </span><span class="nb">sudo </span>chmod 600 .password.conf
-
-<span class="c"># 加密</span>
-smart@Zero:~<span class="nv">$ </span><span class="nb">sudo </span>ansible-vault encrypt <span class="nt">--vault-id</span> .password.conf main.yaml
-
-<span class="c"># 解密</span>
-smart@Zero:~<span class="nv">$ </span><span class="nb">sudo </span>ansible-vault decrypt <span class="nt">--vault-id</span> .password.conf main.yaml
-</code></pre></div></div>
-
-<h4 id="7-小结">7. 小结</h4>
-
-<p>以上就是Ansible的核心内容， 不会特别的复杂， 但是由于模块众多的原因， 还是需要花时间去阅读具体的模块文档。</p>
-
-<p>可以看到， Ansible真的就只是一个能够在多台主机上执行同一个任务的运维工具而已。 而在我看来， 运维最重要的并不是工具， 而是运维的体系。</p>
-
-<p>在接下来的文章中可以看到， 当我们使用了Docker容器以后， 一个真正的自动化运维体系才算刚刚开始。 如果更进一步地使用Kubernetes的话， 甚至可以不需要Ansible。</p>
 
 	  ]]></description>
 	</item>

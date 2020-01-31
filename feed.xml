@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>MySQL-InnoDB中的锁</title>
+        
+          <description>&lt;p&gt;锁在InnoDB存储引擎中的使用远比我们想象中的更加频繁，及时是一条最为简单的&lt;code class=&quot;highlighter-rouge&quot;&gt;update set&lt;/code&gt;语句，其中也涉及到了各种锁的使用。包括常说的一致性锁定读，解决幻读等场景中，同样包含了锁的大量使用。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Fri, 31 Jan 2020 10:06:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/MySQL-InnoDB-Lock</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/MySQL-InnoDB-Lock</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>Golang中的interface</title>
         
           <description>&lt;p&gt;Golang除了方便使用的协程以外，最令我感到惊讶的就是&lt;code class=&quot;highlighter-rouge&quot;&gt;interface&lt;/code&gt;，接口。在其它语言中，接口承担的主要作用为解耦和协议，但是在Golang中，&lt;code class=&quot;highlighter-rouge&quot;&gt;interface&lt;/code&gt;还作为一种”通用”类型广泛使用于标准库和第三方库中。&lt;/p&gt;
