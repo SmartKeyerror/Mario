@@ -6,8 +6,12 @@ logo: 'assets/images/ghost.png'
 current: about
 ---
 
-This is a demo blog for Ghost, it contains dummy content which allows you to click around and see what a Ghost blog running the default theme looks like.
+博主是95年湖北人，机械专业出身，半路出家自学编程。专注于Python和Go，看得懂Java。由于当时自学Python时遇到了太多了`KeyError`错误，所以昵称叫SmartKeyerror。
 
-We use this for testing and for reference!
+写博客的初衷是为了学习和梳理，但是如果读者能够在这里有那么一丢丢的收获的话，我会非常开心。
 
-If you'd like to set up your own blog, head on over to [https://ghost.org](https://ghost.org) and sign up.
+
+#### Contact
+
+- 博客项目地址: [Mario](https://github.com/SmartKeyerror/Mario)
+- Email: smartkeyerror@gmail.com
