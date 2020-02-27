@@ -12,6 +12,67 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>Linux主机通过Windows虚拟机转发Easyconnect内网请求</title>
+	  <link>//Linux-Use-EasyConnect</link>
+	  <author></author>
+	  <pubDate>2020-02-27T12:06:25+00:00</pubDate>
+	  <guid>//Linux-Use-EasyConnect</guid>
+	  <description><![CDATA[
+	     <p>世界上有个恶心的公司叫Sangfor，开发出了恶心的工具EasyConnect，本来这东西都是给在校的学生用的，好不好用都无所谓。但是很多公司也开始使用这个来访问内网，并且还不支持Linux(反正到目前Ubuntu下的64bit版本连接就没成功过)，这就很令人讨厌了。回想起Ubuntu下使用Wine安装微信的种种难受，决定还是使用Windows虚拟机开启EasyConnect，并把部分的Linux流量打进虚拟机。</p>
+
+<!---more--->
+
+<h4 id="1-虚拟机配置">1. 虚拟机配置</h4>
+<p>虚拟机需要两块网卡，其中一块必须是Host-only类型的，用来和Linux主机通信，这块儿网卡是内网流量的入口，所以必须配置。另一块可以是NAT，也可以是Bridge，随个人喜好。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/VMware-Network-Config.png" alt="" /></p>
+
+<h4 id="2-windows虚拟机网络配置">2. Windows虚拟机网络配置</h4>
+
+<p>进到Windows虚拟机以后，打开网络适配器设置，这时候可以看到两张网卡: Ethernet0和Ethernet1，找到Host-only那张网卡，并修改其名称为<code class="highlighter-rouge">Host</code>，起一个有意义的名称对后面的操作非常有帮助。如果不确定哪张网卡是Host-only的话，可以对比网卡的MAC地址和虚拟机网络配置中的MAC地址。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/Ethernet.png" alt="" /></p>
+
+<p>开启EasyConnect，并建立与内网的连接，此时会多出一张名为”以太网”的网卡，这张网卡的IP地址子网掩码什么的都可以不用管，就是张工具卡。设置该网络的共享属性，和前面建立的Host-only网卡建立共享。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/share-with-host-only.png" alt="" /></p>
+
+<p>设置完成以后会发现Host-only那张网卡的IP地址被强制更改成了192.168.137.1，改了就改了吧，也不是不能用。</p>
+
+<p>并关闭Windows的公用网络防火墙，不然数据包会被防火墙拦截。</p>
+
+<h4 id="3-设置linux路由规则">3. 设置Linux路由规则</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>ip a add 192.168.137.2/24 dev vmnet1
+<span class="nb">sudo </span>ip r add 10.0.0.0/8 via 192.168.137.1
+</code></pre></div></div>
+
+<p>给vmnet1，也就是Host-only网卡添加一个和192.168.137.2相同IP地址段的IP地址，使Linux能够建立正常的路由转发规则，否则Linux主机根本就不知道192.168.137.1这个IP地址是谁的。然后将所有的内网(10.0.0.0/8)请求都通过192.168.137.1走Windows的内网网络。</p>
+
+<h4 id="4-windows安装ccproxy">4. Windows安装CCProxy</h4>
+
+<p>对于某些需要域名解析的HTTP请求，又不想用dnsmasq去自己解析DNS，就可以直接用该工具进行转发，下载、安装和使用傻瓜式操作，完美，非常适合我这种智商不高的人。</p>
+
+<p>安装完成以后设置下本机局域网IP地址，选择NAT或者是Bridge的那张网卡即可:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/CCProxy.png" alt="" /></p>
+
+<p>由于我的Chrome用了SwitchOmega，并不想牺牲某些便利，所以使用Firefox进行代理设置，内网的HTTP请求以后就用Firefox发送，流量使用分明，代理配置也尽量分开。</p>
+
+<p>Firefox中输入<code class="highlighter-rouge">about:preferences</code>，拉到最底下，选择Network Settings，就可以进行代理设置了。</p>
+
+<p>CCProxy的HTTP协议默认端口为808，IP地址则是NAT或者Bridge网卡的IP地址，进行配置即可:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/Firefox-Config.png" alt="" /></p>
+
+<p>需要注意的是FTP端口为2121，SOCKS端口为1080，因为我不需要这两个协议，所以并没有配置。</p>
+
+<p>完)</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>MySQL-InnoDB中的锁</title>
 	  <link>//MySQL-InnoDB-Lock</link>
 	  <author></author>
@@ -2379,381 +2440,6 @@ As for performance, there can be some (minor) loss that comes with using unbuffe
 
 <h4 id="5-小结">5. 小结</h4>
 <p>从B-Tree以及B+Tree的使用场景上来看， 没有适用于一切场景的数据结构， 只有最适合某些场景的数据结构。 在学习数据结构的过程中， 有时候不仅要关注它的原理， 更需要关注它的设计初衷以及适用场景。</p>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>DevOps基础(1)--Shell脚本编程</title>
-	  <link>//shell-programing</link>
-	  <author></author>
-	  <pubDate>2019-06-17T09:31:51+00:00</pubDate>
-	  <guid>//shell-programing</guid>
-	  <description><![CDATA[
-	     <p>由于Docker容器以及Kubernetes容器编排服务的蓬勃发展， 服务器以及业务服务的运维不再是运维工程师的专属， 业务的开发工程师也必须加入到运维的领域之中， 与运维工程师合作， 形成一套完整、高效的自动化运维与部署的系统。 而在我看来， 传统的运维工程师将会逐渐被应用开发工程师所取代， 因为Kubernetes赋予了开发人员强大的负载均衡、自动横向拓展以及高效管理的相关功能。 而在这些宏大的系统建设之前， Shell编程是无论如何都离不开的话题。</p>
-
-<!---more--->
-
-<h4 id="1-shell变量">1. Shell变量</h4>
-<p>作为一个后台开发人员， Shell脚本既陌生由熟悉， 毕竟Linux命令哪个后台开发不会接触呢？ 将一个又一个的Linux命令收集起来， 并使用一些粘合剂进行组合， 最终就得到了Shell脚本。</p>
-
-<p>Shell和Python语言一样， 是一个弱类型语言， 也就是说一个变量可以对其进行任意的类型赋值:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smart@Zero:~<span class="nv">$ foo</span><span class="o">=</span><span class="s2">"bar"</span>
-smart@Zero:~<span class="nv">$ </span><span class="nb">echo</span> <span class="nv">$foo</span>
-bar
-smart@Zero:~<span class="nv">$ foo</span><span class="o">=</span>10
-smart@Zero:~<span class="nv">$ </span><span class="nb">echo</span> <span class="nv">$foo</span>
-10
-</code></pre></div></div>
-
-<p>在Terminal中， Shell命令就是一个天然的类似于Python的IPython环境， 如果我们想要对Python的某些语法进行测试的话， 需要进入Python或者IPython环境中， 而对于Shell而言， 打开Terminal就是自己工作的海洋。</p>
-
-<p>在Shell中， 变量的赋值与其它语言没什么区别， 只不过获取变量的方式稍有不同而已。 我们可以认为<code class="highlighter-rouge">foo</code>变量是值<code class="highlighter-rouge">"bar"</code>的一个引用， 而要获取变量值， 需要借助引用名加上<code class="highlighter-rouge">$</code>符号， 非常类似C的指针。</p>
-
-<p>在Shell编程的推荐使用方法中， 使用<code class="highlighter-rouge">${foo}</code>的方式获取变量内容， 多加一个大括号， 这样一来能够更加清楚的界定变量名称的范围， 不至于出现一些奇奇怪怪的问题。</p>
-
-<p>除了我们自己定义的变量以外， 在Linux运行时， 还会预先定义一系列的环境变量。 环境变量说的简单一些就是定义在某一个文件中， 供整个Linux使用的变量， 可以认为是一种最高层的全局变量。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smart@Zero:~<span class="nv">$ </span>env
-...
-<span class="nv">WORKON_HOME</span><span class="o">=</span>/home/smart/.virtualenvs
-<span class="nv">HOME</span><span class="o">=</span>/home/smart
-<span class="nv">PATH</span><span class="o">=</span>/home/smart/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/go/bin/
-</code></pre></div></div>
-
-<p>获取当前系统的环境变量也简单， 敲<code class="highlighter-rouge">env</code>即可。 在上面的结果中， <code class="highlighter-rouge">WORKON_HOME</code>是virtualenvwrapper的工作目录， 是我定义在<code class="highlighter-rouge">~/.bashrc</code>中的， 而<code class="highlighter-rouge">HOME</code>和<code class="highlighter-rouge">PATH</code>变量， 则是Linux操作系统定义的。</p>
-
-<p>获取系统的环境变量和获取自己定义的变量一样， <code class="highlighter-rouge">$</code>符+变量名:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smart@Zero:~<span class="nv">$ </span><span class="nb">echo</span> <span class="nv">$HOME</span>
-/home/smart
-</code></pre></div></div>
-
-<p>值得一提的就是<code class="highlighter-rouge">PATH</code>变量， 在安装一些软件时， 例如Java， Go时， 都需要将一些变量加入到<code class="highlighter-rouge">PATH</code>中， 为什么这么做？ Linux系统会在<code class="highlighter-rouge">PATH</code>变量值的路径中寻找可执行的二进制文件， 而当我们把诸如<code class="highlighter-rouge">GOPATH</code>的变量值假如到<code class="highlighter-rouge">PATH</code>变量中以后， 在任何的目录下， 都可以使用Go的相关命令， 这就是<code class="highlighter-rouge">PATH</code>变量的作用。</p>
-
-<h4 id="2-获取系统函数的返回值">2. 获取系统函数的返回值</h4>
-<p>诸如<code class="highlighter-rouge">cat</code>, <code class="highlighter-rouge">du</code>, <code class="highlighter-rouge">date</code>等命令， 实际上就是函数， 只不过是由C编写并通过某种方式暴露给用户而已。</p>
-
-<p><code class="highlighter-rouge">date</code>函数用以获取当前时区的时间:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smart@Zero:~<span class="nv">$ </span>date
-2019年 05月 12日 星期日 10:43:48 CST
-</code></pre></div></div>
-
-<p>在编写Shell脚本时， 很多时候都需要将函数的运行结果保存在某一个变量中， 所以Shell提供了两种方式进行结果的赋值:</p>
-<ol>
-  <li>使用variable=&amp;#96date&amp;#96</li>
-  <li>使用variable=$(date)</li>
-</ol>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smart@Zero:~<span class="nv">$ foo</span><span class="o">=</span><span class="sb">`</span>date<span class="sb">`</span>
-smart@Zero:~<span class="nv">$ </span><span class="nb">echo</span> <span class="nv">$foo</span>
-2019年 05月 12日 星期日 10:49:21 CST
-smart@Zero:~<span class="nv">$ </span><span class="nb">echo</span> <span class="nv">$foo</span>
-2019年 05月 12日 星期日 10:49:21 CST
-</code></pre></div></div>
-
-<p>如果查看<code class="highlighter-rouge">date</code>的manual手册的话， 会发现它还支持日期的格式化:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smart@Zero:~<span class="nv">$ foo</span><span class="o">=</span><span class="sb">`</span>date +%y%m%d%H%M%S<span class="sb">`</span>
-smart@Zero:~<span class="nv">$ </span><span class="nb">echo</span> <span class="nv">$foo</span>
-190512105105
-</code></pre></div></div>
-
-<p>此外， Shell还提供了对上一个命令所执行结果的获取， 使用<code class="highlighter-rouge">$?</code>进行获取。 这是什么意思？ 在Shell中， 一条命令如果正常执行的话， 返回值将会是0， 如果命令执行时出现了某些错误的话， 返回值将会大于0， 且小于255。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 执行一条正常的命令</span>
-smart@Zero:~<span class="nv">$ </span><span class="nb">echo</span> <span class="s2">"Hello World"</span>
-Hello World
-smart@Zero:~<span class="nv">$ </span><span class="nb">echo</span> <span class="nv">$?</span>
-0
-
-<span class="c"># 执行一条会抛出错误的命令</span>
-smart@Zero:~<span class="nv">$ </span><span class="nb">ls</span> <span class="nt">-alh</span> NotExistFile
-<span class="nb">ls</span>: cannot access <span class="s1">'NotExistFile'</span>: No such file or directory
-smart@Zero:~<span class="nv">$ </span><span class="nb">echo</span> <span class="nv">$?</span>
-2
-</code></pre></div></div>
-
-<p>由于NotExistFile是一个不存在的文件， 所以<code class="highlighter-rouge">ls</code>命令会产生一个标准错误并输出至屏幕中， 此时的退出状态码将会为2。 一些常见的退出状态码如下:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>状态码</th>
-      <th>描述</th>
-      <th>状态码</th>
-      <th>描述</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>0</td>
-      <td>命令成功结束</td>
-      <td>126</td>
-      <td>命令不可执行</td>
-    </tr>
-    <tr>
-      <td>1</td>
-      <td>一般性未知错误</td>
-      <td>127</td>
-      <td>没找到命令</td>
-    </tr>
-    <tr>
-      <td>2</td>
-      <td>不合适的shell命令</td>
-      <td>130</td>
-      <td>通过Ctrl+C退出的命令</td>
-    </tr>
-  </tbody>
-</table>
-
-<h4 id="3-流程控制">3. 流程控制</h4>
-<p>既然是一种语言， 又怎么能少的了流程控制。 在Shell脚本中， 使用最为广泛的恐怕就是<code class="highlighter-rouge">if-then</code>判断了。</p>
-
-<h5 id="31-if-then">3.1 if-then</h5>
-<p>条件语句的基本模板:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">if </span>command-1
-<span class="k">then
-  </span>command-2
-<span class="k">else
-  </span>command-3
-<span class="k">fi</span>
-</code></pre></div></div>
-
-<p>需要特别注意的是， 这里的条件判断是command-1这条命令的执行结果: 如果command-1执行的退出状态码为0的话， 执行then语句块的内容， 否则退出。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-
-<span class="k">if </span><span class="nb">ls</span> <span class="nt">-alh</span> NotExistFile
-<span class="k">then
-  </span><span class="nb">echo</span> <span class="s2">"The ls command exec successed"</span>
-<span class="k">else
-  </span><span class="nb">echo</span> <span class="s2">"Some error happened when exec ls"</span>
-<span class="k">fi</span>
-</code></pre></div></div>
-
-<p>由于<code class="highlighter-rouge">ls -alh NotExistFile</code>的退出状态码为2， 所以将会输出”Some error happened when exec ls”。 如果我们想要true/false的条件语句， 使用<code class="highlighter-rouge">[[  ]]</code>。 例如， 如果变量<code class="highlighter-rouge">foo</code>的值为”bar”的话， 打印一条语句， 否则什么都不做:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-
-<span class="nv">bar</span><span class="o">=</span><span class="s2">"foo"</span>
-<span class="k">if</span> <span class="o">[[</span> <span class="k">${</span><span class="nv">bar</span><span class="k">}</span> <span class="o">=</span> <span class="s2">"foo"</span> <span class="o">]]</span>
-<span class="k">then
-  </span><span class="nb">echo</span> <span class="s2">"Right"</span>
-<span class="k">fi</span>
-</code></pre></div></div>
-
-<p>与传统的语言都不同的是， 判断两个变量是否相等使用的是单个<code class="highlighter-rouge">=</code>号， 而不是<code class="highlighter-rouge">==</code>， 需要注意。</p>
-
-<p>Shell也提供了一些参数来帮助我们进行条件判断， 例如<code class="highlighter-rouge">-n str</code>表示检查str的长度是否大于0， <code class="highlighter-rouge">-z str</code>表示检查str的长度是否为0， <code class="highlighter-rouge">-d file</code>用以检测file是否存在并且是一个目录, <code class="highlighter-rouge">-e file</code>判断file是否存在…</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">if</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="k">${</span><span class="nv">bar</span><span class="k">}</span> <span class="o">]]</span>
-<span class="k">then
-  </span><span class="nb">echo</span> <span class="s2">"The length of the bar is not zero"</span>
-<span class="k">fi
-
-if</span> <span class="o">[[</span> <span class="nt">-d</span> <span class="s2">"/home/smart"</span> <span class="o">]]</span>
-<span class="k">then
-  </span><span class="nb">echo</span> <span class="s2">"/home/smart exist, and it's a directory"</span>
-<span class="k">fi</span>
-</code></pre></div></div>
-
-<h5 id="32-case语句">3.2 case语句</h5>
-<p>有时候变量的值会有多种， 如果一个一个的写<code class="highlighter-rouge">if</code>的话太麻烦了， 所以就有了<code class="highlighter-rouge">case</code>语句， 基本模板:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> variable <span class="k">in
-</span>A <span class="p">|</span> B<span class="p">)</span> command-1 <span class="p">;;</span>
-C<span class="p">)</span> command-2 <span class="p">;;</span>
-D<span class="p">)</span> command-3 <span class="p">;;</span>
-<span class="k">*</span><span class="p">)</span> default-command <span class="p">;;</span>
-<span class="k">esac</span>
-</code></pre></div></div>
-
-<p>注意一下语法格式就好， 没有什么特别复杂的地方。</p>
-
-<h5 id="33-while语句">3.3 while语句</h5>
-<p>while语句的基本模板:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">while </span>condition
-<span class="k">do
-  </span><span class="nb">command
-</span><span class="k">done</span>
-</code></pre></div></div>
-
-<p>condition的种类与<code class="highlighter-rouge">if-then</code>语法相同， 既可以判断命令的退出状态码， 也可以使用<code class="highlighter-rouge">[[  ]]</code>的形式来进行true/false判断:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 一个无限循环</span>
-<span class="k">while</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="k">${</span><span class="nv">bar</span><span class="k">}</span> <span class="o">]]</span><span class="p">;</span> <span class="k">do
-    </span><span class="nb">echo</span> <span class="s2">"The length of bar is not zero"</span>
-<span class="k">done</span>
-</code></pre></div></div>
-
-<h5 id="34-for循环">3.4 for循环</h5>
-<p><code class="highlighter-rouge">for</code>循环的语法格式更贴近于Python， 其模板为:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for </span>var <span class="k">in </span>list
-<span class="k">do
-  </span><span class="nb">command
-</span><span class="k">done</span>
-</code></pre></div></div>
-
-<p>例如使用通配符来生成文件列表， 然后遍历， 当遍历的文件是一个目录时， 打印它:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for </span>file <span class="k">in</span> /home/smart/<span class="k">*</span>
-<span class="k">do
-  if</span> <span class="o">[[</span> <span class="nt">-d</span> <span class="k">${</span><span class="nv">file</span><span class="k">}</span> <span class="o">]]</span>
-  <span class="k">then
-    </span><span class="nb">echo</span> <span class="s2">"</span><span class="k">${</span><span class="nv">file</span><span class="k">}</span><span class="s2"> is a directory"</span>
-  <span class="k">fi
-done</span>
-</code></pre></div></div>
-
-<p>也可以使用C语言风格的循环语句:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span> <span class="o">((</span> i <span class="o">=</span> 0<span class="p">;</span> i &lt; 10<span class="p">;</span> i++ <span class="o">))</span><span class="p">;</span> <span class="k">do
-    </span><span class="nb">echo</span> <span class="s2">"</span><span class="k">${</span><span class="nv">i</span><span class="k">}</span><span class="s2">"</span>
-<span class="k">done</span>
-</code></pre></div></div>
-
-<h4 id="4-处理用户输入与重定向">4. 处理用户输入与重定向</h4>
-<p>向脚本传递用户的参数是一个shell脚本最基本的操作， 脚本获取参数的方式也与其它语言不同。 诸如Java， 参数是以字符数组的方式传递给main函数的。</p>
-
-<p>在shell中， 使用<code class="highlighter-rouge">$1</code>来获取第一个参数， <code class="highlighter-rouge">$2</code>获取第二个参数, …， <code class="highlighter-rouge">$n</code>获取第n个参数。 而<code class="highlighter-rouge">$0</code>比较特殊， 代表了执行该脚本的路径名称。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-<span class="c"># test.sh</span>
-<span class="nb">echo</span> <span class="k">${</span><span class="nv">0</span><span class="k">}</span>, <span class="k">${</span><span class="nv">1</span><span class="k">}</span>, <span class="k">${</span><span class="nv">2</span><span class="k">}</span>, <span class="k">${</span><span class="nv">3</span><span class="k">}</span>
-</code></pre></div></div>
-
-<p>在赋予了普通用户对该脚本的执行权限后， 执行该脚本: <code class="highlighter-rouge">./test.sh A B C</code>， 将会得到输出:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./test.sh, A, B, C
-</code></pre></div></div>
-
-<p>对于<code class="highlighter-rouge">$0</code>， 如果只想要获取脚本名称的话， 可以使用<code class="highlighter-rouge">$(basename ${0})</code>。 获取参数个数使用<code class="highlighter-rouge">$#</code>， 获取所有参数使用<code class="highlighter-rouge">$*</code>或者是<code class="highlighter-rouge">$@</code>， 前者如果使用<code class="highlighter-rouge">"$*"</code>进行引用的话， 将会作为一个字符整体对待， 而<code class="highlighter-rouge">$@</code>不管在何种情况下， 都是参数所组成的列表， 所以<code class="highlighter-rouge">$@</code>更多的用于参数的迭代。</p>
-
-<p>提到参数处理， 就不得不提及<code class="highlighter-rouge">shift</code>关键字。在使用<code class="highlighter-rouge">shift</code>命令时,默认情况下它会将每个参数变量向左移动一个位置。所以,变量$3的值会移到$2中,变量$2的值会移到$1中,而变量$1的值则会被删除。</p>
-
-<p><code class="highlighter-rouge">shift</code>的测试也很简单， 非常清楚的就能够知道它到底做了什么:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-
-<span class="nb">echo</span> <span class="s2">"All param: </span><span class="nv">$@</span><span class="s2">"</span>
-<span class="nb">shift
-echo</span> <span class="s2">"The first shift: </span><span class="nv">$@</span><span class="s2">"</span>
-<span class="nb">shift
-echo</span> <span class="s2">"The second shift: </span><span class="nv">$@</span><span class="s2">"</span>
-<span class="nb">shift
-echo</span> <span class="s2">"The third shift: </span><span class="nv">$@</span><span class="s2">"</span>
-</code></pre></div></div>
-
-<p>这次多传递一些参数进入该脚本， 得到的输出:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smart@Zero:~<span class="nv">$ </span>./test.sh A B C D E F
-All param: A B C D E F
-The first <span class="nb">shift</span>: B C D E F
-The second <span class="nb">shift</span>: C D E F
-The third <span class="nb">shift</span>: D E F
-</code></pre></div></div>
-
-<p>每执行一次shift， 参数列表的首个参数都会被弹出， 如果执行<code class="highlighter-rouge">shift 2</code>的话， 将会弹出2个参数。</p>
-
-<p>在<code class="highlighter-rouge">Ansible</code>的ad-hoc模式中， 通常我们会这样执行命令:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 将ansible所管理的所有主机进行文件拷贝, 并发数为10</span>
-ansible all <span class="nt">-m</span> copy <span class="nt">-a</span> <span class="s2">"src=/home/smart/monitor/ dest=/home/monitor"</span> <span class="nt">-f</span> 5
-</code></pre></div></div>
-
-<p>在有了shift之后， 就可以很轻松的编写出对应的shell脚本了:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/sh</span>
-<span class="c"># simulate_ansible.sh</span>
-<span class="c"># 运行: ./simulate_ansible.sh all -m copy -a "src=/home/smart/monitor/ dest=/home/monitor" -f 5</span>
-
-<span class="nb">echo</span> <span class="s2">"Get params: </span><span class="nv">$@</span><span class="s2">"</span>
-<span class="k">while</span> <span class="o">[[</span> <span class="nv">$# </span><span class="nt">-gt</span> 0 <span class="o">]]</span><span class="p">;</span> <span class="k">do
-  case</span> <span class="nv">$1</span> <span class="k">in
-  </span>all<span class="p">)</span>
-    <span class="nb">echo</span> <span class="s2">"The process host group: </span><span class="k">${</span><span class="nv">1</span><span class="k">}</span><span class="s2">"</span>
-    <span class="nb">shift</span> <span class="p">;;</span>
-  <span class="nt">-m</span><span class="p">)</span>
-    <span class="nb">echo</span> <span class="s2">"Get module name: </span><span class="k">${</span><span class="nv">2</span><span class="k">}</span><span class="s2">"</span>
-    <span class="nb">shift </span>2 <span class="p">;;</span>
-  <span class="nt">-a</span><span class="p">)</span>
-    <span class="nb">echo</span> <span class="s2">"Get parameter: </span><span class="k">${</span><span class="nv">2</span><span class="k">}</span><span class="s2">"</span>
-    <span class="nb">shift </span>2 <span class="p">;;</span>
-  <span class="nt">-f</span><span class="p">)</span>
-    <span class="nb">echo</span> <span class="s2">"The fork number is: </span><span class="k">${</span><span class="nv">2</span><span class="k">}</span><span class="s2">"</span>
-    <span class="nb">shift </span>2 <span class="p">;;</span>
-  <span class="k">*</span><span class="p">)</span>
-    <span class="nb">echo</span> <span class="s2">"Bad params"</span>
-    <span class="nb">exit </span>2
-  <span class="k">esac
-done</span>
-</code></pre></div></div>
-
-<p>在Linux I/O中， 标准输入使用0表示， 标准输出使用1表示， 标准错误使用2表示。 什么是标准输出/错误? 使用<code class="highlighter-rouge">ls</code>命令得到的结果就是标准输出， 使用<code class="highlighter-rouge">ls NotExistFile</code>命令得到的结果就是标准错误。</p>
-
-<p>Shell脚本在执行时， 许多时候都是边缘触发或者是定时执行的， 其标准输出与错误我们是看不到的， 所以就需要有日志进行记录。 一个记录标准输出， 一个记录标准错误:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls</span> <span class="nt">-alh</span> NotExistFile 1&gt;~/monitor/stdout.log 2&gt;~/monitor/stderror.log
-</code></pre></div></div>
-
-<p>有时候想偷个懒， 不管是输出还是错误， 都重定向到同一个文件:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls</span> <span class="nt">-alh</span> &amp;&gt;~/homo/monitor/ls.log
-</code></pre></div></div>
-
-<h4 id="5-函数">5. 函数</h4>
-<p>shell中的函数并没有很强大的功能， 更像是一个小型的shell脚本。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 定义</span>
-funcname<span class="o">()</span> <span class="o">{</span>...<span class="o">}</span>
-<span class="c"># 调用与参数传递</span>
-funcname <span class="s2">"foo"</span> <span class="s2">"bar"</span>
-</code></pre></div></div>
-
-<h4 id="6-常见的shell脚本头设置">6. 常见的shell脚本头设置</h4>
-<p>有时会看到在某些shell脚本中有这样的语句:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">set</span> <span class="nt">-e</span>
-<span class="nb">set</span> <span class="nt">-x</span>
-<span class="nb">exec</span> &amp;&gt; test.log
-</code></pre></div></div>
-
-<p><code class="highlighter-rouge">set</code>以及<code class="highlighter-rouge">exec</code>主要是对当前脚本的一些全局设置， 所以会放到脚本开始的地方。</p>
-
-<p><code class="highlighter-rouge">set -e</code>表示如果当前的脚本在执行某一条命令时的退出状态码不为0时， 则整个脚本退出。 有些类似于异常的抛出与进程终止。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-<span class="nb">set</span> <span class="nt">-e</span>
-<span class="nb">ls</span> <span class="nt">-alh</span>
-<span class="nb">ls</span> <span class="nt">-alh</span> NotExistFile
-<span class="nb">echo</span> <span class="s2">"Done"</span>  <span class="c"># 永远不会执行到该行命令</span>
-</code></pre></div></div>
-
-<p><code class="highlighter-rouge">set -x</code>则主要用于进行DEBUG， 在脚本执行时将会打印出每一行命令执行的详细信息。</p>
-
-<p><code class="highlighter-rouge">exec &amp;&gt; test.log</code>则表示将当前脚本执行时所产生的所有标准输出与错误均重定向至test.log文件。</p>
-
-<h4 id="7-子shell">7. 子shell</h4>
-<p>假如我们编写了这样的一个shell脚本:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-<span class="nb">cd</span> /home/smart/monitor
-</code></pre></div></div>
-
-<p>然后执行该脚本， 会发现当前的目录并没有发生改变， 为什么? 这是因为不管是使用<code class="highlighter-rouge">bash script.sh</code>执行还是使用<code class="highlighter-rouge">./script.sh</code>来执行脚本， 脚本的执行都在一个名为子shell的shell环境中执行。 子shell中执行<code class="highlighter-rouge">cd</code>命令， 并不会影响到当前的shell状态。</p>
-
-<h4 id="8-小结">8. 小结</h4>
-<p>从我的工作经验上来看， 如果是开发来兼职做运维工作的话， 以上的内容完全能够解决日常中需要的运维场景。 Shell脚本语言本身比较简单， 其核心仍然是一个又一个的Linux系统命令， Shell语言只是作为粘合剂将这些命令组合起来形成一个整体而已。</p>
-
-<p>PS: 留一张思维导图作为自己的复习参考</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/ShellScript.png" alt="" /></p>
 
 	  ]]></description>
 	</item>

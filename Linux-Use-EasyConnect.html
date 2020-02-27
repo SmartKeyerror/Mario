@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Linux主机通过Windows虚拟机转发Easyconnect内网请求</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Linux-Use-EasyConnect" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Linux主机通过Windows虚拟机转发Easyconnect内网请求" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//Linux-Use-EasyConnect" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Linux主机通过Windows虚拟机转发Easyconnect内网请求" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Linux-Use-EasyConnect" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Linux主机通过Windows虚拟机转发Easyconnect内网请求",
+    "url": "https://smartkeyerror.com//Linux-Use-EasyConnect",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Linux主机通过Windows虚拟机转发Easyconnect内网请求</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2020-02-27">27 Feb 2020</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/Tool'>Tool</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>世界上有个恶心的公司叫Sangfor，开发出了恶心的工具EasyConnect，本来这东西都是给在校的学生用的，好不好用都无所谓。但是很多公司也开始使用这个来访问内网，并且还不支持Linux(反正到目前Ubuntu下的64bit版本连接就没成功过)，这就很令人讨厌了。回想起Ubuntu下使用Wine安装微信的种种难受，决定还是使用Windows虚拟机开启EasyConnect，并把部分的Linux流量打进虚拟机。</p>
+
+<!---more--->
+
+<h4 id="1-虚拟机配置">1. 虚拟机配置</h4>
+<p>虚拟机需要两块网卡，其中一块必须是Host-only类型的，用来和Linux主机通信，这块儿网卡是内网流量的入口，所以必须配置。另一块可以是NAT，也可以是Bridge，随个人喜好。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/VMware-Network-Config.png" alt="" /></p>
+
+<h4 id="2-windows虚拟机网络配置">2. Windows虚拟机网络配置</h4>
+
+<p>进到Windows虚拟机以后，打开网络适配器设置，这时候可以看到两张网卡: Ethernet0和Ethernet1，找到Host-only那张网卡，并修改其名称为<code class="highlighter-rouge">Host</code>，起一个有意义的名称对后面的操作非常有帮助。如果不确定哪张网卡是Host-only的话，可以对比网卡的MAC地址和虚拟机网络配置中的MAC地址。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/Ethernet.png" alt="" /></p>
+
+<p>开启EasyConnect，并建立与内网的连接，此时会多出一张名为”以太网”的网卡，这张网卡的IP地址子网掩码什么的都可以不用管，就是张工具卡。设置该网络的共享属性，和前面建立的Host-only网卡建立共享。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/share-with-host-only.png" alt="" /></p>
+
+<p>设置完成以后会发现Host-only那张网卡的IP地址被强制更改成了192.168.137.1，改了就改了吧，也不是不能用。</p>
+
+<p>并关闭Windows的公用网络防火墙，不然数据包会被防火墙拦截。</p>
+
+<h4 id="3-设置linux路由规则">3. 设置Linux路由规则</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>ip a add 192.168.137.2/24 dev vmnet1
+<span class="nb">sudo </span>ip r add 10.0.0.0/8 via 192.168.137.1
+</code></pre></div></div>
+
+<p>给vmnet1，也就是Host-only网卡添加一个和192.168.137.2相同IP地址段的IP地址，使Linux能够建立正常的路由转发规则，否则Linux主机根本就不知道192.168.137.1这个IP地址是谁的。然后将所有的内网(10.0.0.0/8)请求都通过192.168.137.1走Windows的内网网络。</p>
+
+<h4 id="4-windows安装ccproxy">4. Windows安装CCProxy</h4>
+
+<p>对于某些需要域名解析的HTTP请求，又不想用dnsmasq去自己解析DNS，就可以直接用该工具进行转发，下载、安装和使用傻瓜式操作，完美，非常适合我这种智商不高的人。</p>
+
+<p>安装完成以后设置下本机局域网IP地址，选择NAT或者是Bridge的那张网卡即可:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/CCProxy.png" alt="" /></p>
+
+<p>由于我的Chrome用了SwitchOmega，并不想牺牲某些便利，所以使用Firefox进行代理设置，内网的HTTP请求以后就用Firefox发送，流量使用分明，代理配置也尽量分开。</p>
+
+<p>Firefox中输入<code class="highlighter-rouge">about:preferences</code>，拉到最底下，选择Network Settings，就可以进行代理设置了。</p>
+
+<p>CCProxy的HTTP协议默认端口为808，IP地址则是NAT或者Bridge网卡的IP地址，进行配置即可:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/Firefox-Config.png" alt="" /></p>
+
+<p>需要注意的是FTP端口为2121，SOCKS端口为1080，因为我不需要这两个协议，所以并没有配置。</p>
+
+<p>完)</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Linux主机通过Windows虚拟机转发Easyconnect内网请求&amp;url=https://smartkeyerror.comLinux-Use-EasyConnect"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comLinux-Use-EasyConnect"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comLinux-Use-EasyConnect"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/MySQL-InnoDB-Lock">
+            <section class="post">
+                <h2>MySQL-InnoDB中的锁</h2>
+                <p>锁在InnoDB存储引擎中的使用远比我们想象中的更加频繁，及时是一条最为简单的update set语句，其中也涉及到了各种锁的使用。包括常说的一致性锁定读，解决幻读等场景中，同样包含了锁的大量使用。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2020</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-150652886-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

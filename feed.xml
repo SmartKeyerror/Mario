@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>Linux主机通过Windows虚拟机转发Easyconnect内网请求</title>
+        
+          <description>&lt;p&gt;世界上有个恶心的公司叫Sangfor，开发出了恶心的工具EasyConnect，本来这东西都是给在校的学生用的，好不好用都无所谓。但是很多公司也开始使用这个来访问内网，并且还不支持Linux(反正到目前Ubuntu下的64bit版本连接就没成功过)，这就很令人讨厌了。回想起Ubuntu下使用Wine安装微信的种种难受，决定还是使用Windows虚拟机开启EasyConnect，并把部分的Linux流量打进虚拟机。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Thu, 27 Feb 2020 12:06:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Linux-Use-EasyConnect</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Linux-Use-EasyConnect</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>MySQL-InnoDB中的锁</title>
         
           <description>&lt;p&gt;锁在InnoDB存储引擎中的使用远比我们想象中的更加频繁，及时是一条最为简单的&lt;code class=&quot;highlighter-rouge&quot;&gt;update set&lt;/code&gt;语句，其中也涉及到了各种锁的使用。包括常说的一致性锁定读，解决幻读等场景中，同样包含了锁的大量使用。&lt;/p&gt;
