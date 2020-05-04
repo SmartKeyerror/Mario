@@ -444,7 +444,7 @@
     
       
       <item>
-        <title>JJava并发编程(01)--基础学习</title>
+        <title>Java并发编程(01)--基础学习</title>
         
           <description>&lt;p&gt;打了2年多的&lt;code class=&quot;highlighter-rouge&quot;&gt;Python&lt;/code&gt;代码， 大大小小的项目也做了一些， 代码规范和并发效率一直以来是比较头疼的问题。 因为&lt;code class=&quot;highlighter-rouge&quot;&gt;GIL&lt;/code&gt;全局解释器锁的存在使得&lt;code class=&quot;highlighter-rouge&quot;&gt;Python&lt;/code&gt;程序员永远只能使用单核， 并且在锁的保护下许多的效率问题都被掩盖。 在学习了&lt;code class=&quot;highlighter-rouge&quot;&gt;Java&lt;/code&gt;之后， 对其并发模块的设计深感惊艳， 比如&lt;code class=&quot;highlighter-rouge&quot;&gt;ConcurrentHashMap&lt;/code&gt;的分段锁实现， &lt;code class=&quot;highlighter-rouge&quot;&gt;volatile&lt;/code&gt;关键字保证变量的可见性， 所以在这里对其进行整理并进一步加深理解。&lt;/p&gt;
 
