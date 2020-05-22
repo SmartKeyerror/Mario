@@ -274,9 +274,7 @@ def update_or_create(self, defaults=None, **kwargs):
 
 但是我认为， 数据一致性高于服务可用性， 当出现数据不一致时， 服务可用性也将毫无意义。
 
-当MySQL的事务隔离级别为`read committed`时， 对于数据库中未存在的数据添加悲观锁时， 多个事务可同时执行`select for update`语句， 并且均能成功。
-
-![](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/read-committed-select-for-update.gif)
+当MySQL的事务隔离级别为`read committed`时， 对数据库中未存在的数据添加悲观锁， 并不会对数据添加间隙锁或者是Next-Key Lock，那么多个事务可同时执行INSERT
 
 MySQL官方对这两种隔离级别的`FOR UPDATE`悲观锁做了比较详细的解释:
 
