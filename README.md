@@ -6,6 +6,8 @@
 
 ## 归档
 
+- 2020/02/27 [Linux主机通过Windows虚拟机转发Easyconnect内网请求](https://smartkeyerror.com/Linux-Use-EasyConnect)
+- 2020/01/31 [MySQL-InnoDB中的锁](https://smartkeyerror.com/MySQL-InnoDB-Lock)
 - 2019/12/25 [Golang中的interface](https://smartkeyerror.com/Golang-interface)
 - 2019/12/17 [Linux操作系统-文件I/O](https://smartkeyerror.com/Linux-IO)
 - 2019/09/18 [MySQL中的悲观锁与常见的死锁场景](https://smartkeyerror.com/MySQL-Pessimistic-Lock)

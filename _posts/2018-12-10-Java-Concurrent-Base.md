@@ -2,7 +2,7 @@
 layout: post
 cover: false
 navigation: true
-title: JJava并发编程(01)--基础学习
+title: Java并发编程(01)--基础学习
 date: 2018-12-10 08:49:09
 tags: ['并发编程']
 subclass: 'post tag-fiction'
