@@ -6,6 +6,7 @@
 
 ## 归档
 
+- 2020/05/28 [InnoDB如何保证事务的原子性与持久性](https://smartkeyerror.com/InnoDB-AD)
 - 2020/02/27 [Linux主机通过Windows虚拟机转发Easyconnect内网请求](https://smartkeyerror.com/Linux-Use-EasyConnect)
 - 2020/01/31 [MySQL-InnoDB中的锁](https://smartkeyerror.com/MySQL-InnoDB-Lock)
 - 2019/12/25 [Golang中的interface](https://smartkeyerror.com/Golang-interface)
