@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>InnoDB如何保证事务的原子性与持久性</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+<!--    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">-->
+<!--    <style>.hljs { background: none; }</style>-->
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//InnoDB-AD" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="InnoDB如何保证事务的原子性与持久性" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//InnoDB-AD" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="InnoDB如何保证事务的原子性与持久性" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//InnoDB-AD" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "InnoDB如何保证事务的原子性与持久性",
+    "url": "https://smartkeyerror.com//InnoDB-AD",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">InnoDB如何保证事务的原子性与持久性</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2020-05-28">28 May 2020</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在InnoDB存储引擎中，一个事务的执行将涉及到3个日志的数据写入: redo log，undo log以及binlog。其中redo log以及binlog主要实现事务的原子性和持久性，而undo log主要用于实现事务的隔离性。</p>
+
+<!---more--->
+
+<h3 id="1-redo-log">1. redo log</h3>
+
+<p>redo log又称之为重做日志，主要记录了事务对数据页(Page)的物理修改。redo log由两部分组成: 一是位于内存的redo log buffer，用于对redo log进行缓冲，目的在于提升性能。另一部分则位于硬盘中，用于对redo log的持久化。</p>
+
+<h4 id="11-redo-log-buffer">1.1 redo log buffer</h4>
+
+<p>redo log buffer用于优化redo log的写入性能，默认大小为16MB，最大大小为4GB。当一个事务对数据页进行修改时，首先将修改内容放置于缓冲中，而后再对其进行持久化。</p>
+
+<h4 id="12-redo-log">1.2 redo log</h4>
+
+<p>默认情况下，redo log由两个文件构成，<code class="highlighter-rouge">ib_logfile0</code>以及<code class="highlighter-rouge">ib_logfile1</code>。redo log的大小由配置文件决定，在5.7版本中，默认大小为48MB。由于其大小固定，所以数据在写入该日志文件时，将使用循环写入的方式: 首先从头开始写，写到末尾，然后再从头开始写，后面写入的内容会覆盖最初的内容，所以称之为循环写入。</p>
+
+<p>redo log的文件大小设置和MySQL的负载相关，通常来说redo log应该能容纳至少一个小时的数据修改，一般<code class="highlighter-rouge">innodb_log_file_size</code>设置为1GB，<code class="highlighter-rouge">innodb_log_files_in_group</code>设置为4，总计4GB的redo log容量。重做日志大小如果设置的过大，宕机恢复时所花的时间也会越多，所以并不是越大越好。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/redo-log.png" alt="" /></p>
+
+<p>redo log buffer中的数据将会在以下时机持久化至位于磁盘的redo log中:</p>
+
+<ul>
+  <li>事务提交</li>
+  <li>当redo log buffer有一半的空间已经被使用时</li>
+  <li>InnoDB后台线程每秒将数据持久化至硬盘</li>
+</ul>
+
+<p>所以，需要明确的是，当某个事务未提交(commit)时，该事务对物理数据页的修改也可能会持久化至redo log文件中。</p>
+
+<h4 id="13-lsn">1.3 LSN</h4>
+
+<p>在redo log中，还有一个非常重要的属性: LSN，Log Sequence Number，即日志序列号。接下来我们将会看到，LSN在数据恢复以及Group Commit中起到了决定性的作用。</p>
+
+<p>在InnoDB存储引擎中，LSN占用8个字节，且单调递增。LSN所表示的含义包括redo log的总量，checkpoint的位置以及数据页的版本。</p>
+
+<p>假设当前redo log的LSN为1000，事务T1写入了200字节的redo log，那么LSN将递增至1200。若事务T2写入了500字节的redo log，那么LSN又将变成1700。所以通过查看LSN的大小即可知道redo log的总量，单位为字节。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mysql&gt; show engine innodb status<span class="se">\G</span><span class="p">;</span>
+<span class="nt">---</span>
+LOG
+<span class="nt">---</span>
+Log sequence number 20598039739
+Log flushed up to   20598039739
+Pages flushed up to 20598039739
+Last checkpoint at  20598039730
+0 pending log flushes, 0 pending chkp writes
+10 log i/o<span class="s1">'s done, 0.00 log i/o'</span>s/second
+</code></pre></div></div>
+
+<p>如上所示，Log sequence number表示当前的LSN，Log flushed up to表示已经刷新到redo log文件的LSN。</p>
+
+<h3 id="2-binlog">2. binlog</h3>
+
+<p>binlog为MySQL层面的逻辑日志，用于记录对哪一行数据进行了哪些修改，不管使用何种存储引擎，都会有binlog的记录。redo log则是InnoDB存储引擎所特有的日志记录，并且其中记录的是对物理数据页的修改。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/logical-binlog.png" alt="" /></p>
+
+<p>关于binlog的更多内容将在后续的MySQL主从复制中描述。</p>
+
+<h3 id="3-事务执行过程">3. 事务执行过程</h3>
+
+<p>InnoDB存储引擎在提交事务时，为了保证原子性和持久性，将会采用”两阶段”提交的方式写入redo log和binlog。</p>
+
+<h4 id="31-一阶段">3.1 一阶段</h4>
+
+<p>首先，在MySQL中所有执行的SQL语句都会有一个全局递增且循环使用的query_id。当用户开启事务并执行语句后，MySQL将会把第一个语句的query_id分配给该事务，作为Xid的值。</p>
+
+<p>当用户执行<code class="highlighter-rouge">COMMIT</code>提交事务时，将redo log buffer的内容调用<code class="highlighter-rouge">write()</code>系统调用写入内核缓冲区，并调用<code class="highlighter-rouge">fsync()</code>系统调用确保数据写入至硬盘(至少是硬盘的缓冲区)，更新状态为prepare。</p>
+
+<h4 id="32-二阶段">3.2 二阶段</h4>
+
+<p>将产生的binlog调用<code class="highlighter-rouge">write()</code>系统调用写入内核缓冲区，并调用<code class="highlighter-rouge">fsync()</code>系统调用将数据持久化至硬盘，写入成功后事务即可被提交，并更新状态为commit。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/2PC.png" alt="" /></p>
+
+<p>当数据成功地写入到binlog以后，即可返回给用户事务提交成功。由于数据写入<code class="highlighter-rouge">.ibd</code>文件需要随机读写，所以将会由其它线程异步写入，以提高事务执行的效率。</p>
+
+<p>现在来看两阶段提交在数据库Crash的情况:</p>
+
+<ul>
+  <li>binlog有记录，但redo log状态为prepare: 此时表示在写入binlog数据库崩溃，需要根据binlog进行数据恢复</li>
+  <li>binlog有记录，redo log状态为commit: 事务正常提交，无需恢复</li>
+  <li>binlog无记录，redo log状态为prepare: 事务执行一半时崩溃，无需恢复</li>
+  <li>binlog无记录，redo log状态为commit: 在binlog持久化时崩溃，事务直接回滚</li>
+</ul>
+
+<p>可以看到，通过上述的两阶段提交方式能够保证不会产生脏事务，并且已成功提交的事务也能够在MySQL崩溃后重启恢复。</p>
+
+<p>当redo log和binlog均正确的写入数据以后，就可以返回<code class="highlighter-rouge">OK</code>给用户了。至于何时将用户的修改持久化至<code class="highlighter-rouge">.ibd</code>文件中，由MySQL后台线程决定。</p>
+
+<p>基于redo log和binlog的WAL(Write-Ahead Log)机制可以保证数据的原子性以及持久性，并且由于日志是顺序读写，所以事务的执行速度会快很多。</p>
+
+<h3 id="4-group-commit">4. Group Commit</h3>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/2PC.png" alt="" /></p>
+
+<p>从上图模型可以看到，每一个事务的提交，都会伴随着两次<code class="highlighter-rouge">write()</code>以及<code class="highlighter-rouge">fsync()</code>系统调用。对于<code class="highlighter-rouge">Write()</code>调用来说，仅仅只是将用户缓冲区的内容写入至内核缓冲区中，虽然会有用户态与内核态的切换，但是仍然要比<code class="highlighter-rouge">fsync()</code>要快。</p>
+
+<p>如果采用上述模型实现事务的话，如果有两万个并发事务执行，那么磁盘的IO负载将会达到四万，并且事务的执行效率将会非常之差。</p>
+
+<p>为了解决事务执行效率问题，MySQL引入了组提交(Group Commit)技术: 在事务提交时，尽可能多地向文件中写入数据。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/LSN-Commit.png" alt="" /></p>
+
+<p>如上图所示，共有3个事务并行执行，其中trx:1事务准备提交。按照之前的模型，将trx:1的redo log写入至磁盘中，并将binlog写入至磁盘中。</p>
+
+<p>而在Group Commit中，当trx:1准备提交时，将会刷新最大的LSN之前未刷新的所有redo log。在该示例中，trx:1准备刷新时，则会将LSN为1600之前的所有redo log一齐刷新至磁盘。原来需要6次系统调用，现在只需要2次。</p>
+
+<p>为了能够让redo log在每次写入时尽可能多的写入，MySQL将redo log调用<code class="highlighter-rouge">fsync()</code>的时机延迟，延迟至binlog调用<code class="highlighter-rouge">write()</code>之后:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/delay-fsync.png" alt="" /></p>
+
+<p>这样一来，binlog也能够组提交了，能够有效地减少IOPS的消耗。</p>
+
+<p>MySQL额外的提供了两个延迟参数来提高binlog的组提交效率:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 表示延迟多少微秒后才调用binlog的fsync()</span>
+binlog_group_commit_sync_delay
+
+<span class="c"># 表示累积了多少个binlog才调用binlog的fsync()</span>
+binlog_group_commit_sync_no_delay_count
+</code></pre></div></div>
+
+<p>这两个参数为”或”关系，即只要满足一个条件，就会调用<code class="highlighter-rouge">fsync()</code>。当磁盘IO出现性能瓶颈时，可根据实际负载来设置该值，从而降低磁盘IO负载，代价是会增加事务的响应时间。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=InnoDB如何保证事务的原子性与持久性&amp;url=https://smartkeyerror.comInnoDB-AD"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comInnoDB-AD"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comInnoDB-AD"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Linux-Use-EasyConnect">
+            <section class="post">
+                <h2>Linux主机通过Windows虚拟机转发Easyconnect内网请求</h2>
+                <p>世界上有个恶心的公司叫Sangfor，开发出了恶心的工具EasyConnect，本来这东西都是给在校的学生用的，好不好用都无所谓。但是很多公司也开始使用这个来访问内网，并且还不支持Linux(反正到目前Ubuntu下的64bit版本连接就没成功过)，这就很令人讨厌了。回想起Ubuntu下使用Wine安装微信的种种难受，决定还是使用Windows虚拟机开启EasyConnect，并把部分的Linux流量打进虚拟机。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2020</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-150652886-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

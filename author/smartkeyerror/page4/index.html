@@ -115,7 +115,7 @@
                     <span class="author-location icon-location">China</span>
                     <span class="author-link icon-link"><a href="https://smartkeyerror.com">https://smartkeyerror.com</a></span>
                     <!-- <span class="author-stats"><i class="icon-stats"></i> [[plural ../pagination.total empty='No posts' singular='% post' plural='% posts']]</span> -->
-                    <span class="author-stats"><i class="icon-stats"></i>41 posts</span>
+                    <span class="author-stats"><i class="icon-stats"></i>42 posts</span>
                 </div>
             
         
@@ -145,6 +145,39 @@
     <!--</div>-->
 
     <!-- This is the post loop - each post will be output using this markup -->
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/Java-Concurrent-Base">Java并发编程(01)--基础学习</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>打了2年多的Python代码， 大大小小的项目也做了一些， 代码规范和并发效率一直以来是比较头疼的问题。 因为GIL全局解释器锁的存在使得Python程序员永远只能使用单核， 并且在锁的保护下许多的效率问题都被掩盖。 在学习了Java之后， 对其并发模块的设计深感惊艳， 比如ConcurrentHashMap的分段锁实现， volatile关键字保证变量的可见性， 所以在这里对其进行整理并进一步加深理解。
+
+ <a class="read-more" href="/Java-Concurrent-Base">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/并发编程'>并发编程</a>
+                    
+                
+            
+            <time class="post-date" datetime="2018-12-10">10 Dec 2018</time>
+        </footer>
+    </article>
     
     <article class="post">
         <header class="post-header">
@@ -442,39 +475,6 @@
             <p>在前面的主从复制中我们提到了bin-log， 主从复制中bing-log主要作为一种增量复制的方法进行主库与从库的同步。 在日常生产中， bin-log常常也作为实时数据恢复的必要手段。
 
  <a class="read-more" href="/MySQL-binlog">&raquo;</a></p>
-        </section>
-        <footer class="post-meta">
-            
-                
-
-                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
-                <!-- author -->
-                <a href='/author/smartkeyerror'>smartkeyerror</a>
-
-                
-            
-
-            <!-- [[tags prefix=" on "]] -->
-            
-                on
-                
-                    
-                       <a href='/tag/MySQL'>MySQL</a>
-                    
-                
-            
-            <time class="post-date" datetime="2018-10-23">23 Oct 2018</time>
-        </footer>
-    </article>
-    
-    <article class="post">
-        <header class="post-header">
-            <h2 class="post-title"><a href="/MySQL-master-slave">MySQL之主从复制</a></h2>
-        </header>
-        <section class="post-excerpt">
-            <p>MySQL的主从复制是建立读写分离以及MySQL集群的根本， 为了能够保证复制的正常运行， 那么就必然需要对其原理以及核心的配置项有足够的了解， 才能够在复杂的生产环境中对错误进行排查。
-
- <a class="read-more" href="/MySQL-master-slave">&raquo;</a></p>
         </section>
         <footer class="post-meta">
             
