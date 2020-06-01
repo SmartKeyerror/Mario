@@ -889,287 +889,225 @@ binlog_group_commit_sync_no_delay_count
 
 <!---more--->
 
-<h4 id="1-面向接口编程">1. 面向接口编程</h4>
+<h3 id="1-面向接口编程">1. 面向接口编程</h3>
 
 <p>面向接口编程的核心就在于将接口和实现分离，封装不稳定的实现，暴露稳定的接口。上游系统面向接口编程而非面向实现编程，不依赖不稳定的实现细节，当实现发生变化时，上游系统可不做或者只需进行少量的修改，从而降低耦合性，提高拓展性。 换句话说，面向接口编程是一种可随时拔插替换的编程方法。</p>
 
-<p>以图片存储服务为例，图片经过一系列的处理之后上传至阿里云OSS中保存。 以Java代码为例，为了代码复用，将其封装成一个类对外使用:</p>
+<h4 id="11-接口的含义">1.1 接口的含义</h4>
 
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">AliyunOssImageStore</span> <span class="o">{</span>
-    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">createBucketIfNotExist</span><span class="o">(</span><span class="n">string</span> <span class="n">bucketName</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
-        <span class="c1">// OSS通过bucket来划分整块OSS存储空间</span>
-        <span class="c1">// 当所需要的bucket不存在时，进行创建，创建失败则抛出异常</span>
-    <span class="o">}</span>
-    
-    <span class="kd">private</span> <span class="n">String</span> <span class="nf">generateAccessToken</span><span class="o">()</span> <span class="o">{</span>
-        <span class="c1">// 通过appKey以及appSecret生成access_token, 内部方法</span>
-    <span class="o">}</span>
-    
-    <span class="kd">public</span> <span class="n">String</span> <span class="nf">uploadToOss</span><span class="o">(</span><span class="n">Image</span> <span class="n">image</span><span class="o">,</span> <span class="n">string</span> <span class="n">bucket</span><span class="o">)</span> <span class="o">{</span>
-        <span class="c1">// 将图片上传至oss，返回图片URL地址</span>
-    <span class="o">}</span>
-<span class="o">}</span>
+<p>不管是在Java语言还是在Go语言中，接口本身的定义均只包含方法，并不包含具体的实现。换句话说，接口实际上是定义了一组行为，但是没有定义这些行为到底该怎么进行。</p>
 
-<span class="c1">// 使用</span>
-<span class="kd">class</span> <span class="nc">OssProcess</span> <span class="o">{</span>
-    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
-        <span class="n">String</span> <span class="n">bucketName</span> <span class="o">=</span> <span class="s">"user_thumbnail_image"</span><span class="o">;</span>
-        <span class="n">AliyunOssImageStore</span> <span class="n">store</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AliyunOssImageStore</span><span class="o">(</span><span class="cm">/*省略参数*/</span><span class="o">);</span>
-        <span class="n">store</span><span class="o">.</span><span class="na">createBucketIfNotExist</span><span class="o">(</span><span class="n">bucketName</span><span class="o">);</span>
-        <span class="n">Image</span> <span class="n">image</span> <span class="o">=</span> <span class="o">...</span> <span class="c1">// 生成图片</span>
-        <span class="n">store</span><span class="o">.</span><span class="na">uploadToOss</span><span class="o">(</span><span class="n">image</span><span class="o">,</span> <span class="n">bucketName</span><span class="o">);</span>
-    <span class="o">}</span>
-<span class="o">}</span>
-</code></pre></div></div>
+<p>接口描述了”如果你是…则必须能…“的分类思想，如果你是动物，那么必须能呼吸，移动和进食。如果你是植物，那么你必须能进行光合作用。但是，具体的动物如何呼吸(鱼用腮呼吸，狮子用肺呼吸)，如何移动(鸟既能飞又能跑，狮子不能飞)，是由实现了动物这个接口的具体动物所决定的。</p>
 
-<p><code class="highlighter-rouge">AliyunOssImageStore</code>就是一个具体的实现类，实现了将图片上传至阿里云OSS的功能，在绝大多数时候，代码都能完好的工作。现在由于采购部门不满阿里云的价格，想要更换图片存储供应商，比如七牛。现在开发人员需要添加<code class="highlighter-rouge">QiniuImageStore</code>，并替换掉原有的实现方式，如此一来，必将会涉及到大面积的代码改动，包括业务代码以及重新编写测试用例。</p>
+<p>接口将一类事物的行为提炼并抽象出来，从而达到简化事物复杂度的目的，以便相关的研究人员更关注于他们想要关注的，而忽略其它的细节。</p>
 
-<p>更换一个OSS服务就需要大面积的更改业务代码，违反了开放-封闭原则，从而引入了额外的工作量以及风险，上游系统直接依赖具体的实现是不妥当的，因为具体的实现很有可能发生变化，一旦发生变化，波及的范围可能是整个系统。</p>
+<h4 id="12-依赖反转原则">1.2 依赖反转原则</h4>
 
-<p>解决该问题的一种方式是添加代理类，即在业务代码和具体实现之间额外添加一层抽象，或者说函数，假设叫<code class="highlighter-rouge">imageStoreProxy</code>。业务代码调用<code class="highlighter-rouge">imageStoreProxy</code>方法，而该方法调用具体的OSS实现，当OSS实现发生变动时，只需修改<code class="highlighter-rouge">imageStoreProxy</code>一处即可。但是这么做的后果就是降低了系统的灵活性并增加了系统的复杂度，<code class="highlighter-rouge">imageStoreProxy</code>需要满足上游系统所有的需求，该方法到后期将会变得非常臃肿而难以维护，最可能出现的情况就是该方法存在乱七八糟的<code class="highlighter-rouge">if-else</code>。</p>
+<p>在SOLID原则中，依赖反转原则对于增强系统的可拓展性、降低代码的耦合性至关重要。依赖反转原则描述了这样一个概念:</p>
 
-<p>一个更好的方式就是使用接口，上游系统依赖接口，具体实现根据接口定义的方法进行实现，并在运行时选择具体的实现。</p>
+<blockquote>
+  <p>高层次模块不应依赖于低层次模块的具体实现细节，两者都应该依赖于抽象</p>
+</blockquote>
 
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">ImageStore</span> <span class="o">{</span>
-    <span class="n">String</span> <span class="nf">upload</span><span class="o">(</span><span class="n">Image</span> <span class="n">image</span><span class="o">,</span> <span class="n">String</span> <span class="n">bucket</span><span class="o">);</span>
-<span class="o">}</span>
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Go/interface/DIP.png" alt="" /></p>
 
-<span class="kd">public</span> <span class="kd">class</span> <span class="nc">AliyunOssImageStore</span> <span class="kd">implements</span> <span class="n">ImageStore</span> <span class="o">{</span>
-    <span class="kd">public</span> <span class="n">String</span> <span class="nf">upload</span><span class="o">(</span><span class="n">Image</span> <span class="n">image</span><span class="o">,</span> <span class="n">String</span> <span class="n">bucket</span><span class="o">)</span> <span class="o">{</span>
-        <span class="c1">// 阿里云OSS的具体实现</span>
-    <span class="o">}</span>
-<span class="o">}</span>
+<p>依赖反转原则简单来说就是额外地增加了一层抽象(接口)，该模块抽象了模块A所依赖的所有行为。而模块B则实现该抽象(接口)，并在运行时通过依赖注入的方式注入进模块A。如此一来，将来若想要替换掉模块B，只需要重新实现该接口，并在少量的代码中进行改动即可。</p>
 
-<span class="kd">public</span> <span class="kd">class</span> <span class="nc">QiniuImageStore</span> <span class="kd">implements</span> <span class="n">ImageStore</span> <span class="o">{</span>
-    <span class="kd">public</span> <span class="n">String</span> <span class="nf">upload</span><span class="o">(</span><span class="n">Image</span> <span class="n">image</span><span class="o">,</span> <span class="n">String</span> <span class="n">bucket</span><span class="o">)</span> <span class="o">{</span>
-        <span class="c1">// 七牛云的具体实现</span>
-    <span class="o">}</span>
-<span class="o">}</span>
+<h4 id="13-接口的实际意义">1.3 接口的实际意义</h4>
 
-<span class="c1">// 使用</span>
-<span class="kd">class</span> <span class="nc">OssProcess</span> <span class="o">{</span>
-    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
-        <span class="n">ImageStore</span> <span class="n">store</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AliyunOssImageStore</span><span class="o">(</span><span class="cm">/*省略参数*/</span><span class="o">);</span>
-        <span class="n">store</span><span class="o">.</span><span class="na">upload</span><span class="o">(</span><span class="cm">/*省略参数*/</span><span class="o">);</span> <span class="c1">// 使用阿里云OSS</span>
-        
-        <span class="n">ImageStore</span> <span class="n">store</span> <span class="o">=</span> <span class="k">new</span> <span class="n">QiniuImageStore</span><span class="o">(</span><span class="cm">/*省略参数*/</span><span class="o">);</span>
-        <span class="n">store</span><span class="o">.</span><span class="na">upload</span><span class="o">(</span><span class="cm">/*省略参数*/</span><span class="o">);</span> <span class="c1">// 使用七牛云</span>
-    <span class="o">}</span>
-<span class="o">}</span>
-</code></pre></div></div>
+<p>接口的实际意义其实就是一个标准，或者说一种协议。例如SSD的M.2接口，不管是三星的970 evo plus，还是海盗船的MP 510，在内部硬件的实现细节上虽然存在差异，但是它们都能够在支持M.2的主板上正常运行。这其实就是标准化的意义: 兼容性和可交换性。</p>
 
-<p>合理的使用接口可以完全屏蔽具体的实现细节，当具体实现发生变化时，上游系统只需改动少量的代码即可适应该变化。 例如底层数据存储，MySQL与MongoDB在实现上完全不同，数据的CRUD有着非常大的区别，但是通过定义合理的接口，再根据接口封装MySQL与MongoDB的具体实现，上游系统则可以完全忽略其细节的区别，只关注自身的业务逻辑，从而实现耦合的解除。</p>
+<p>从抽象代码上来看，接口就是一种约束，用于约束对象的行为，使得对象标准化。</p>
 
-<p>常见ORM就是做的，例如Python中的<code class="highlighter-rouge">SQLAlchemy</code>，只需在配置文件或者是定义文件中进行少量的修改，即可实现底层数据存储应用的替换。</p>
+<h3 id="2-实现接口">2. 实现接口</h3>
 
-<h4 id="2-作为接口定义的interface">2. 作为接口定义的interface</h4>
+<p>不同于Java语言中使用<code class="highlighter-rouge">implements</code>关键字实现接口，Golang中的某一个类型实现接口是隐式的: 只要类型实现了接口中的全部方法，就认为该类型实现了该接口。</p>
 
-<p>Golang中的<code class="highlighter-rouge">interface</code>承担的主要作用之一就是解耦与多态，与Java中的接口没有什么区别，只是在语法格式上不同而已。Golang中的接口实现不需要显式地使用<code class="highlighter-rouge">implements</code>关键字，某个类型只需要实现了接口中的所有方法，就说该类型实现了该接口。</p>
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">LogData</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{}</span><span class="x">
 
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">OperationLog</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">Timestamp</span><span class="x"> </span><span class="kt">int32</span><span class="x">    </span><span class="c">// 时间戳</span><span class="x">
-	</span><span class="n">Operation</span><span class="x"> </span><span class="kt">string</span><span class="x">   </span><span class="c">// 操作类型, create/update/delete</span><span class="x">
-	</span><span class="c">// Other need fields</span><span class="x">
+</span><span class="k">type</span><span class="x"> </span><span class="n">LogStorage</span><span class="x"> </span><span class="k">interface</span><span class="x"> </span><span class="p">{</span><span class="x">
+    </span><span class="n">Insert</span><span class="p">(</span><span class="n">data</span><span class="x"> </span><span class="n">LogData</span><span class="p">)</span><span class="x">
 </span><span class="p">}</span><span class="x">
 
-</span><span class="k">type</span><span class="x"> </span><span class="n">OperationLogService</span><span class="x"> </span><span class="k">interface</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">InsertOne</span><span class="p">(</span><span class="n">log</span><span class="x"> </span><span class="o">*</span><span class="n">OperationLog</span><span class="p">)</span><span class="x"> </span><span class="kt">error</span><span class="x">      </span><span class="c">// 单个日志记录</span><span class="x">
-	</span><span class="n">InsertMany</span><span class="p">(</span><span class="n">logs</span><span class="x"> </span><span class="p">[]</span><span class="o">*</span><span class="n">OperationLog</span><span class="p">)</span><span class="x"> </span><span class="kt">error</span><span class="x">  </span><span class="c">// 批量日志记录</span><span class="x">
+</span><span class="k">type</span><span class="x"> </span><span class="n">MongoStorage</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{}</span><span class="x">
+
+</span><span class="k">func</span><span class="x"> </span><span class="p">(</span><span class="n">m</span><span class="x"> </span><span class="o">*</span><span class="n">MongoStorage</span><span class="p">)</span><span class="n">Insert</span><span class="p">(</span><span class="n">data</span><span class="x"> </span><span class="n">LogData</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="c">/*...*/</span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
+
+<h4 id="21-接口和指针">2.1 接口和指针</h4>
+
+<p>当接口和指针在一起使用时，往往会产生一些令人迷惑的问题。方式的接收者有值接收者和指针接收者，那么也就会有两种实现接口的方式，而这两种实现方法在使用过程中需要特别小心。</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">LogData</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{}</span><span class="x">
+
+</span><span class="k">type</span><span class="x"> </span><span class="n">LogStorage</span><span class="x"> </span><span class="k">interface</span><span class="x"> </span><span class="p">{</span><span class="x">
+    </span><span class="n">Insert</span><span class="p">(</span><span class="n">data</span><span class="x"> </span><span class="n">LogData</span><span class="p">)</span><span class="x">
+    </span><span class="n">InsertMany</span><span class="p">(</span><span class="n">dataSlice</span><span class="x"> </span><span class="p">[]</span><span class="n">LogData</span><span class="p">)</span><span class="x">
 </span><span class="p">}</span><span class="x">
 
-</span><span class="k">type</span><span class="x"> </span><span class="n">ElasticLogService</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">EsClient</span><span class="x"> </span><span class="o">*</span><span class="n">ElasticClient</span><span class="x">
+</span><span class="k">type</span><span class="x"> </span><span class="n">MongoStorage</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{}</span><span class="x">
+
+</span><span class="c">/* 指针接收者 */</span><span class="x">
+</span><span class="k">func</span><span class="x"> </span><span class="p">(</span><span class="n">m</span><span class="x"> </span><span class="o">*</span><span class="n">MongoStorage</span><span class="p">)</span><span class="n">Insert</span><span class="p">(</span><span class="n">data</span><span class="x"> </span><span class="n">LogData</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="c">/*...*/</span><span class="p">}</span><span class="x">
+
+</span><span class="c">/* 值接收者 */</span><span class="x">
+</span><span class="k">func</span><span class="x"> </span><span class="p">(</span><span class="n">m</span><span class="x"> </span><span class="n">MongoStorage</span><span class="p">)</span><span class="n">InsertMany</span><span class="p">(</span><span class="n">dataSlice</span><span class="x"> </span><span class="p">[]</span><span class="n">LogData</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="c">/*...*/</span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
+
+<p>在示例中，<code class="highlighter-rouge">MongoStorage</code>这一具体的实现存在一个指针接收者方法，一个值接收者方法。当尝试使用结构体初始化变量时，将无法通过编译:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
+	</span><span class="k">var</span><span class="x"> </span><span class="n">m</span><span class="x"> </span><span class="n">LogStorage</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="n">MongoStorage</span><span class="p">{}</span><span class="x">
 </span><span class="p">}</span><span class="x">
 
-</span><span class="k">func</span><span class="x"> </span><span class="p">(</span><span class="n">svc</span><span class="x"> </span><span class="o">*</span><span class="n">ElasticLogService</span><span class="p">)</span><span class="x"> </span><span class="n">InsertOne</span><span class="p">(</span><span class="n">log</span><span class="x"> </span><span class="o">*</span><span class="n">OperationLog</span><span class="p">)</span><span class="x"> </span><span class="kt">error</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">svc</span><span class="o">.</span><span class="n">EsClient</span><span class="o">.</span><span class="n">PostOne</span><span class="p">(</span><span class="c">/*参数省略*/</span><span class="p">)</span><span class="x">
-	</span><span class="k">return</span><span class="x"> </span><span class="no">nil</span><span class="x">
-</span><span class="p">}</span><span class="x">
+</span><span class="o">./</span><span class="n">mian</span><span class="o">.</span><span class="k">go</span><span class="o">:</span><span class="m">31</span><span class="o">:</span><span class="m">6</span><span class="o">:</span><span class="x"> </span><span class="n">cannot</span><span class="x"> </span><span class="n">use</span><span class="x"> </span><span class="n">MongoStorage</span><span class="x"> </span><span class="n">literal</span><span class="x"> </span><span class="p">(</span><span class="k">type</span><span class="x"> </span><span class="n">MongoStorage</span><span class="p">)</span><span class="x"> </span><span class="n">as</span><span class="x"> </span><span class="k">type</span><span class="x"> </span><span class="n">LogStorage</span><span class="x"> </span><span class="n">in</span><span class="x"> </span><span class="n">assignment</span><span class="o">:</span><span class="x">
+	</span><span class="n">MongoStorage</span><span class="x"> </span><span class="n">does</span><span class="x"> </span><span class="n">not</span><span class="x"> </span><span class="n">implement</span><span class="x"> </span><span class="n">LogStorage</span><span class="x"> </span><span class="p">(</span><span class="n">Insert</span><span class="x"> </span><span class="n">method</span><span class="x"> </span><span class="n">has</span><span class="x"> </span><span class="n">pointer</span><span class="x"> </span><span class="n">receiver</span><span class="p">)</span><span class="x">
+</span></code></pre></div></div>
 
-</span><span class="k">func</span><span class="x"> </span><span class="p">(</span><span class="n">svc</span><span class="x"> </span><span class="o">*</span><span class="n">ElasticLogService</span><span class="p">)</span><span class="x"> </span><span class="n">InsertMany</span><span class="p">(</span><span class="n">logs</span><span class="x"> </span><span class="p">[]</span><span class="o">*</span><span class="n">OperationLog</span><span class="p">)</span><span class="x"> </span><span class="kt">error</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">svc</span><span class="o">.</span><span class="n">EsClient</span><span class="o">.</span><span class="n">PostMany</span><span class="p">(</span><span class="c">/*参数省略*/</span><span class="p">)</span><span class="x">
-	</span><span class="k">return</span><span class="x"> </span><span class="no">nil</span><span class="x">
-</span><span class="p">}</span><span class="x">
+<p>原因在于尽管<code class="highlighter-rouge">InsertMany</code>方法使用了值接收者实现，但是<code class="highlighter-rouge">Insert</code>方法却使用了指针接收者实现。由于Go方法调用按值传递，通过对指针的解引用可以获取到该指针指向的值，但是却无法获取到某一个变量的指针，因为在内存中可能存在多个指向该变量的指针。</p>
 
-</span><span class="k">type</span><span class="x"> </span><span class="n">MySQLLogService</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">Db</span><span class="x"> </span><span class="o">*</span><span class="n">MySQLClient</span><span class="x">
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
+	</span><span class="k">var</span><span class="x"> </span><span class="n">m</span><span class="x"> </span><span class="n">LogStorage</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="o">&amp;</span><span class="n">MongoStorage</span><span class="p">{}</span><span class="x">
+	</span><span class="n">m</span><span class="o">.</span><span class="n">InsertMany</span><span class="p">([]</span><span class="n">LogData</span><span class="p">{})</span><span class="x">
 </span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
 
-</span><span class="k">func</span><span class="x"> </span><span class="p">(</span><span class="n">svc</span><span class="x"> </span><span class="o">*</span><span class="n">MySQLLogService</span><span class="p">)</span><span class="x"> </span><span class="n">InsertOne</span><span class="p">(</span><span class="n">log</span><span class="x"> </span><span class="o">*</span><span class="n">OperationLog</span><span class="p">)</span><span class="x"> </span><span class="kt">error</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">svc</span><span class="o">.</span><span class="n">Db</span><span class="o">.</span><span class="n">InsertToLogTable</span><span class="p">(</span><span class="c">/*参数省略*/</span><span class="p">)</span><span class="x">
-	</span><span class="k">return</span><span class="x"> </span><span class="no">nil</span><span class="x">
+<p>当执行<code class="highlighter-rouge">m.InsertMany()</code>语句时，Go会将指向<code class="highlighter-rouge">MongoStorage{}</code>结构体的指针进行解引用，取出结构体<code class="highlighter-rouge">MongoStorage{}</code>并进行方法调用。</p>
+
+<p>在实际应用中，为了节省实参的拷贝开销，通常都会使用指针接收者来实现接口中的方法。那么在定义变量时，需要指针变量。</p>
+
+<h3 id="3-接口的值">3. 接口的值</h3>
+
+<p>Go语言中接口的定义形式为:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">interfaceName</span><span class="x"> </span><span class="k">interface</span><span class="x"> </span><span class="p">{</span><span class="x">
+    </span><span class="n">functionName</span><span class="p">(</span><span class="n">p</span><span class="x"> </span><span class="n">Type</span><span class="p">)</span><span class="x"> </span><span class="n">returnType</span><span class="x">
 </span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
 
-</span><span class="k">func</span><span class="x"> </span><span class="p">(</span><span class="n">svc</span><span class="x"> </span><span class="o">*</span><span class="n">MySQLLogService</span><span class="p">)</span><span class="x"> </span><span class="n">InsertMany</span><span class="p">(</span><span class="n">logs</span><span class="x"> </span><span class="p">[]</span><span class="o">*</span><span class="n">OperationLog</span><span class="p">)</span><span class="x"> </span><span class="kt">error</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">svc</span><span class="o">.</span><span class="n">Db</span><span class="o">.</span><span class="n">InsertManyToLogTable</span><span class="p">(</span><span class="c">/*参数省略*/</span><span class="p">)</span><span class="x">
-	</span><span class="k">return</span><span class="x"> </span><span class="no">nil</span><span class="x">
+<p>从接口定义中可以看到，<code class="highlighter-rouge">interface</code>是一个类型，那么既然是一个类型，就应该有值。接口的值由两部分组成: 接口的动态类型和该类型的值，前者称为动态类型，后者称为动态值。Go接口的动态类型和Java的RTTI一样，在运行时确定某个接口的具体类型。</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">var</span><span class="x"> </span><span class="n">w</span><span class="x"> </span><span class="n">io</span><span class="o">.</span><span class="n">Writer</span><span class="x">                  </span><span class="c">// ①</span><span class="x">
+</span><span class="n">w</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="n">os</span><span class="o">.</span><span class="n">Stdout</span><span class="x">                    </span><span class="c">// ②</span><span class="x">
+</span><span class="n">w</span><span class="o">.</span><span class="n">Write</span><span class="p">([]</span><span class="kt">byte</span><span class="p">(</span><span class="s">"Hello World~"</span><span class="p">))</span><span class="x">  </span><span class="c">// ③</span><span class="x">
+</span></code></pre></div></div>
+
+<p>①: 声明了变量<code class="highlighter-rouge">w</code>，且其类型为<code class="highlighter-rouge">io.Writer</code>，由于<code class="highlighter-rouge">io.Writer</code>是一个接口定义，并且Golang会在变量被定义时即对变量进行初始化，那么变量<code class="highlighter-rouge">w</code>也会被初始化。<strong>接口的零值就是将其动态类型和动态值均设置为nil</strong>。</p>
+
+<p>②: 将<code class="highlighter-rouge">os.Stdout</code>这一具体类型赋值给了<code class="highlighter-rouge">w</code>，相当于将一个具体类型隐式转换成了接口类型。那么此时，<code class="highlighter-rouge">w</code>就有了动态类型和动态值。其动态类型为<code class="highlighter-rouge">*os.File</code>，其动态值为<code class="highlighter-rouge">*os.file</code>。</p>
+
+<p>③: 调用该接口值的<code class="highlighter-rouge">Write</code>方法，实际上调用的是<code class="highlighter-rouge">(*os.File).Write</code>方法。在调用方法时，仍然需要使用动态分发的手段来获取到方法地址。</p>
+
+<h4 id="31-go接口的实现">3.1 Go接口的实现</h4>
+
+<p>在Golang中，接口的实现其实有两种，一种是拥有方法的接口，另一种则是不拥有方法的接口，后者通常表示为<code class="highlighter-rouge">interface{}</code>，将在文章的后续进行描述。</p>
+
+<p>由用户自定义的、带有方法的接口通过<code class="highlighter-rouge">iface</code>结构体实现，位于源码<code class="highlighter-rouge">/src/runtime/runtime2.go</code>中:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">iface</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{</span><span class="x">
+	</span><span class="n">tab</span><span class="x">  </span><span class="o">*</span><span class="n">itab</span><span class="x">
+	</span><span class="n">data</span><span class="x"> </span><span class="n">unsafe</span><span class="o">.</span><span class="n">Pointer</span><span class="x">
+</span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
+
+<p>其中<code class="highlighter-rouge">*itab</code>表示接口的动态类型，<code class="highlighter-rouge">unsafe.Pointer</code>则指向接口的动态值。<strong>对于一个接口变量而言，只要其动态类型的值不为nil，接口值就不为nil</strong></p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Go/interface/interface-value.png" alt="" /></p>
+
+<h3 id="4-interface">4. interface{}</h3>
+
+<p><code class="highlighter-rouge">interface{}</code>表示不包含任何方法的接口，而Golang中不管是基本数据类型，还是复合数据类型，还是用户自定的类型，都至少包含零个方法。换句话说，所有的类型都实现了<code class="highlighter-rouge">interface{}</code>。</p>
+
+<p>首先查看下<code class="highlighter-rouge">fmt.Println</code>函数的定义:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">Println</span><span class="p">(</span><span class="n">a</span><span class="x"> </span><span class="o">...</span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">(</span><span class="n">n</span><span class="x"> </span><span class="kt">int</span><span class="p">,</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="kt">error</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="x">
+	</span><span class="k">return</span><span class="x"> </span><span class="n">Fprintln</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">Stdout</span><span class="p">,</span><span class="x"> </span><span class="n">a</span><span class="o">...</span><span class="p">)</span><span class="x">
+</span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
+
+<p><code class="highlighter-rouge">Println</code>方法接收任意多个<code class="highlighter-rouge">interface{}</code>类型的参数，这也是为什么<code class="highlighter-rouge">Println</code>方法能够接收任意类型的原因: <strong>所有传入的参数均进行了隐式转换，转换成了<code class="highlighter-rouge">interface{}</code>类型</strong>。</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
+	</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="m">10</span><span class="p">)</span><span class="x">
+	</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"123"</span><span class="p">)</span><span class="x">
+	</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="k">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span><span class="s">"name"</span><span class="o">:</span><span class="x"> </span><span class="s">"SmartKeyerror"</span><span class="p">})</span><span class="x">
+	</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">([]</span><span class="kt">string</span><span class="p">{</span><span class="s">"foo"</span><span class="p">,</span><span class="x"> </span><span class="s">"bar"</span><span class="p">})</span><span class="x">
+</span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
+
+<p>但是，需要特别注意的是: <code class="highlighter-rouge">interface{}</code>并不代表任意类型，它只是一种特殊的类型。</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">Bar</span><span class="p">(</span><span class="n">v</span><span class="x"> </span><span class="p">[]</span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="x">
+    </span><span class="c">/*...*/</span><span class="x">
 </span><span class="p">}</span><span class="x">
 
 </span><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="k">var</span><span class="x"> </span><span class="n">logService</span><span class="x"> </span><span class="n">OperationLogService</span><span class="x">
-	</span><span class="c">// 使用MySQL作为data storage</span><span class="x">
-	</span><span class="n">logService</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="o">&amp;</span><span class="n">ElasticLogService</span><span class="p">{</span><span class="c">/*...*/</span><span class="p">}</span><span class="x">
-	</span><span class="n">logService</span><span class="o">.</span><span class="n">InsertOne</span><span class="p">(</span><span class="c">/*...*/</span><span class="p">)</span><span class="x">
-
-	</span><span class="c">// 使用ES作为data storage</span><span class="x">
-	</span><span class="n">logService</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="o">&amp;</span><span class="n">MySQLLogService</span><span class="p">{</span><span class="c">/*...*/</span><span class="p">}</span><span class="x">
-	</span><span class="n">logService</span><span class="o">.</span><span class="n">InsertOne</span><span class="p">(</span><span class="c">/*...*/</span><span class="p">)</span><span class="x">
+    </span><span class="n">Bar</span><span class="p">([]</span><span class="kt">string</span><span class="p">{</span><span class="s">"foo"</span><span class="p">,</span><span class="x"> </span><span class="s">"bar"</span><span class="p">})</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
 
-<p>这是一个简单的操作日志服务demo，可以看到，操作日志具体的实现有Elasticsearch以及MySQL两种方式，而这两种DB对数据的CURD有着非常大的差异，前者使用http API，而后者则采用SQL语句。由于系统本身的复杂性既需要存储容量大、支持全局搜索但数据易失的ES，又需要存储容量有限、不支持全局搜索但数据持久化要求程度高的MySQL。</p>
+<p>上述代码将在编译期抛出异常:</p>
 
-<p>在有了接口对相关方法进行强约束以后，<code class="highlighter-rouge">ElasticLogService</code>以及<code class="highlighter-rouge">MySQLLogService</code>可以无差别的对外提供服务，需要切换服务时，只需进行非常小的改动即可满足需求。</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./mian.go:35:14: cannot use <span class="o">[]</span>string literal <span class="o">(</span><span class="nb">type</span> <span class="o">[]</span>string<span class="o">)</span> as <span class="nb">type</span> <span class="o">[]</span>interface <span class="o">{}</span> <span class="k">in </span>argument to Bar
+</code></pre></div></div>
 
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/golang/interface/log_service.png" alt="" /></p>
+<p><code class="highlighter-rouge">[]interface{}</code>和<code class="highlighter-rouge">[]string</code>是完全不同的类型，<code class="highlighter-rouge">interface{}</code>占用固定的内存空间，而<code class="highlighter-rouge">[]Type</code>则不能确定占用内存空间大小，它们自然不是同一种类型。</p>
 
-<h4 id="3-作为类型的interface">3. 作为类型的interface</h4>
+<h4 id="41-interface的实现">4.1 interface{}的实现</h4>
 
-<p>当使用</p>
+<p>和带有方法的接口一样，<code class="highlighter-rouge">interface{}</code>的定义也在<code class="highlighter-rouge">/src/runtime/runtime2.go</code>:</p>
 
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">MyInterface</span><span class="x"> </span><span class="k">interface</span><span class="x"> </span><span class="p">{}</span><span class="x">
-</span></code></pre></div></div>
-
-<p>时，我们定义了一个接口，当接口中不存在任何方法时，称之为empty interface，通常写做<code class="highlighter-rouge">interface{}</code>。由于Golang并没有显式的<code class="highlighter-rouge">implements</code>关键字，而所有的类型至少包含零个个方法，所以Golang中所有的类型都隐式地实现了<code class="highlighter-rouge">interface{}</code>，也就意味着，当我们定义如下方法时:</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">DoSomething</span><span class="p">(</span><span class="n">v</span><span class="x"> </span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="o">...</span><span class="p">}</span><span class="x">
-</span></code></pre></div></div>
-
-<p>函数将能够接收任意的数据类型，不管是<code class="highlighter-rouge">int</code>还是<code class="highlighter-rouge">int64</code>，或者是自定义的结构体。以內建函数<code class="highlighter-rouge">Printf</code>为例，其原型为:</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">Printf</span><span class="p">(</span><span class="n">format</span><span class="x"> </span><span class="kt">string</span><span class="p">,</span><span class="x"> </span><span class="n">a</span><span class="x"> </span><span class="o">...</span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">(</span><span class="n">n</span><span class="x"> </span><span class="kt">int</span><span class="p">,</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="kt">error</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="o">...</span><span class="p">}</span><span class="x">
-</span></code></pre></div></div>
-
-<p>其中的<code class="highlighter-rouge">a</code>即为任意类型的任意数量的参数，如</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fmt</span><span class="o">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">"human eat %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="x"> </span><span class="n">food</span><span class="p">)</span><span class="x">
-</span><span class="n">fmt</span><span class="o">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">"The T-shirt price is %.2f, %s"</span><span class="p">,</span><span class="x"> </span><span class="m">9.15</span><span class="p">,</span><span class="x"> </span><span class="s">"nine fifteen"</span><span class="p">)</span><span class="x">
-</span></code></pre></div></div>
-
-<p>回到<code class="highlighter-rouge">DoSomething</code>方法，在函数内部，<code class="highlighter-rouge">v</code>的类型是什么?假如传入的参数类型为<code class="highlighter-rouge">int</code>，<code class="highlighter-rouge">v</code>的类型是否就是<code class="highlighter-rouge">int</code>?答案是<code class="highlighter-rouge">interface{}</code>，不管传入的参数是什么类型，Go都会在必要时对其进行类型转换，转换成<code class="highlighter-rouge">interface{}</code>类型，而<code class="highlighter-rouge">interface{}</code>类型，是有值的。</p>
-
-<p>接口的值分为两部分，一个指向底层方法表的指针，和指向保存着具体值的指针。</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">MyInterface</span><span class="x"> </span><span class="k">interface</span><span class="x"> </span><span class="p">{</span><span class="x">
-    </span><span class="n">PrintSelf</span><span class="p">()</span><span class="x">
-</span><span class="p">}</span><span class="x">
-
-</span><span class="k">type</span><span class="x"> </span><span class="n">MyInt</span><span class="x"> </span><span class="kt">int</span><span class="x">
-</span><span class="k">func</span><span class="x"> </span><span class="p">(</span><span class="n">this</span><span class="x"> </span><span class="n">MyInt</span><span class="p">)</span><span class="x"> </span><span class="n">PrintSelf</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
-    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">"The value is: %d"</span><span class="p">,</span><span class="x"> </span><span class="n">this</span><span class="p">)</span><span class="x">
-</span><span class="p">}</span><span class="x">
-
-</span><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
-    </span><span class="k">var</span><span class="x"> </span><span class="n">s</span><span class="x"> </span><span class="n">MyInterface</span><span class="x">
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">eface</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{</span><span class="x">
+	</span><span class="n">_type</span><span class="x"> </span><span class="o">*</span><span class="n">_type</span><span class="x">
+	</span><span class="n">data</span><span class="x">  </span><span class="n">unsafe</span><span class="o">.</span><span class="n">Pointer</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
 
-<p>此时<code class="highlighter-rouge">s</code>无具体的类型，也无具体的值，两个指针均指向nil:</p>
+<p>其中<code class="highlighter-rouge">_type</code>为Go语言类型的运行时表示，包括了一些元信息，包括大小、哈希值等等，而<code class="highlighter-rouge">data</code>用于保存实际运行时的数据，是一个指向原始数据的指针。<code class="highlighter-rouge">eface</code>和<code class="highlighter-rouge">iface</code>差别并不大，均包括运行时的动态值和动态类型。</p>
 
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/golang/interface/nil-interface.png" alt="" /></p>
+<h3 id="5-类型断言与类型分支">5. 类型断言与类型分支</h3>
 
-<p>当执行:</p>
+<h4 id="51-类型断言">5.1 类型断言</h4>
 
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">s</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="n">MyInt</span><span class="p">(</span><span class="m">10</span><span class="p">)</span><span class="x">
-</span><span class="n">s</span><span class="o">.</span><span class="n">PrintSelf</span><span class="p">()</span><span class="x">
-</span></code></pre></div></div>
+<p>和Python中的<code class="highlighter-rouge">isinstance</code>、<code class="highlighter-rouge">issubclass</code>类似，Golang提供了类型断言来判断某个变量是否为某一种类型，其格式为<code class="highlighter-rouge">x.(T)</code>。</p>
 
-<p>时, <code class="highlighter-rouge">s</code>拥了的具体的类型和确切的值:</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/golang/interface/not%20nil%20interface.png" alt="" /></p>
-
-<p>虽然<code class="highlighter-rouge">interface{}</code>作为参数时可以接收任何类型的参数，但是并不代表参数的类型是任意类型，变量在运行时的某一时刻，永远有一个具体的类型。</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">DoSomething</span><span class="p">(</span><span class="n">v</span><span class="x"> </span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="o">...</span><span class="p">}</span><span class="x">
-</span></code></pre></div></div>
-
-<p>在<code class="highlighter-rouge">DoSomething</code>方法内部，如果想要获取变量<code class="highlighter-rouge">v</code>的类型，可以使用类型分支(<code class="highlighter-rouge">switch-case</code>)来进行类型检查，也可以使用反射直接获取变量类型:</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">DoSomething</span><span class="p">(</span><span class="n">v</span><span class="x"> </span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="c">// 使用类型分支</span><span class="x">
-	</span><span class="k">switch</span><span class="x"> </span><span class="n">v</span><span class="o">.</span><span class="p">(</span><span class="k">type</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="k">case</span><span class="x"> </span><span class="no">nil</span><span class="o">:</span><span class="x">
-		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"nil"</span><span class="p">)</span><span class="x">
-	</span><span class="k">case</span><span class="x"> </span><span class="kt">string</span><span class="o">:</span><span class="x">
-		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"string"</span><span class="p">)</span><span class="x">
-	</span><span class="k">case</span><span class="x"> </span><span class="kt">int</span><span class="o">:</span><span class="x">
-		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"int"</span><span class="p">)</span><span class="x">
-	</span><span class="p">}</span><span class="x">
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
+    </span><span class="k">var</span><span class="x"> </span><span class="n">w</span><span class="x"> </span><span class="n">io</span><span class="o">.</span><span class="n">Writer</span><span class="x">
+	</span><span class="n">w</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="n">os</span><span class="o">.</span><span class="n">Stdout</span><span class="x">
 	
-	</span><span class="c">// 使用反射</span><span class="x">
-	</span><span class="n">fmt</span><span class="o">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">"v'type is: %T</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="x"> </span><span class="n">v</span><span class="p">)</span><span class="x">
+	</span><span class="k">if</span><span class="x"> </span><span class="n">_</span><span class="p">,</span><span class="x"> </span><span class="n">ok</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">w</span><span class="o">.</span><span class="p">(</span><span class="o">*</span><span class="n">os</span><span class="o">.</span><span class="n">File</span><span class="p">);</span><span class="x"> </span><span class="n">ok</span><span class="x"> </span><span class="p">{</span><span class="x">
+		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"Assert Right"</span><span class="p">)</span><span class="x">
+	</span><span class="p">}</span><span class="k">else</span><span class="x"> </span><span class="p">{</span><span class="x">
+		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"Assert Wrong"</span><span class="p">)</span><span class="x">
+	</span><span class="p">}</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
 
-<h4 id="4-作为契约协议的interface">4. 作为契约(协议)的interface</h4>
+<p>若<code class="highlighter-rouge">T</code>为具体类型，那么类型断言会检查x的动态类型是否为<code class="highlighter-rouge">T</code>。若断言成功，结果即为<code class="highlighter-rouge">x</code>的动态值，类型当然就是<code class="highlighter-rouge">T</code>。</p>
 
-<p>Golang语言本身并不支持泛型，尽管函数参数可以使用<code class="highlighter-rouge">interface{}</code>来接收任意类型的变量，但是对于<code class="highlighter-rouge">slice</code>而言，我们无法定义一个<code class="highlighter-rouge">[]interface{}</code>来接收任意类型的<code class="highlighter-rouge">[]T</code>，原因在于<code class="highlighter-rouge">T</code>和<code class="highlighter-rouge">interface{}</code>在存储空间中有着截然不同的表现形式。</p>
+<p>若<code class="highlighter-rouge">T</code>为接口类型，那么类型断言会检查<code class="highlighter-rouge">x</code>的动态类型是否满足<code class="highlighter-rouge">T</code>。若断言成功，结果仍为接口值，不过此时的类型为接口类型<code class="highlighter-rouge">T</code>。</p>
 
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">PrintSlice</span><span class="p">(</span><span class="n">s</span><span class="x"> </span><span class="p">[]</span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="k">for</span><span class="x"> </span><span class="n">_</span><span class="p">,</span><span class="x"> </span><span class="n">v</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="k">range</span><span class="x"> </span><span class="n">s</span><span class="x"> </span><span class="p">{</span><span class="x">
-		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="x">
+<h4 id="52-类型分支">5.2 类型分支</h4>
+
+<p>当某个函数接收<code class="highlighter-rouge">interface{}</code>类型参数时，需要在函数内部来确定其动态类型，此时可使用<code class="highlighter-rouge">x.(type)</code>类型分支。</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">foo</span><span class="p">(</span><span class="n">v</span><span class="x"> </span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="x">
+	</span><span class="k">switch</span><span class="x"> </span><span class="n">v</span><span class="o">.</span><span class="p">(</span><span class="k">type</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="x">
+	</span><span class="k">case</span><span class="x"> </span><span class="kt">int</span><span class="o">:</span><span class="x">
+		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"v is int"</span><span class="p">)</span><span class="x">
+	</span><span class="k">case</span><span class="x"> </span><span class="kt">string</span><span class="o">:</span><span class="x">
+		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"v is string"</span><span class="p">)</span><span class="x">
+	</span><span class="k">default</span><span class="o">:</span><span class="x">
+		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"unknown type"</span><span class="p">)</span><span class="x">
 	</span><span class="p">}</span><span class="x">
 </span><span class="p">}</span><span class="x">
 
 </span><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="k">var</span><span class="x"> </span><span class="n">s</span><span class="x"> </span><span class="p">[]</span><span class="kt">int</span><span class="x">
-	</span><span class="k">for</span><span class="x"> </span><span class="n">i</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="m">0</span><span class="p">;</span><span class="x"> </span><span class="n">i</span><span class="x"> </span><span class="o">&lt;</span><span class="x"> </span><span class="m">10</span><span class="p">;</span><span class="x"> </span><span class="n">i</span><span class="o">++</span><span class="x"> </span><span class="p">{</span><span class="x">
-		</span><span class="n">s</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="nb">append</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="x"> </span><span class="n">i</span><span class="p">)</span><span class="x">
-	</span><span class="p">}</span><span class="x">
-	</span><span class="n">PrintSlice</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="x">
+	</span><span class="n">foo</span><span class="p">(</span><span class="m">10</span><span class="p">)</span><span class="x">
+	</span><span class="n">foo</span><span class="p">(</span><span class="s">"10"</span><span class="p">)</span><span class="x">
+	</span><span class="n">foo</span><span class="p">([]</span><span class="kt">string</span><span class="p">{</span><span class="s">"smart"</span><span class="p">})</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
-
-<p>在编译时期就会抛出异常:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cannot use s <span class="o">(</span><span class="nb">type</span> <span class="o">[]</span>int<span class="o">)</span> as <span class="nb">type</span> <span class="o">[]</span>interface <span class="o">{}</span> <span class="k">in </span>argument to PrintSlice
-</code></pre></div></div>
-
-<p>尽然可以通过代码将<code class="highlighter-rouge">[]T</code>转换成<code class="highlighter-rouge">[]interface{}</code>，但是会带来一些效率上的损耗，并且很丑陋。解决此类问题的通用方法就是使用<code class="highlighter-rouge">interface</code>，如<code class="highlighter-rouge">sort.Interface</code>。</p>
-
-<p>sort包提供了针对任意类型序列根据任意排序函数原地排序的功能，使用<code class="highlighter-rouge">sort.Interface</code>接口来指定通用排序算法和每个具体类型之间的协议。</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">Interface</span><span class="x"> </span><span class="k">interface</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">Len</span><span class="p">()</span><span class="x"> </span><span class="kt">int</span><span class="x">            </span><span class="c">// 获取集合中元素个数的方法</span><span class="x">
-	</span><span class="n">Less</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="x"> </span><span class="n">j</span><span class="x"> </span><span class="kt">int</span><span class="p">)</span><span class="x"> </span><span class="kt">bool</span><span class="x">  </span><span class="c">// 排序的依据</span><span class="x">
-	</span><span class="n">Swap</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="x"> </span><span class="n">j</span><span class="x"> </span><span class="kt">int</span><span class="p">)</span><span class="x">       </span><span class="c">// 如何在集合中交换两个元素</span><span class="x">
-</span><span class="p">}</span><span class="x">
-</span></code></pre></div></div>
-
-<p>简单地来说，只要类型实现了<code class="highlighter-rouge">sort.Interface</code>接口，就可以使用Golang内部提供的排序算法(根据元素排布动态地选择排序方式)，而无需自行实现。</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">Employee</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">Name</span><span class="x"> </span><span class="kt">string</span><span class="x">
-	</span><span class="n">Salary</span><span class="x"> </span><span class="kt">int</span><span class="x">
-</span><span class="p">}</span><span class="x">
-
-</span><span class="k">type</span><span class="x"> </span><span class="n">Employees</span><span class="x"> </span><span class="p">[]</span><span class="n">Employee</span><span class="x">
-
-</span><span class="k">func</span><span class="x"> </span><span class="p">(</span><span class="n">em</span><span class="x"> </span><span class="n">Employees</span><span class="p">)</span><span class="x"> </span><span class="n">Len</span><span class="p">()</span><span class="x"> </span><span class="kt">int</span><span class="p">{</span><span class="x">
-	</span><span class="k">return</span><span class="x"> </span><span class="nb">len</span><span class="p">(</span><span class="n">em</span><span class="p">)</span><span class="x">
-</span><span class="p">}</span><span class="x">
-
-</span><span class="k">func</span><span class="x"> </span><span class="p">(</span><span class="n">em</span><span class="x"> </span><span class="n">Employees</span><span class="p">)</span><span class="x"> </span><span class="n">Less</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="x"> </span><span class="n">j</span><span class="x"> </span><span class="kt">int</span><span class="p">)</span><span class="x"> </span><span class="kt">bool</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="k">return</span><span class="x"> </span><span class="n">em</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">Salary</span><span class="x"> </span><span class="o">&lt;</span><span class="x"> </span><span class="n">em</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">Salary</span><span class="x">
-</span><span class="p">}</span><span class="x">
-
-</span><span class="k">func</span><span class="x"> </span><span class="p">(</span><span class="n">em</span><span class="x"> </span><span class="n">Employees</span><span class="p">)</span><span class="x"> </span><span class="n">Swap</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="x"> </span><span class="n">j</span><span class="x"> </span><span class="kt">int</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">em</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="x"> </span><span class="n">em</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="n">em</span><span class="p">[</span><span class="n">j</span><span class="p">],</span><span class="x"> </span><span class="n">em</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="x">
-</span><span class="p">}</span><span class="x">
-
-</span><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">employees</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Employees</span><span class="p">{</span><span class="x">
-		</span><span class="n">Employee</span><span class="p">{</span><span class="s">"smart"</span><span class="p">,</span><span class="x"> </span><span class="m">5000</span><span class="p">},</span><span class="x">
-		</span><span class="n">Employee</span><span class="p">{</span><span class="s">"Aelam"</span><span class="p">,</span><span class="x"> </span><span class="m">4500</span><span class="p">},</span><span class="x">
-		</span><span class="n">Employee</span><span class="p">{</span><span class="s">"Lin"</span><span class="p">,</span><span class="x"> </span><span class="m">8500</span><span class="p">},</span><span class="x">
-	</span><span class="p">}</span><span class="x">
-
-	</span><span class="n">sort</span><span class="o">.</span><span class="n">Sort</span><span class="p">(</span><span class="n">employees</span><span class="p">)</span><span class="x">
-	</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="n">employees</span><span class="p">)</span><span class="x">
-</span><span class="p">}</span><span class="x">
-</span></code></pre></div></div>
-
-<p><code class="highlighter-rouge">sort.Sort</code>接收一个<code class="highlighter-rouge">sort.Interface</code>类型参数，而<code class="highlighter-rouge">Employees</code>实现了该接口，故在<code class="highlighter-rouge">sort.Sort</code>内部，可以完全不用管<code class="highlighter-rouge">Employees</code>的具体类型是什么，只需调用接口中定义好的方法，是接口和实现类型之间的契约。</p>
 
 	  ]]></description>
 	</item>
