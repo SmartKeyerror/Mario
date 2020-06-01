@@ -15,299 +15,241 @@ Golang除了方便使用的协程以外，最令我感到惊讶的就是`interfa
 
 <!---more--->
 
-#### 1. 面向接口编程
+### 1. 面向接口编程
 
 面向接口编程的核心就在于将接口和实现分离，封装不稳定的实现，暴露稳定的接口。上游系统面向接口编程而非面向实现编程，不依赖不稳定的实现细节，当实现发生变化时，上游系统可不做或者只需进行少量的修改，从而降低耦合性，提高拓展性。 换句话说，面向接口编程是一种可随时拔插替换的编程方法。
 
-以图片存储服务为例，图片经过一系列的处理之后上传至阿里云OSS中保存。 以Java代码为例，为了代码复用，将其封装成一个类对外使用:
 
-```java
-public class AliyunOssImageStore {
-    public void createBucketIfNotExist(string bucketName) throws Exception {
-        // OSS通过bucket来划分整块OSS存储空间
-        // 当所需要的bucket不存在时，进行创建，创建失败则抛出异常
-    }
-    
-    private String generateAccessToken() {
-        // 通过appKey以及appSecret生成access_token, 内部方法
-    }
-    
-    public String uploadToOss(Image image, string bucket) {
-        // 将图片上传至oss，返回图片URL地址
-    }
-}
+#### 1.1 接口的含义
 
-// 使用
-class OssProcess {
-    public static void main(String[] args) {
-        String bucketName = "user_thumbnail_image";
-        AliyunOssImageStore store = new AliyunOssImageStore(/*省略参数*/);
-        store.createBucketIfNotExist(bucketName);
-        Image image = ... // 生成图片
-        store.uploadToOss(image, bucketName);
-    }
-}
-```
+不管是在Java语言还是在Go语言中，接口本身的定义均只包含方法，并不包含具体的实现。换句话说，接口实际上是定义了一组行为，但是没有定义这些行为到底该怎么进行。
 
-`AliyunOssImageStore`就是一个具体的实现类，实现了将图片上传至阿里云OSS的功能，在绝大多数时候，代码都能完好的工作。现在由于采购部门不满阿里云的价格，想要更换图片存储供应商，比如七牛。现在开发人员需要添加`QiniuImageStore`，并替换掉原有的实现方式，如此一来，必将会涉及到大面积的代码改动，包括业务代码以及重新编写测试用例。
+接口描述了"如果你是...则必须能..."的分类思想，如果你是动物，那么必须能呼吸，移动和进食。如果你是植物，那么你必须能进行光合作用。但是，具体的动物如何呼吸(鱼用腮呼吸，狮子用肺呼吸)，如何移动(鸟既能飞又能跑，狮子不能飞)，是由实现了动物这个接口的具体动物所决定的。
 
-更换一个OSS服务就需要大面积的更改业务代码，违反了开放-封闭原则，从而引入了额外的工作量以及风险，上游系统直接依赖具体的实现是不妥当的，因为具体的实现很有可能发生变化，一旦发生变化，波及的范围可能是整个系统。
+接口将一类事物的行为提炼并抽象出来，从而达到简化事物复杂度的目的，以便相关的研究人员更关注于他们想要关注的，而忽略其它的细节。
 
-解决该问题的一种方式是添加代理类，即在业务代码和具体实现之间额外添加一层抽象，或者说函数，假设叫`imageStoreProxy`。业务代码调用`imageStoreProxy`方法，而该方法调用具体的OSS实现，当OSS实现发生变动时，只需修改`imageStoreProxy`一处即可。但是这么做的后果就是降低了系统的灵活性并增加了系统的复杂度，`imageStoreProxy`需要满足上游系统所有的需求，该方法到后期将会变得非常臃肿而难以维护，最可能出现的情况就是该方法存在乱七八糟的`if-else`。
 
-一个更好的方式就是使用接口，上游系统依赖接口，具体实现根据接口定义的方法进行实现，并在运行时选择具体的实现。
+#### 1.2 依赖反转原则
 
-```java
-public interface ImageStore {
-    String upload(Image image, String bucket);
-}
+在SOLID原则中，依赖反转原则对于增强系统的可拓展性、降低代码的耦合性至关重要。依赖反转原则描述了这样一个概念: 
 
-public class AliyunOssImageStore implements ImageStore {
-    public String upload(Image image, String bucket) {
-        // 阿里云OSS的具体实现
-    }
-}
+>高层次模块不应依赖于低层次模块的具体实现细节，两者都应该依赖于抽象
 
-public class QiniuImageStore implements ImageStore {
-    public String upload(Image image, String bucket) {
-        // 七牛云的具体实现
-    }
-}
+![](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Go/interface/DIP.png)
 
-// 使用
-class OssProcess {
-    public static void main(String[] args) {
-        ImageStore store = new AliyunOssImageStore(/*省略参数*/);
-        store.upload(/*省略参数*/); // 使用阿里云OSS
-        
-        ImageStore store = new QiniuImageStore(/*省略参数*/);
-        store.upload(/*省略参数*/); // 使用七牛云
-    }
-}
-```
+依赖反转原则简单来说就是额外地增加了一层抽象(接口)，该模块抽象了模块A所依赖的所有行为。而模块B则实现该抽象(接口)，并在运行时通过依赖注入的方式注入进模块A。如此一来，将来若想要替换掉模块B，只需要重新实现该接口，并在少量的代码中进行改动即可。
 
-合理的使用接口可以完全屏蔽具体的实现细节，当具体实现发生变化时，上游系统只需改动少量的代码即可适应该变化。 例如底层数据存储，MySQL与MongoDB在实现上完全不同，数据的CRUD有着非常大的区别，但是通过定义合理的接口，再根据接口封装MySQL与MongoDB的具体实现，上游系统则可以完全忽略其细节的区别，只关注自身的业务逻辑，从而实现耦合的解除。
 
-常见ORM就是做的，例如Python中的`SQLAlchemy`，只需在配置文件或者是定义文件中进行少量的修改，即可实现底层数据存储应用的替换。
+#### 1.3 接口的实际意义
 
-#### 2. 作为接口定义的interface
+接口的实际意义其实就是一个标准，或者说一种协议。例如SSD的M.2接口，不管是三星的970 evo plus，还是海盗船的MP 510，在内部硬件的实现细节上虽然存在差异，但是它们都能够在支持M.2的主板上正常运行。这其实就是标准化的意义: 兼容性和可交换性。
 
-Golang中的`interface`承担的主要作用之一就是解耦与多态，与Java中的接口没有什么区别，只是在语法格式上不同而已。Golang中的接口实现不需要显式地使用`implements`关键字，某个类型只需要实现了接口中的所有方法，就说该类型实现了该接口。
+从抽象代码上来看，接口就是一种约束，用于约束对象的行为，使得对象标准化。
+
+
+### 2. 实现接口
+
+不同于Java语言中使用`implements`关键字实现接口，Golang中的某一个类型实现接口是隐式的: 只要类型实现了接口中的全部方法，就认为该类型实现了该接口。
 
 ```go
-type OperationLog struct {
-	Timestamp int32    // 时间戳
-	Operation string   // 操作类型, create/update/delete
-	// Other need fields
+type LogData struct {}
+
+type LogStorage interface {
+    Insert(data LogData)
 }
 
-type OperationLogService interface {
-	InsertOne(log *OperationLog) error      // 单个日志记录
-	InsertMany(logs []*OperationLog) error  // 批量日志记录
+type MongoStorage struct {}
+
+func (m *MongoStorage)Insert(data LogData) {/*...*/}
+```
+
+#### 2.1 接口和指针
+
+当接口和指针在一起使用时，往往会产生一些令人迷惑的问题。方式的接收者有值接收者和指针接收者，那么也就会有两种实现接口的方式，而这两种实现方法在使用过程中需要特别小心。
+
+```go
+type LogData struct {}
+
+type LogStorage interface {
+    Insert(data LogData)
+    InsertMany(dataSlice []LogData)
 }
 
-type ElasticLogService struct {
-	EsClient *ElasticClient
+type MongoStorage struct {}
+
+/* 指针接收者 */
+func (m *MongoStorage)Insert(data LogData) {/*...*/}
+
+/* 值接收者 */
+func (m MongoStorage)InsertMany(dataSlice []LogData) {/*...*/}
+```
+
+在示例中，`MongoStorage`这一具体的实现存在一个指针接收者方法，一个值接收者方法。当尝试使用结构体初始化变量时，将无法通过编译:
+
+```go
+func main() {
+	var m LogStorage = MongoStorage{}
 }
 
-func (svc *ElasticLogService) InsertOne(log *OperationLog) error {
-	svc.EsClient.PostOne(/*参数省略*/)
-	return nil
-}
+./mian.go:31:6: cannot use MongoStorage literal (type MongoStorage) as type LogStorage in assignment:
+	MongoStorage does not implement LogStorage (Insert method has pointer receiver)
+```
 
-func (svc *ElasticLogService) InsertMany(logs []*OperationLog) error {
-	svc.EsClient.PostMany(/*参数省略*/)
-	return nil
-}
+原因在于尽管`InsertMany`方法使用了值接收者实现，但是`Insert`方法却使用了指针接收者实现。由于Go方法调用按值传递，通过对指针的解引用可以获取到该指针指向的值，但是却无法获取到某一个变量的指针，因为在内存中可能存在多个指向该变量的指针。
 
-type MySQLLogService struct {
-	Db *MySQLClient
+```go
+func main() {
+	var m LogStorage = &MongoStorage{}
+	m.InsertMany([]LogData{})
 }
+```
 
-func (svc *MySQLLogService) InsertOne(log *OperationLog) error {
-	svc.Db.InsertToLogTable(/*参数省略*/)
-	return nil
+当执行`m.InsertMany()`语句时，Go会将指向`MongoStorage{}`结构体的指针进行解引用，取出结构体`MongoStorage{}`并进行方法调用。
+
+在实际应用中，为了节省实参的拷贝开销，通常都会使用指针接收者来实现接口中的方法。那么在定义变量时，需要指针变量。
+
+
+### 3. 接口的值
+
+Go语言中接口的定义形式为:
+
+```go
+type interfaceName interface {
+    functionName(p Type) returnType
 }
+```
 
-func (svc *MySQLLogService) InsertMany(logs []*OperationLog) error {
-	svc.Db.InsertManyToLogTable(/*参数省略*/)
-	return nil
+从接口定义中可以看到，`interface`是一个类型，那么既然是一个类型，就应该有值。接口的值由两部分组成: 接口的动态类型和该类型的值，前者称为动态类型，后者称为动态值。Go接口的动态类型和Java的RTTI一样，在运行时确定某个接口的具体类型。
+
+```go
+var w io.Writer                  // ①
+w = os.Stdout                    // ②
+w.Write([]byte("Hello World~"))  // ③
+```
+
+①: 声明了变量`w`，且其类型为`io.Writer`，由于`io.Writer`是一个接口定义，并且Golang会在变量被定义时即对变量进行初始化，那么变量`w`也会被初始化。**接口的零值就是将其动态类型和动态值均设置为nil**。
+
+②: 将`os.Stdout`这一具体类型赋值给了`w`，相当于将一个具体类型隐式转换成了接口类型。那么此时，`w`就有了动态类型和动态值。其动态类型为`*os.File`，其动态值为`*os.file`。
+
+③: 调用该接口值的`Write`方法，实际上调用的是`(*os.File).Write`方法。在调用方法时，仍然需要使用动态分发的手段来获取到方法地址。
+
+#### 3.1 Go接口的实现
+
+在Golang中，接口的实现其实有两种，一种是拥有方法的接口，另一种则是不拥有方法的接口，后者通常表示为`interface{}`，将在文章的后续进行描述。
+
+由用户自定义的、带有方法的接口通过`iface`结构体实现，位于源码`/src/runtime/runtime2.go`中:
+
+```go
+type iface struct {
+	tab  *itab
+	data unsafe.Pointer
+}
+```
+
+其中`*itab`表示接口的动态类型，`unsafe.Pointer`则指向接口的动态值。**对于一个接口变量而言，只要其动态类型的值不为nil，接口值就不为nil**
+
+![](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Go/interface/interface-value.png)
+
+
+### 4. interface{}
+
+`interface{}`表示不包含任何方法的接口，而Golang中不管是基本数据类型，还是复合数据类型，还是用户自定的类型，都至少包含零个方法。换句话说，所有的类型都实现了`interface{}`。
+
+首先查看下`fmt.Println`函数的定义:
+
+```go
+func Println(a ...interface{}) (n int, err error) {
+	return Fprintln(os.Stdout, a...)
+}
+```
+
+`Println`方法接收任意多个`interface{}`类型的参数，这也是为什么`Println`方法能够接收任意类型的原因: **所有传入的参数均进行了隐式转换，转换成了`interface{}`类型**。
+
+```go
+func main() {
+	fmt.Println(10)
+	fmt.Println("123")
+	fmt.Println(map[string]string{"name": "SmartKeyerror"})
+	fmt.Println([]string{"foo", "bar"})
+}
+```
+
+但是，需要特别注意的是: `interface{}`并不代表任意类型，它只是一种特殊的类型。
+
+```go
+func Bar(v []interface{}) {
+    /*...*/
 }
 
 func main() {
-	var logService OperationLogService
-	// 使用MySQL作为data storage
-	logService = &ElasticLogService{/*...*/}
-	logService.InsertOne(/*...*/)
-
-	// 使用ES作为data storage
-	logService = &MySQLLogService{/*...*/}
-	logService.InsertOne(/*...*/)
+    Bar([]string{"foo", "bar"})
 }
 ```
 
-这是一个简单的操作日志服务demo，可以看到，操作日志具体的实现有Elasticsearch以及MySQL两种方式，而这两种DB对数据的CURD有着非常大的差异，前者使用http API，而后者则采用SQL语句。由于系统本身的复杂性既需要存储容量大、支持全局搜索但数据易失的ES，又需要存储容量有限、不支持全局搜索但数据持久化要求程度高的MySQL。
-
-在有了接口对相关方法进行强约束以后，`ElasticLogService`以及`MySQLLogService`可以无差别的对外提供服务，需要切换服务时，只需进行非常小的改动即可满足需求。
-
-![](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/golang/interface/log_service.png)
-
-#### 3. 作为类型的interface
-
-当使用
-
-```go
-type MyInterface interface {}
-```
-
-时，我们定义了一个接口，当接口中不存在任何方法时，称之为empty interface，通常写做`interface{}`。由于Golang并没有显式的`implements`关键字，而所有的类型至少包含零个个方法，所以Golang中所有的类型都隐式地实现了`interface{}`，也就意味着，当我们定义如下方法时:
-
-```go
-func DoSomething(v interface{}) {...}
-```
-
-函数将能够接收任意的数据类型，不管是`int`还是`int64`，或者是自定义的结构体。以內建函数`Printf`为例，其原型为:
-
-```go
-func Printf(format string, a ...interface{}) (n int, err error) {...}
-```
-
-其中的`a`即为任意类型的任意数量的参数，如
-
-```go
-fmt.Printf("human eat %s\n", food)
-fmt.Printf("The T-shirt price is %.2f, %s", 9.15, "nine fifteen")
-```
-
-回到`DoSomething`方法，在函数内部，`v`的类型是什么?假如传入的参数类型为`int`，`v`的类型是否就是`int`?答案是`interface{}`，不管传入的参数是什么类型，Go都会在必要时对其进行类型转换，转换成`interface{}`类型，而`interface{}`类型，是有值的。
-
-接口的值分为两部分，一个指向底层方法表的指针，和指向保存着具体值的指针。
-
-```go
-type MyInterface interface {
-    PrintSelf()
-}
-
-type MyInt int
-func (this MyInt) PrintSelf() {
-    fmt.Printf("The value is: %d", this)
-}
-
-func main() {
-    var s MyInterface
-}
-```
-
-此时`s`无具体的类型，也无具体的值，两个指针均指向nil:
-
-![](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/golang/interface/nil-interface.png)
-
-当执行:
-
-```go
-s = MyInt(10)
-s.PrintSelf()
-```
-
-时, `s`拥了的具体的类型和确切的值:
-
-![](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/golang/interface/not%20nil%20interface.png)
-
-虽然`interface{}`作为参数时可以接收任何类型的参数，但是并不代表参数的类型是任意类型，变量在运行时的某一时刻，永远有一个具体的类型。
-
-```go
-func DoSomething(v interface{}) {...}
-```
-
-在`DoSomething`方法内部，如果想要获取变量`v`的类型，可以使用类型分支(`switch-case`)来进行类型检查，也可以使用反射直接获取变量类型:
-
-```go
-func DoSomething(v interface{}) {
-	// 使用类型分支
-	switch v.(type) {
-	case nil:
-		fmt.Println("nil")
-	case string:
-		fmt.Println("string")
-	case int:
-		fmt.Println("int")
-	}
-	
-	// 使用反射
-	fmt.Printf("v'type is: %T\n", v)
-}
-```
-
-#### 4. 作为契约(协议)的interface
-
-Golang语言本身并不支持泛型，尽管函数参数可以使用`interface{}`来接收任意类型的变量，但是对于`slice`而言，我们无法定义一个`[]interface{}`来接收任意类型的`[]T`，原因在于`T`和`interface{}`在存储空间中有着截然不同的表现形式。
-
-```go
-func PrintSlice(s []interface{}) {
-	for _, v := range s {
-		fmt.Println(v)
-	}
-}
-
-func main() {
-	var s []int
-	for i := 0; i < 10; i++ {
-		s = append(s, i)
-	}
-	PrintSlice(s)
-}
-```
-
-在编译时期就会抛出异常:
+上述代码将在编译期抛出异常:
 
 ```bash
-cannot use s (type []int) as type []interface {} in argument to PrintSlice
+./mian.go:35:14: cannot use []string literal (type []string) as type []interface {} in argument to Bar
 ```
 
-尽然可以通过代码将`[]T`转换成`[]interface{}`，但是会带来一些效率上的损耗，并且很丑陋。解决此类问题的通用方法就是使用`interface`，如`sort.Interface`。
+`[]interface{}`和`[]string`是完全不同的类型，`interface{}`占用固定的内存空间，而`[]Type`则不能确定占用内存空间大小，它们自然不是同一种类型。
 
-sort包提供了针对任意类型序列根据任意排序函数原地排序的功能，使用`sort.Interface`接口来指定通用排序算法和每个具体类型之间的协议。
+#### 4.1 interface{}的实现
+
+和带有方法的接口一样，`interface{}`的定义也在`/src/runtime/runtime2.go`:
 
 ```go
-type Interface interface {
-	Len() int            // 获取集合中元素个数的方法
-	Less(i, j int) bool  // 排序的依据
-	Swap(i, j int)       // 如何在集合中交换两个元素
+type eface struct {
+	_type *_type
+	data  unsafe.Pointer
 }
 ```
 
-简单地来说，只要类型实现了`sort.Interface`接口，就可以使用Golang内部提供的排序算法(根据元素排布动态地选择排序方式)，而无需自行实现。
+其中`_type`为Go语言类型的运行时表示，包括了一些元信息，包括大小、哈希值等等，而`data`用于保存实际运行时的数据，是一个指向原始数据的指针。`eface`和`iface`差别并不大，均包括运行时的动态值和动态类型。
+
+
+### 5. 类型断言与类型分支
+
+#### 5.1 类型断言
+
+和Python中的`isinstance`、`issubclass`类似，Golang提供了类型断言来判断某个变量是否为某一种类型，其格式为`x.(T)`。
 
 ```go
-type Employee struct {
-	Name string
-	Salary int
+func main() {
+    var w io.Writer
+	w = os.Stdout
+	
+	if _, ok := w.(*os.File); ok {
+		fmt.Println("Assert Right")
+	}else {
+		fmt.Println("Assert Wrong")
+	}
 }
+```
 
-type Employees []Employee
+若`T`为具体类型，那么类型断言会检查x的动态类型是否为`T`。若断言成功，结果即为`x`的动态值，类型当然就是`T`。
 
-func (em Employees) Len() int{
-	return len(em)
-}
+若`T`为接口类型，那么类型断言会检查`x`的动态类型是否满足`T`。若断言成功，结果仍为接口值，不过此时的类型为接口类型`T`。
 
-func (em Employees) Less(i, j int) bool {
-	return em[i].Salary < em[j].Salary
-}
+#### 5.2 类型分支
 
-func (em Employees) Swap(i, j int) {
-	em[i], em[j] = em[j], em[i]
+当某个函数接收`interface{}`类型参数时，需要在函数内部来确定其动态类型，此时可使用`x.(type)`类型分支。
+
+```go
+func foo(v interface{}) {
+	switch v.(type) {
+	case int:
+		fmt.Println("v is int")
+	case string:
+		fmt.Println("v is string")
+	default:
+		fmt.Println("unknown type")
+	}
 }
 
 func main() {
-	employees := Employees{
-		Employee{"smart", 5000},
-		Employee{"Aelam", 4500},
-		Employee{"Lin", 8500},
-	}
-
-	sort.Sort(employees)
-	fmt.Println(employees)
+	foo(10)
+	foo("10")
+	foo([]string{"smart"})
 }
 ```
-
-`sort.Sort`接收一个`sort.Interface`类型参数，而`Employees`实现了该接口，故在`sort.Sort`内部，可以完全不用管`Employees`的具体类型是什么，只需调用接口中定义好的方法，是接口和实现类型之间的契约。
