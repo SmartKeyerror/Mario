@@ -90,7 +90,7 @@
 <p>在示例中，<code class="highlighter-rouge">MongoStorage</code>这一具体的实现存在一个指针接收者方法，一个值接收者方法。当尝试使用结构体初始化变量时，将无法通过编译:</p>
 
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="k">var</span><span class="x"> </span><span class="n">m</span><span class="x"> </span><span class="n">LogStorage</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="n">MongoStorage</span><span class="p">{}</span><span class="x">
+    </span><span class="k">var</span><span class="x"> </span><span class="n">m</span><span class="x"> </span><span class="n">LogStorage</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="n">MongoStorage</span><span class="p">{}</span><span class="x">
 </span><span class="p">}</span><span class="x">
 
 </span><span class="o">./</span><span class="n">mian</span><span class="o">.</span><span class="k">go</span><span class="o">:</span><span class="m">31</span><span class="o">:</span><span class="m">6</span><span class="o">:</span><span class="x"> </span><span class="n">cannot</span><span class="x"> </span><span class="n">use</span><span class="x"> </span><span class="n">MongoStorage</span><span class="x"> </span><span class="n">literal</span><span class="x"> </span><span class="p">(</span><span class="k">type</span><span class="x"> </span><span class="n">MongoStorage</span><span class="p">)</span><span class="x"> </span><span class="n">as</span><span class="x"> </span><span class="k">type</span><span class="x"> </span><span class="n">LogStorage</span><span class="x"> </span><span class="n">in</span><span class="x"> </span><span class="n">assignment</span><span class="o">:</span><span class="x">
@@ -100,8 +100,8 @@
 <p>原因在于尽管<code class="highlighter-rouge">InsertMany</code>方法使用了值接收者实现，但是<code class="highlighter-rouge">Insert</code>方法却使用了指针接收者实现。由于Go方法调用按值传递，通过对指针的解引用可以获取到该指针指向的值，但是却无法获取到某一个变量的指针，因为在内存中可能存在多个指向该变量的指针。</p>
 
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="k">var</span><span class="x"> </span><span class="n">m</span><span class="x"> </span><span class="n">LogStorage</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="o">&amp;</span><span class="n">MongoStorage</span><span class="p">{}</span><span class="x">
-	</span><span class="n">m</span><span class="o">.</span><span class="n">InsertMany</span><span class="p">([]</span><span class="n">LogData</span><span class="p">{})</span><span class="x">
+    </span><span class="k">var</span><span class="x"> </span><span class="n">m</span><span class="x"> </span><span class="n">LogStorage</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="o">&amp;</span><span class="n">MongoStorage</span><span class="p">{}</span><span class="x">
+    </span><span class="n">m</span><span class="o">.</span><span class="n">InsertMany</span><span class="p">([]</span><span class="n">LogData</span><span class="p">{})</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
 
@@ -138,8 +138,8 @@
 <p>由用户自定义的、带有方法的接口通过<code class="highlighter-rouge">iface</code>结构体实现，位于源码<code class="highlighter-rouge">/src/runtime/runtime2.go</code>中:</p>
 
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">iface</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">tab</span><span class="x">  </span><span class="o">*</span><span class="n">itab</span><span class="x">
-	</span><span class="n">data</span><span class="x"> </span><span class="n">unsafe</span><span class="o">.</span><span class="n">Pointer</span><span class="x">
+    </span><span class="n">tab</span><span class="x">  </span><span class="o">*</span><span class="n">itab</span><span class="x">
+    </span><span class="n">data</span><span class="x"> </span><span class="n">unsafe</span><span class="o">.</span><span class="n">Pointer</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
 
@@ -154,17 +154,17 @@
 <p>首先查看下<code class="highlighter-rouge">fmt.Println</code>函数的定义:</p>
 
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">Println</span><span class="p">(</span><span class="n">a</span><span class="x"> </span><span class="o">...</span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">(</span><span class="n">n</span><span class="x"> </span><span class="kt">int</span><span class="p">,</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="kt">error</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="k">return</span><span class="x"> </span><span class="n">Fprintln</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">Stdout</span><span class="p">,</span><span class="x"> </span><span class="n">a</span><span class="o">...</span><span class="p">)</span><span class="x">
+    </span><span class="k">return</span><span class="x"> </span><span class="n">Fprintln</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">Stdout</span><span class="p">,</span><span class="x"> </span><span class="n">a</span><span class="o">...</span><span class="p">)</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
 
 <p><code class="highlighter-rouge">Println</code>方法接收任意多个<code class="highlighter-rouge">interface{}</code>类型的参数，这也是为什么<code class="highlighter-rouge">Println</code>方法能够接收任意类型的原因: <strong>所有传入的参数均进行了隐式转换，转换成了<code class="highlighter-rouge">interface{}</code>类型</strong>。</p>
 
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="m">10</span><span class="p">)</span><span class="x">
-	</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"123"</span><span class="p">)</span><span class="x">
-	</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="k">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span><span class="s">"name"</span><span class="o">:</span><span class="x"> </span><span class="s">"SmartKeyerror"</span><span class="p">})</span><span class="x">
-	</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">([]</span><span class="kt">string</span><span class="p">{</span><span class="s">"foo"</span><span class="p">,</span><span class="x"> </span><span class="s">"bar"</span><span class="p">})</span><span class="x">
+    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="m">10</span><span class="p">)</span><span class="x">
+    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"123"</span><span class="p">)</span><span class="x">
+    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="k">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span><span class="s">"name"</span><span class="o">:</span><span class="x"> </span><span class="s">"SmartKeyerror"</span><span class="p">})</span><span class="x">
+    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">([]</span><span class="kt">string</span><span class="p">{</span><span class="s">"foo"</span><span class="p">,</span><span class="x"> </span><span class="s">"bar"</span><span class="p">})</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
 
@@ -191,8 +191,8 @@
 <p>和带有方法的接口一样，<code class="highlighter-rouge">interface{}</code>的定义也在<code class="highlighter-rouge">/src/runtime/runtime2.go</code>:</p>
 
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span><span class="x"> </span><span class="n">eface</span><span class="x"> </span><span class="k">struct</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">_type</span><span class="x"> </span><span class="o">*</span><span class="n">_type</span><span class="x">
-	</span><span class="n">data</span><span class="x">  </span><span class="n">unsafe</span><span class="o">.</span><span class="n">Pointer</span><span class="x">
+    </span><span class="n">_type</span><span class="x"> </span><span class="o">*</span><span class="n">_type</span><span class="x">
+    </span><span class="n">data</span><span class="x">  </span><span class="n">unsafe</span><span class="o">.</span><span class="n">Pointer</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
 
@@ -206,13 +206,13 @@
 
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
     </span><span class="k">var</span><span class="x"> </span><span class="n">w</span><span class="x"> </span><span class="n">io</span><span class="o">.</span><span class="n">Writer</span><span class="x">
-	</span><span class="n">w</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="n">os</span><span class="o">.</span><span class="n">Stdout</span><span class="x">
-	
-	</span><span class="k">if</span><span class="x"> </span><span class="n">_</span><span class="p">,</span><span class="x"> </span><span class="n">ok</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">w</span><span class="o">.</span><span class="p">(</span><span class="o">*</span><span class="n">os</span><span class="o">.</span><span class="n">File</span><span class="p">);</span><span class="x"> </span><span class="n">ok</span><span class="x"> </span><span class="p">{</span><span class="x">
-		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"Assert Right"</span><span class="p">)</span><span class="x">
-	</span><span class="p">}</span><span class="k">else</span><span class="x"> </span><span class="p">{</span><span class="x">
-		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"Assert Wrong"</span><span class="p">)</span><span class="x">
-	</span><span class="p">}</span><span class="x">
+    </span><span class="n">w</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="n">os</span><span class="o">.</span><span class="n">Stdout</span><span class="x">
+    
+    </span><span class="k">if</span><span class="x"> </span><span class="n">_</span><span class="p">,</span><span class="x"> </span><span class="n">ok</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">w</span><span class="o">.</span><span class="p">(</span><span class="o">*</span><span class="n">os</span><span class="o">.</span><span class="n">File</span><span class="p">);</span><span class="x"> </span><span class="n">ok</span><span class="x"> </span><span class="p">{</span><span class="x">
+	    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"Assert Right"</span><span class="p">)</span><span class="x">
+    </span><span class="p">}</span><span class="k">else</span><span class="x"> </span><span class="p">{</span><span class="x">
+	    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"Assert Wrong"</span><span class="p">)</span><span class="x">
+    </span><span class="p">}</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
 
@@ -225,20 +225,20 @@
 <p>当某个函数接收<code class="highlighter-rouge">interface{}</code>类型参数时，需要在函数内部来确定其动态类型，此时可使用<code class="highlighter-rouge">x.(type)</code>类型分支。</p>
 
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">foo</span><span class="p">(</span><span class="n">v</span><span class="x"> </span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="k">switch</span><span class="x"> </span><span class="n">v</span><span class="o">.</span><span class="p">(</span><span class="k">type</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="k">case</span><span class="x"> </span><span class="kt">int</span><span class="o">:</span><span class="x">
-		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"v is int"</span><span class="p">)</span><span class="x">
-	</span><span class="k">case</span><span class="x"> </span><span class="kt">string</span><span class="o">:</span><span class="x">
-		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"v is string"</span><span class="p">)</span><span class="x">
-	</span><span class="k">default</span><span class="o">:</span><span class="x">
-		</span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"unknown type"</span><span class="p">)</span><span class="x">
-	</span><span class="p">}</span><span class="x">
+    </span><span class="k">switch</span><span class="x"> </span><span class="n">v</span><span class="o">.</span><span class="p">(</span><span class="k">type</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="x">
+    </span><span class="k">case</span><span class="x"> </span><span class="kt">int</span><span class="o">:</span><span class="x">
+	    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"v is int"</span><span class="p">)</span><span class="x">
+    </span><span class="k">case</span><span class="x"> </span><span class="kt">string</span><span class="o">:</span><span class="x">
+	    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"v is string"</span><span class="p">)</span><span class="x">
+    </span><span class="k">default</span><span class="o">:</span><span class="x">
+	    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"unknown type"</span><span class="p">)</span><span class="x">
+    </span><span class="p">}</span><span class="x">
 </span><span class="p">}</span><span class="x">
 
 </span><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
-	</span><span class="n">foo</span><span class="p">(</span><span class="m">10</span><span class="p">)</span><span class="x">
-	</span><span class="n">foo</span><span class="p">(</span><span class="s">"10"</span><span class="p">)</span><span class="x">
-	</span><span class="n">foo</span><span class="p">([]</span><span class="kt">string</span><span class="p">{</span><span class="s">"smart"</span><span class="p">})</span><span class="x">
+    </span><span class="n">foo</span><span class="p">(</span><span class="m">10</span><span class="p">)</span><span class="x">
+    </span><span class="n">foo</span><span class="p">(</span><span class="s">"10"</span><span class="p">)</span><span class="x">
+    </span><span class="n">foo</span><span class="p">([]</span><span class="kt">string</span><span class="p">{</span><span class="s">"smart"</span><span class="p">})</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
 
