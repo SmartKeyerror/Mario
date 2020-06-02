@@ -88,7 +88,7 @@ func (m MongoStorage)InsertMany(dataSlice []LogData) {/*...*/}
 
 ```go
 func main() {
-	var m LogStorage = MongoStorage{}
+    var m LogStorage = MongoStorage{}
 }
 
 ./mian.go:31:6: cannot use MongoStorage literal (type MongoStorage) as type LogStorage in assignment:
@@ -99,8 +99,8 @@ func main() {
 
 ```go
 func main() {
-	var m LogStorage = &MongoStorage{}
-	m.InsertMany([]LogData{})
+    var m LogStorage = &MongoStorage{}
+    m.InsertMany([]LogData{})
 }
 ```
 
@@ -141,8 +141,8 @@ w.Write([]byte("Hello World~"))  // ③
 
 ```go
 type iface struct {
-	tab  *itab
-	data unsafe.Pointer
+    tab  *itab
+    data unsafe.Pointer
 }
 ```
 
@@ -159,7 +159,7 @@ type iface struct {
 
 ```go
 func Println(a ...interface{}) (n int, err error) {
-	return Fprintln(os.Stdout, a...)
+    return Fprintln(os.Stdout, a...)
 }
 ```
 
@@ -167,10 +167,10 @@ func Println(a ...interface{}) (n int, err error) {
 
 ```go
 func main() {
-	fmt.Println(10)
-	fmt.Println("123")
-	fmt.Println(map[string]string{"name": "SmartKeyerror"})
-	fmt.Println([]string{"foo", "bar"})
+    fmt.Println(10)
+    fmt.Println("123")
+    fmt.Println(map[string]string{"name": "SmartKeyerror"})
+    fmt.Println([]string{"foo", "bar"})
 }
 ```
 
@@ -200,8 +200,8 @@ func main() {
 
 ```go
 type eface struct {
-	_type *_type
-	data  unsafe.Pointer
+    _type *_type
+    data  unsafe.Pointer
 }
 ```
 
@@ -217,13 +217,13 @@ type eface struct {
 ```go
 func main() {
     var w io.Writer
-	w = os.Stdout
-	
-	if _, ok := w.(*os.File); ok {
-		fmt.Println("Assert Right")
-	}else {
-		fmt.Println("Assert Wrong")
-	}
+    w = os.Stdout
+    
+    if _, ok := w.(*os.File); ok {
+	    fmt.Println("Assert Right")
+    }else {
+	    fmt.Println("Assert Wrong")
+    }
 }
 ```
 
@@ -237,19 +237,19 @@ func main() {
 
 ```go
 func foo(v interface{}) {
-	switch v.(type) {
-	case int:
-		fmt.Println("v is int")
-	case string:
-		fmt.Println("v is string")
-	default:
-		fmt.Println("unknown type")
-	}
+    switch v.(type) {
+    case int:
+	    fmt.Println("v is int")
+    case string:
+	    fmt.Println("v is string")
+    default:
+	    fmt.Println("unknown type")
+    }
 }
 
 func main() {
-	foo(10)
-	foo("10")
-	foo([]string{"smart"})
+    foo(10)
+    foo("10")
+    foo([]string{"smart"})
 }
 ```
