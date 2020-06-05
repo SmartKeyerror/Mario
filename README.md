@@ -46,5 +46,4 @@
 - 2018/10/30 [MySQL权限管理](https://smartkeyerror.com/MySQL-Permissions)
 - 2018/10/25 [MySQL慢查询日志分析工具](https://smartkeyerror.com/MySQL-slow-query-analysis-tool)
 - 2018/10/23 [binlog的正确打开方式](https://smartkeyerror.com/MySQL-binlog)
-- 2018/10/23 [MySQL之主从复制](https://smartkeyerror.com/MySQL-master-slave)
 - 2018/09/18 [Django处理数据并发问题](https://smartkeyerror.com/django-concurrent-data-process)
