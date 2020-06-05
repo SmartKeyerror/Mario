@@ -12,6 +12,258 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>MySQL主从复制</title>
+	  <link>//MySQL-Replication</link>
+	  <author></author>
+	  <pubDate>2020-06-04T07:06:25+00:00</pubDate>
+	  <guid>//MySQL-Replication</guid>
+	  <description><![CDATA[
+	     <p>MySQL的异步复制算的上是一种典型的单领导者复制模式，就复制本身而已并无特殊之处。但是复制的细节，例如binlog的格式选取，从节点如何在保证数据准确的情况下进行并行复制，MySQL的实现方案总是能令人眼前一亮。</p>
+
+<!---more--->
+
+<h3 id="1-binlog">1. binlog</h3>
+
+<p>在经典的复制模型下，主节点和从节点的数据复制都是通过日志的传输进行的。例如Redis主从复制，复制的是<code class="highlighter-rouge">appendonly.aof</code>文件中的逻辑操作记录。又如Raft一致性算法，复制的是作为”日志项”的数据记录，<code class="highlighter-rouge">LogEntry</code>。而在MySQL中，则是使用binlog作为主节点和从节点的数据复制依据。</p>
+
+<p>实际上，如果观察大多数数据库应用的话，会发现它们都会有逻辑日志这一概念，其中记录了对数据的逻辑增删改。一方面用于数据库在宕机时的数据恢复(Redis、MySQL)，另一方面则用于主从复制之中。</p>
+
+<h4 id="11-binlog记录了哪些内容">1.1 binlog记录了哪些内容?</h4>
+
+<p>有非常多的方式来查看binlog中的逻辑日志，一种是在MySQL-Client中查看，另一种则是直接查看位于硬盘中的binlog文件。前者其实也是读取位于硬盘中的binlog文件，只不过会对文件内容进行解析，并增加binlog内容的可读性。而后者则能够获取到更多的信息。</p>
+
+<ul>
+  <li>MySQL-Client</li>
+</ul>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">show</span> <span class="n">binary</span> <span class="n">logs</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">show</span> <span class="n">binlog</span> <span class="n">events</span> <span class="k">in</span> <span class="s1">'mysql-bin.000193'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>所得到的结果如下所示:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/show-events.png" alt="" /></p>
+
+<p>其中<code class="highlighter-rouge">Pos</code>表示该逻辑日志的起始位置，<code class="highlighter-rouge">End_log_pos</code>表示该逻辑日志的结束位置。<code class="highlighter-rouge">Event_type</code>表示事件名称，<code class="highlighter-rouge">Server_id</code>则是由用户配置的当前MySQL实例的集群ID，<code class="highlighter-rouge">Info</code>中记录了较为简短的逻辑事件。在起始位置为219的地方，实际上执行了一条<code class="highlighter-rouge">insert</code>语句，但是<code class="highlighter-rouge">Info</code>列中并没有给出详细信息。</p>
+
+<ul>
+  <li>mysqlbinlog</li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smartkeyerror@Zero:~<span class="nv">$ </span>mysqlbinlog <span class="nt">-vv</span> mysql-bin.000193
+</code></pre></div></div>
+
+<p>得到的输出结果如下:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">BEGIN</span>
+<span class="cm">/*!*/</span><span class="p">;</span>
+<span class="o">#</span> <span class="k">at</span> <span class="mi">302</span>
+<span class="o">#</span> <span class="err">中间省去一些注释内容</span>
+<span class="cm">/*!*/</span><span class="p">;</span>
+
+<span class="o">###</span> <span class="k">INSERT</span> <span class="k">INTO</span> <span class="nv">`Mario`</span><span class="p">.</span><span class="nv">`hugo`</span>
+<span class="o">###</span> <span class="k">SET</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">1</span><span class="o">=</span><span class="mi">7</span> <span class="cm">/* INT meta=0 nullable=0 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">2</span><span class="o">=</span><span class="s1">'2020-06-02 14:32:02'</span> <span class="cm">/* DATETIME(0) meta=0 nullable=0 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">3</span><span class="o">=</span><span class="s1">'2020-06-02 14:54:07'</span> <span class="cm">/* DATETIME(0) meta=0 nullable=0 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">4</span><span class="o">=</span><span class="s1">'nami'</span> <span class="cm">/* VARSTRING(256) meta=256 nullable=0 is_null=0 */</span>
+<span class="o">###</span>   <span class="o">@</span><span class="mi">5</span><span class="o">=</span><span class="s1">'16399553366'</span> <span class="cm">/* VARSTRING(44) meta=44 nullable=0 is_null=0 */</span>
+<span class="o">#</span> <span class="k">at</span> <span class="mi">428</span>
+<span class="o">#</span><span class="mi">200602</span> <span class="mi">14</span><span class="p">:</span><span class="mi">54</span><span class="p">:</span><span class="mi">07</span> <span class="n">server</span> <span class="n">id</span> <span class="mi">1</span>  <span class="n">end_log_pos</span> <span class="mi">459</span> <span class="n">CRC32</span> <span class="mi">0</span><span class="n">x27a642a3</span> 	<span class="n">Xid</span> <span class="o">=</span> <span class="mi">146</span>
+<span class="k">COMMIT</span><span class="cm">/*!*/</span><span class="p">;</span>
+<span class="o">#</span> <span class="k">at</span> <span class="mi">459</span>
+</code></pre></div></div>
+
+<p>其输出内容要比<code class="highlighter-rouge">show binlog events</code>更加完整，除了事务的起始位置和结束位置以外，还包括事务的执行时间，以及完整的数据记录、相关字段的注释。所以，当需要查看binlog的详细内容时，尽量使用<code class="highlighter-rouge">mysqlbinlog</code>命令行工具。</p>
+
+<h4 id="12-binlog日志格式">1.2 binlog日志格式</h4>
+
+<p>MySQL一共提供了3种binlog日志格式，分别是<code class="highlighter-rouge">STATEMENT</code>，<code class="highlighter-rouge">ROW</code>以及<code class="highlighter-rouge">MIXED</code>。</p>
+
+<ul>
+  <li>查看当前binlog_format格式</li>
+</ul>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">show</span> <span class="n">variables</span> <span class="k">like</span> <span class="nv">"binlog_format"</span><span class="p">;</span>
+</code></pre></div></div>
+
+<ul>
+  <li>在线修改binlog_format格式</li>
+</ul>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">set</span> <span class="k">global</span> <span class="n">binlog_format</span> <span class="o">=</span> <span class="k">STATEMENT</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">set</span> <span class="k">global</span> <span class="n">binlog_format</span> <span class="o">=</span> <span class="k">ROW</span><span class="p">;</span>
+<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">set</span> <span class="k">global</span> <span class="n">binlog_format</span> <span class="o">=</span> <span class="n">MIXED</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">STATEMENT</code>日志格式仅记录用户所执行的SQL语句，用户执行什么，binlog就记录什么，属于最节省硬盘空间的一种日志格式。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/STATEMENT.png" alt="" /></p>
+
+<p>但是，无论是出于数据恢复的考虑，还是出于主从复制的目的，都不应该将binlog格式设置为<code class="highlighter-rouge">STATEMENT</code>。其原因在于<code class="highlighter-rouge">STATEMENT</code>格式的日志依赖于执行SQL时的上下文，例如日期函数，<code class="highlighter-rouge">rand</code>函数，不同的执行环境下得到的结果可能并不相同，从而导致主从的数据不一致。而对于数据恢复而言，当然是数据越详细越完整更好。</p>
+
+<p><code class="highlighter-rouge">ROW</code>日志格式将记录完整的数据变更记录，每一条<code class="highlighter-rouge">insert</code>语句都会记录每个字段的插入值，对于<code class="highlighter-rouge">update</code>语句，则会记录数据更新前和更新后的完整数据(<code class="highlighter-rouge">binlog_row_image</code>值为<code class="highlighter-rouge">FULL</code>)。其缺点就是占用硬盘空间较多，假设一条<code class="highlighter-rouge">update</code>语句更新了10万条数据，那么在<code class="highlighter-rouge">ROW</code>格式的binlog中则同样会记录10万条数据。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/ROW.png" alt="" /></p>
+
+<p><code class="highlighter-rouge">MIXED</code>日志格式结合了<code class="highlighter-rouge">STATEMENT</code>和<code class="highlighter-rouge">ROW</code>日志格式，当MySQL认为当前SQL语句不会引起歧义，即不会导致主从不一致时，将使用<code class="highlighter-rouge">STATEMENT</code>格式记录，反之使用<code class="highlighter-rouge">ROW</code>格式进行记录。节省了一部分的硬盘使用空间，同时又能够保证数据在主从之间的一致性。</p>
+
+<p>在实际应用中，应将binlog日志格式最低设置为<code class="highlighter-rouge">MIXED</code>，如果磁盘空间确实比较紧张的话。否则，就应该将binlog日志格式设置为<code class="highlighter-rouge">ROW</code>，该格式对于数据的误删操作恢复有非常大的帮助。</p>
+
+<h4 id="13-binlog_row_image">1.3 binlog_row_image</h4>
+
+<p>当<code class="highlighter-rouge">binlog_format</code>的值为<code class="highlighter-rouge">ROW</code>时，还有一个控制binlog日志记录的参数: <code class="highlighter-rouge">binlog_row_image</code>。该参数同样有3个可选项: <code class="highlighter-rouge">FULL</code>，<code class="highlighter-rouge">MINIMAL</code>以及<code class="highlighter-rouge">NOBLOB</code>。该参数控制了<code class="highlighter-rouge">ROW</code>格式的binlog日志在写入数据时是否写入完整数据。</p>
+
+<p><code class="highlighter-rouge">FULL</code>将会记录数据修改前后的完整字段，包括未被修改的字段:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/FULL.png" alt="" /></p>
+
+<p><code class="highlighter-rouge">MINIMAL</code>则采用最小记录原则，仅记录修改行的关键定位信息(例如主键或者唯一键)，以及最终被修改的字段的修改值，而不会记录那些没有被修改的字段:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/MINIMAL.png" alt="" /></p>
+
+<p><code class="highlighter-rouge">NOBLOB</code>和<code class="highlighter-rouge">FULL</code>非常类似，会记录完整的字段修改前后数据，只不过不会记录未被修改的、且字段类型为BLOG或TEXT的数据，实际应用较少。</p>
+
+<p>在主从复制中，如果主库网络带宽或者从库网络带宽无法立即升级，并且同步的日志量较大时，可临时的将<code class="highlighter-rouge">binlog_row_image</code>参数由<code class="highlighter-rouge">FULL</code>更改为<code class="highlighter-rouge">MINIMAL</code>，减少一部分的网络带宽使用。</p>
+
+<h3 id="2-异步复制模型">2. 异步复制模型</h3>
+
+<p>对于异步复制模型而言，从原理上来说，只需要将逻辑日志不断地发送给所有的从节点，让从节点重新执行逻辑日志的内容即可，也不需要关心从节点是否接收成功并且执行成功。</p>
+
+<p>MySQL的异步复制模型也确实如此。主节点开启<code class="highlighter-rouge">binlog dump</code>线程，用于锁定地读取binlog内容，并通过TCP长连接发送给从节点。而对于从节点来说，将会开启一个<code class="highlighter-rouge">slave I/O</code>线程，用于和主节点建立TCP连接，以及接收主节点发送的binlog逻辑日志，并将接收到的数据写入自身的中继日志(relay log)文件中。另外的一个线程，即<code class="highlighter-rouge">slave SQL</code>线程，将不断地读取中继日志数据，并执行其中的逻辑SQL语句。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/master-slave.png" alt="" /></p>
+
+<h4 id="21-为什么需要relay-log中继日志">2.1 为什么需要relay log(中继日志)?</h4>
+
+<p>从节点在接收到主节点发送的binlog日志之后，并没有直接执行，而是存储在relay log中，由另外一个线程读取该文件的数据并执行。那么MySQL为什么要使用这种会降低复制效率的设计?</p>
+
+<p>个人认为原因有两点，一方面relay log可以作为日志同步的缓冲区。主节点发送日志的速度可能要大于从节点执行日志的速度，此时就需要一个缓冲区来弥补两者之间的速度差，避免主节点发送的binlog被阻塞在socket缓冲区中。</p>
+
+<p>另外一个作用就是利于故障时的问题排查。relay log的结构与binlog非常相似，通过在从节点持久化一份主节点发送的日志，那么在出现故障时，可查看该文件的内容来大致地判断是主节点出了问题，还是从节点出了问题。</p>
+
+<p>这种数据冗余的设计在业务系统设计中其实也非常实用，相较于直接执行外部发送的数据，采用”生产者-消费者”模型将会有更好的健壮性: 在微服务中，”数据同步”是一件极易出错，且令人无比蛋疼的苦差事。当保留源数据，并在源数据的基础之上开展业务的话，能避免许多麻烦。</p>
+
+<h3 id="3-并行复制">3. 并行复制</h3>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/master-slave-load.png" alt="" /></p>
+
+<p>在主节点中，由于存在各种各样的<code class="highlighter-rouge">Lock</code>， 例如共享锁，排它锁，意向锁等等，使得事务可以并发执行，而无需担心数据不一致的问题。但是，在从节点如果想要并发执行binlog中的内容，并不是一件容易的事情，其原因在于事务和事务之间并不是完全独立存在的，而是存在依赖性。</p>
+
+<p>如上图所示，从节点Execute中继日志的内容将会成为主从复制最后的延迟点，同时，也可能是最大的延迟点: 因为<code class="highlighter-rouge">binlog dump</code>线程以及<code class="highlighter-rouge">slave I/O</code>线程均是对文件的顺序读取和写入，而<code class="highlighter-rouge">slave SQL</code>线程在执行语句时，则没有那么简单。</p>
+
+<h4 id="31-并行复制所面对的问题">3.1 并行复制所面对的问题</h4>
+
+<p>假设现在有3个事务并发执行，且修改的是同一行数据，并且事务提交的顺序为<code class="highlighter-rouge">TRX-1</code>，<code class="highlighter-rouge">TRX-2</code>，<code class="highlighter-rouge">TRX-3</code>，则数据的新旧程度为: <code class="highlighter-rouge">TRX-3</code> &gt; <code class="highlighter-rouge">TRX-2</code> &gt; <code class="highlighter-rouge">TRX-1</code>。</p>
+
+<p>当从节点SQL执行线程读取中继日志时，并不知道这3个事务是修改的同一条数据，如果只是简单地将这3个事务分配给3个Worker执行的话，完全有可能发生旧数据覆盖新数据的情况，即<code class="highlighter-rouge">TRX-1</code>最后被执行，<code class="highlighter-rouge">TRX-3</code>的最新更新将会丢失，导致从节点和主节点的数据不一致。</p>
+
+<h4 id="32-基于table的并行复制">3.2 基于table的并行复制</h4>
+
+<p>如果两个事务是对不同的表进行操作，那么这两个事务即可并行执行。处理方式也非常简单，对表名称进行哈希，并对结果进行worker数量的取模，将该事务分发至对应的worker即可。</p>
+
+<p>但是，如果事务同时对多张表进行了修改的话，上述模型就会出现问题: 该事务应该分配给哪个worker? 所以，还需要记录每个线程中有哪些事务正在执行或者排队，操作的是哪些表。对于线程私有变量，可以使用<code class="highlighter-rouge">ThreadLocal</code>来实现，外部也可方便的获取线程中的私有内容。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/parallel-with-table.png" alt="" /></p>
+
+<p>如上图所示，Assigner线程读取relay log中的内容，并对数据进行解析，决定将该事物分配给哪个worker执行。worker线程则是事务的执行线程，并且使用哈希表记录下当前线程队列中有多少个事务正在修改哪些表。其中key为表名称，value为队列中有多少事务修改该表。</p>
+
+<p>当Assigner读取到只修改table-1的事务时，遍历所有worker的哈希表，判断是否有其它worker正在执行关于table-1的事务，发现只有worker-1存在，那么将会直接将其分发至worker-1线程，并将事务追加至该worker的队列中，以此保证对同一个表的操作串行执行。</p>
+
+<p>当Assigner读取到同时修改table-1和table-3的事务时，首先根据解析规则获取到这两个表应该被分配的worker，然后取出两个队列中正在对table-1和table-3所修改的事务数量。发现worker-1存在对table-1的事务，而worker-2对table-3的修改事务数量为0，那么Assigner将会将该事务分配给worker-1。</p>
+
+<p>当Assigner读取到同时修改table-1和table-4的事务时，发现worker-1和worker-2都存在对两个表的修改，那么Assigner将会等待，等待worker-1对table-1的修改事务数量为0，或者是worker-2对table-4的修改事务数量为0。</p>
+
+<p>在大多数情况下基于表的并行复制策略能够快速地执行，但是，如果遇到热点表的话，该热点表仍然是串行复制，同样会出现效率问题。</p>
+
+<h4 id="33-基于行的并行复制">3.3 基于行的并行复制</h4>
+
+<p>既然基于表的并行复制会有热点表的问题，那么基于行的并行复制总没有热点表的问题了吧? 并且同一条数据的修改频率并不会特别高。基于行的并行复制虽然能够有着更快的执行效率，但是同样地带来的更多的内存开销和CPU计算开销。</p>
+
+<p>在基于行的并行复制中，至少需要记录下所有正在被修改或者是已经在队列中的行数据，那么显而易见的，worker线程中的哈希表将会有存在大量的数据。所以综合来看，基于行的并行复制并不是一个好的选择，甚至可以说是一个比较差的选择。</p>
+
+<p>但是，MySQL针对基于行的复制进行了优化，将判断两个事务是否存在”冲突”(即是否更新了同一行)由从节点转移至主节点。MySQL会记录下更新的每一行的哈希值，组成一个集合。为了能够唯一标识同一行，哈希值通常由”库名+表名+唯一索引名+唯一索引值”计算得到，而唯一索引通常是主键。</p>
+
+<p>如果两个事务没有同时更新同一条数据，那么两个事务的集合就不存在交集，它们是可以并行执行的。并且该哈希值集合是在主节点写入binlog时即计算好的，不需要从节点再次解析binlog event，节省了从节点的一部分计算资源。</p>
+
+<h4 id="34-基于group-commit的并行复制">3.4 基于Group Commit的并行复制</h4>
+
+<p>InnoDB存储引擎是通过redo log + binlog来实现事务的原子性以及持久性的，为了保证数据的一致性，两个日志的数据写入通过”两阶段提交”完成，并且使用组提交(Group Commit)来提高事务的并发效率。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/LSN-Commit.png" alt="" /></p>
+
+<p>当未使用组提交时，当<code class="highlighter-rouge">trx:1</code>提交，仅将该事务的数据持久化至redo log以及binlog中，当有两万个事务并发执行时，将需要执行四万次<code class="highlighter-rouge">fsync</code>系统调用。</p>
+
+<p>当使用组提交时，当<code class="highlighter-rouge">trx:1</code>提交，redo log buffer中可能存在多个事务的物理页修改，那么此时<code class="highlighter-rouge">trx:1</code>将会作为Leader，将当前最大的LSN redo log持久化至磁盘，以减少<code class="highlighter-rouge">fsync</code>的系统调用次数。并且，为了尽可能多地在一次写入中写入更多的数据，InnoDB还会推迟redo log的<code class="highlighter-rouge">fsync</code>过程。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/delay-fsync.png" alt="" /></p>
+
+<p>更具体的上下文请参考文章: <a href="https://smartkeyerror.com/InnoDB-AD">InnoDB如何保证事务的原子性与持久性</a></p>
+
+<p><strong>假设多个事务能够同时进入prepare阶段，那么这些事务一定能够并行执行。</strong> 接下来分析一下这句话的正确性:</p>
+
+<ol>
+  <li>事务A和事务B并发执行，准备修改同一条数据。由于X Lock的存在，当一个事务修改数据时，另一个事务将会被阻塞，等待前一个事务<strong>提交</strong>。</li>
+  <li>假设事务A首先获得了X Lock，成功修改了数据并提交了事务。而此时，事务B仍然处于运行中，在获取到数据的X Lock之后才开始执行自己的修改。</li>
+</ol>
+
+<p>所以，<strong>只要是能够同时进入prepare的阶段，事务一定是经过了锁冲突的检验，一定能够在从库并行执行</strong>。</p>
+
+<p>如此一来，当redo log在使用最大的LSN持久化至磁盘时，使用一个<code class="highlighter-rouge">commit_id</code>对该事务进行标记。下次的redo log持久化将<code class="highlighter-rouge">commit_id</code>自增。从库在并行执行binlog event是，只要是相同的<code class="highlighter-rouge">commit_id</code>，就使其并发执行。</p>
+
+<h4 id="35-mysql提供的并行复制配置项">3.5 MySQL提供的并行复制配置项</h4>
+
+<p>MySQL一共提供了三种并行复制策略，由参数<code class="highlighter-rouge">binlog_transaction_dependency_tracking</code>控制(MySQL版本大于5.7.22)。</p>
+
+<ul>
+  <li>COMMIT_ORDER: 利用Group Commit机制进行并行执行。</li>
+  <li>WRITESET: 基于行的并行执行。</li>
+  <li>WRITESET_SESSION: 建立在WRITESET策略之上，只不过多了一个约束，即在主库上同一个线程先后执行的两个事务，在备库执行的时候，要保证相同的先后顺序。</li>
+</ul>
+
+<p>其中COMMIT_ORDER为默认策略，当使用该策略时，可以调整<code class="highlighter-rouge">binlog_group_commit_sync_delay</code>以及<code class="highlighter-rouge">binlog_group_commit_sync_no_delay_count</code>来使得主节点更慢的提交，使从节点更快的执行事务。</p>
+
+<p>当主节点事务执行的并发度较高时，可以选择COMMIT_ORDER策略。当主节点事务执行并发度并不高，并且趋近于单线程或者双线程时，可选择WRITESET策略。</p>
+
+<h3 id="4-主从延迟来源">4. 主从延迟来源</h3>
+
+<h4 id="41-从节点硬件资源不足">4.1 从节点硬件资源不足</h4>
+
+<p>有时候我们会认为从库只负责读请求，而不处理客户端的写请求，所以从库的内存、硬盘以及CPU都可以使用较低配置。但事实上，从库需要处理的数据写入并不会比主库要少，同时还要处理比主库更多的读请求。因此，从库的硬件资源应该至少和主库相同，甚至可以高于从库。</p>
+
+<p>通过<code class="highlighter-rouge">top</code>或者是<code class="highlighter-rouge">htop</code>可以很清晰的得到从节点的内存以及CPU使用率，使用<code class="highlighter-rouge">iostat</code>查看从节点的磁盘I/O活动情况。<code class="highlighter-rouge">iostat</code>有几个非常关键的指标:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smartkeyerror@Zero:~<span class="nv">$ </span>iostat <span class="nt">-m</span>
+Linux 4.15.0-101-generic <span class="o">(</span>Zero<span class="o">)</span>         2020年06月04日  _x86_64_        <span class="o">(</span>8 CPU<span class="o">)</span>
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           4.93    0.01    2.58    0.59    0.00   91.88
+</code></pre></div></div>
+
+<p>其中<code class="highlighter-rouge">%iowait</code>表示CPU等待输入输出完成时间的百分比，<code class="highlighter-rouge">%idle</code>表示CPU空闲百分比。如果<code class="highlighter-rouge">%iowait</code>的值较高，说明硬盘存在I/O瓶颈; 如果<code class="highlighter-rouge">%idle</code>持续较低，说明系统的CPU处理能力较弱，此时应处理CPU资源。</p>
+
+<h4 id="42-主节点大事务与从节点长事务">4.2 主节点大事务与从节点长事务</h4>
+
+<p>大事务是指更新了较多数据行的事务，当从节点重放大事务的binlog event时，不管是使用<code class="highlighter-rouge">COMMIT_ORDER</code>还是<code class="highlighter-rouge">WRITESET</code>并行复制策略，后续操作均需要等待该事务的执行，事务执行所需要的执行时间越久，主从延迟就会越高。所以，尽量地将大事务拆分成多个小事务执行。</p>
+
+<p>从节点长事务同样也可能导致主从延迟的产生。例如，当从库开启了一个长事务:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">BEGIN</span><span class="p">;</span>
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">hugo</span> <span class="k">WHERE</span> <span class="n">username</span> <span class="o">=</span> <span class="nv">"smart"</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>执行完<code class="highlighter-rouge">SELECT</code>语句之后因为种种原因长时间未提交事务，那么此时若主库对该表进行了DDL操作，即使<code class="highlighter-rouge">hugo</code>表只有几行数据，也会长时间的阻塞: 因为此时DDL操作无法获取到<code class="highlighter-rouge">hugo</code>表的意向排它锁(IX)。</p>
+
+<p>如果主表的DDL操作在白天进行，并且恰好存在对该表的某一个长事务的话，即使不是高峰期也会带来非常大的主从延迟。</p>
+
+<h4 id="43-从节点未开启并行复制">4.3 从节点未开启并行复制</h4>
+
+<p>从节点的并行执行worker数量由<code class="highlighter-rouge">slave_parallel_workers</code>参数决定，最大值为1024，通常将其设置为CPU核心数的一半。</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>InnoDB如何保证事务的原子性与持久性</title>
 	  <link>//InnoDB-AD</link>
 	  <author></author>
@@ -2211,209 +2463,6 @@ BJFGCGFva0pWcEdPJQAAABMAAAD+fGX3
 </code></pre></div></div>
 
 <p>来更加直观的查看相关内容以及偏移量， 不过这种方式查看的话没有具体数据信息， 可以结合<code class="highlighter-rouge">mysqlbinlog</code>命令共同使用。</p>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>MySQL之主从复制</title>
-	  <link>//MySQL-master-slave</link>
-	  <author></author>
-	  <pubDate>2018-10-23T09:49:09+00:00</pubDate>
-	  <guid>//MySQL-master-slave</guid>
-	  <description><![CDATA[
-	     <p>MySQL的主从复制是建立读写分离以及MySQL集群的根本， 为了能够保证复制的正常运行， 那么就必然需要对其原理以及核心的配置项有足够的了解， 才能够在复杂的生产环境中对错误进行排查。</p>
-
-<!---more--->
-
-<h4 id="1-mysql主从复制原理">1. MySQL主从复制原理</h4>
-
-<p>MySQL之间数据复制的基础是<code class="highlighter-rouge">二进制日志</code>文件(binary log file)。 一台MySQL数据库一旦启用二进制日志后， 其作为master， 它的数据库中所有操作都会以“事件”的方式记录在二进制日志中， 其他数据库作为slave通过一个<code class="highlighter-rouge">I/O线程</code>与主服务器保持通信， 并监控master的二进制日志文件的变化， 如果发现master二进制日志文件发生变化， 则会把变化复制到自己的<code class="highlighter-rouge">中继日志中</code>， 然后slave的一个<code class="highlighter-rouge">SQL线程</code>会把相关的“事件”执行到自己的数据库中， 以此实现从数据库和主数据库的一致性，也就实现了主从复制。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Blog/%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.png" alt="Alt text" /></p>
-
-<h4 id="1-实现mysql主从复制需要进行的配置">1. 实现MySQL主从复制需要进行的配置</h4>
-<ol>
-  <li>主服务器：
-    <ul>
-      <li>开启二进制日志</li>
-      <li>配置唯一的server-id</li>
-      <li>获得master二进制日志文件名及位置</li>
-      <li>创建一个用于slave和master通信的用户账号</li>
-    </ul>
-  </li>
-  <li>从服务器：
-    <ul>
-      <li>配置唯一的server-id</li>
-      <li>使用master分配的用户账号读取master二进制日志</li>
-      <li>启用slave服务</li>
-    </ul>
-  </li>
-</ol>
-
-<h4 id="2-binlog相关配置以及参数说明">2. binlog相关配置以及参数说明</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mysql&gt; show variables like <span class="s2">"%binlog%"</span><span class="p">;</span>
-+--------------------------------------------+----------------------+
-| Variable_name                              | Value                |
-+--------------------------------------------+----------------------+
-| binlog_cache_size                          | 32768                |
-| binlog_checksum                            | CRC32                |
-| binlog_direct_non_transactional_updates    | OFF                  |
-| binlog_error_action                        | ABORT_SERVER         |
-| binlog_format                              | ROW                  |
-| binlog_group_commit_sync_delay             | 0                    |
-| binlog_group_commit_sync_no_delay_count    | 0                    |
-| binlog_gtid_simple_recovery                | ON                   |
-| binlog_max_flush_queue_time                | 0                    |
-| binlog_order_commits                       | ON                   |
-| binlog_row_image                           | FULL                 |
-| binlog_rows_query_log_events               | OFF                  |
-| binlog_stmt_cache_size                     | 32768                |
-| binlog_transaction_dependency_history_size | 25000                |
-| binlog_transaction_dependency_tracking     | COMMIT_ORDER         |
-| innodb_api_enable_binlog                   | OFF                  |
-| innodb_locks_unsafe_for_binlog             | OFF                  |
-| log_statements_unsafe_for_binlog           | ON                   |
-| max_binlog_cache_size                      | 18446744073709547520 |
-| max_binlog_size                            | 104857600            |
-| max_binlog_stmt_cache_size                 | 18446744073709547520 |
-| sync_binlog                                | 1                    |
-+--------------------------------------------+----------------------+
-22 rows <span class="k">in </span><span class="nb">set</span> <span class="o">(</span>0.00 sec<span class="o">)</span>
-</code></pre></div></div>
-<p>通过在mysql客户端执行<code class="highlighter-rouge">show variables</code>命令， 可以看到关于<code class="highlighter-rouge">binlog</code>的配置一共有20几项之多。 但是大部分的配置项我们可以直接使用默认值， 有几个配置需要额外的进行关注：</p>
-
-<h5 id="21-binlog_format">2.1 binlog_format</h5>
-<p>二进制日志格式有3种格式可选： Statement, Row以及Mixed。 其中Statement格式基于语句进行日志记录， Row格式基于数据修改进行记录。
-首先准备一下测试的数据库：</p>
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">create</span> <span class="k">database</span> <span class="n">repl_test</span><span class="p">;</span>
-
-<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="nv">`repl_test`</span><span class="p">.</span><span class="nv">`new_table`</span> <span class="p">(</span>
-  <span class="nv">`id`</span> <span class="n">INT</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
-  <span class="nv">`name`</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">45</span><span class="p">)</span> <span class="k">NULL</span><span class="p">,</span>
-  <span class="nv">`age`</span> <span class="n">VARCHAR</span><span class="p">(</span><span class="mi">45</span><span class="p">)</span> <span class="n">CHARACTER</span> <span class="k">SET</span> <span class="s1">'utf8mb4'</span> <span class="k">NULL</span><span class="p">,</span>
-  <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="nv">`id`</span><span class="p">));</span>
-</code></pre></div></div>
-<h6 id="211-statement">2.1.1 Statement</h6>
-
-<p>简单的来说Statement格式就是记录了数据修改所执行的SQL语句， 那么在做主从复制时从库读取SQL语句并重新进行执行。
-我们创建一个database以及一个table， 并在table中插入一些数据来观察一下：</p>
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">set</span> <span class="k">session</span> <span class="n">binlog_format</span><span class="o">=</span><span class="k">statement</span><span class="p">;</span>
-
-<span class="k">insert</span> <span class="k">into</span> <span class="n">new_table</span> <span class="k">values</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nv">"smart"</span><span class="p">,</span> <span class="mi">18</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nv">"keyerror"</span><span class="p">,</span> <span class="mi">25</span><span class="p">);</span>
-<span class="k">delete</span> <span class="k">from</span> <span class="n">new_table</span> <span class="k">where</span> <span class="n">id</span><span class="o">=</span><span class="mi">2</span><span class="p">;</span>
-</code></pre></div></div>
-<p>在二进制日志保存的文件夹中查看二进制日志：</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>mysqlbinlog mysql-bin.000001  <span class="c"># Statement格式日志</span>
-<span class="nb">sudo </span>mysqlbinlog <span class="nt">-vv</span> mysql-bin.000001  <span class="c"># Row格式日志</span>
-</code></pre></div></div>
-<p>那么Statement格式的日志就会是这个样子：</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>insert into new_table values <span class="o">(</span>1, <span class="s2">"smart"</span>, 18<span class="o">)</span>, <span class="o">(</span>2, <span class="s2">"keyerror"</span>, 25<span class="o">)</span>
-....  <span class="c"># 中间一些其它内容</span>
-BEGIN
-/<span class="k">*</span><span class="o">!</span><span class="k">*</span>/<span class="p">;</span>
-<span class="c"># at 2297</span>
-<span class="c">#181011 10:16:38 server id 1  end_log_pos 2413 CRC32 0xccb8b51b         Query   thread_id=2     exec_time=0     error_code=0</span>
-SET <span class="nv">TIMESTAMP</span><span class="o">=</span>1539224198/<span class="k">*</span><span class="o">!</span><span class="k">*</span>/<span class="p">;</span>
-delete from new_table where <span class="nv">id</span><span class="o">=</span>2
-/<span class="k">*</span><span class="o">!</span><span class="k">*</span>/<span class="p">;</span>
-<span class="c"># at 2413</span>
-...
-</code></pre></div></div>
-<p>可以看到在日志中完整了记录了每一条SQL语句的内容， 从库拿到这些语句重新执行就可以获得与主库相同的数据了。
-因为记录的是SQL语句， 那么会极大的降低二进制日志文件的大小， 并且在复制的有着更快的网络传输效率。
-缺点也显而易见：像Uuid()这样的函数每次执行返回不同的结果， 那么这样一来在主库和从库中数据就会有不一致的情况。 并且如果某一条SQL语句执行时间过长， 从库同样的也要执行很长时间， 这样一来复制的过程就可能会被阻塞， 主从之间的数据一致性在这段时间就会遭到破坏。 所以一般在生产环境中并不会使用这样的日志格式， 除非有特殊的需求需要进行临时的修改。</p>
-
-<h6 id="212-row">2.1.2 Row</h6>
-
-<p>Row格式在MySQL5.7版本中为默认的二进制日志格式， 日志中会记录每一行数据的修改， 然后在从库中应用这些修改。</p>
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">set</span> <span class="k">session</span> <span class="n">binlog_format</span><span class="o">=</span><span class="k">row</span><span class="p">;</span>
-<span class="k">insert</span> <span class="k">into</span> <span class="n">new_table</span> <span class="k">values</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="nv">"zhangsan"</span><span class="p">,</span> <span class="mi">18</span><span class="p">);</span>
-<span class="k">update</span> <span class="n">new_table</span> <span class="k">set</span> <span class="n">age</span><span class="o">=</span><span class="mi">19</span> <span class="k">where</span> <span class="n">age</span><span class="o">=</span><span class="mi">18</span><span class="p">;</span>
-</code></pre></div></div>
-<p>那么此时日志所记录的内容为：</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">### INSERT INTO `repl_test`.`new_table`</span>
-<span class="c">### SET</span>
-<span class="c">###   @1=3 /* INT meta=0 nullable=0 is_null=0 */</span>
-<span class="c">###   @2='zhangsan' /* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
-<span class="c">###   @3='18' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
-
-<span class="c">### UPDATE `repl_test`.`new_table`</span>
-<span class="c">### WHERE</span>
-<span class="c">###   @1=1 /* INT meta=0 nullable=0 is_null=0 */</span>
-<span class="c">###   @2='smart' /* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
-<span class="c">###   @3='18' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
-<span class="c">### SET</span>
-<span class="c">###   @1=1 /* INT meta=0 nullable=0 is_null=0 */</span>
-<span class="c">###   @2='smart' /* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
-<span class="c">###   @3='19' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
-<span class="c">### UPDATE `repl_test`.`new_table`</span>
-<span class="c">### WHERE</span>
-<span class="c">###   @1=3 /* INT meta=0 nullable=0 is_null=0 */</span>
-<span class="c">###   @2='zhangsan' /* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
-<span class="c">###   @3='18' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
-<span class="c">### SET</span>
-<span class="c">###   @1=3 /* INT meta=0 nullable=0 is_null=0 */</span>
-<span class="c">###   @2='zhangsan' /* VARSTRING(45) meta=45 nullable=1 is_null=0 */</span>
-<span class="c">###   @3='19' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
-</code></pre></div></div>
-<p>可以看到每一行的修改都被记录了， 并且记录了修改行的前后的数据内容， 那么这样一来主库与从库就能够达到完全的数据一致性。
-缺点也同样的显而易见， 数据记录的太多太啰嗦， 会占用大量的磁盘空间以及更长时间的网络传输。 但是， 是有办法优化的， 要不然MySQL官方也不会推荐我们使用Row格式。</p>
-
-<h6 id="211-mixed">2.1.1 Mixed</h6>
-
-<p>实际上就是上面两种模式的混合。</p>
-
-<h5 id="21-binlog_row_image">2.1 binlog_row_image</h5>
-<p>前面提到了<code class="highlighter-rouge">binlog_format=ROW</code>会带来很大的磁盘以及网络传输开销， 那么<code class="highlighter-rouge">binlog_row_image</code>参数就是为了优化<code class="highlighter-rouge">ROW</code>模式而存在的。
-可选值有3个： FULL， MINIMAL, NOBLOB。其中FULL选项将会记录所有内容； MINIMAL仅会记录被修改了列， 无关列不会记录； NOBLOB记录了blog和text之外的所有字段。FULL模式所生成的日志格式就是上面我们看到的。
-MINIMAL选项所生成的日志格式：</p>
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">set</span> <span class="k">session</span> <span class="n">binlog_row_image</span><span class="o">=</span><span class="n">MINIMAL</span><span class="p">;</span>
-<span class="k">update</span> <span class="n">new_table</span> <span class="k">set</span> <span class="n">age</span><span class="o">=</span><span class="mi">25</span> <span class="k">where</span> <span class="n">id</span><span class="o">=</span><span class="mi">1</span><span class="p">;</span>
-</code></pre></div></div>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">### UPDATE `repl_test`.`new_table`</span>
-<span class="c">### WHERE</span>
-<span class="c">###   @1=1 /* INT meta=0 nullable=0 is_null=0 */</span>
-<span class="c">### SET</span>
-<span class="c">###   @3='25' /* VARSTRING(180) meta=180 nullable=1 is_null=0 */</span>
-</code></pre></div></div>
-<p>其中<code class="highlighter-rouge">@1, @3</code>表示第几列， 也就是字段名称。这里的日志表示”将id(@1)为1的数据的年龄(@3)修改为25”， 其余未改动的字段(列)并没有记录在二进制日志中， 减少了日志的记录。</p>
-
-<p>需要特别注意的是： 虽然MINIMAL能够减少日志的数量， 但是由于记录会选择的缺失， 那么通过这种格式的二进制日志对数据库进行恢复的难度就会提高， 排错也会有一些困难。 需要根据实际情况来正确的选择是使用<code class="highlighter-rouge">FULL</code>模式还是<code class="highlighter-rouge">MINIMAL</code>模式。</p>
-
-<h4 id="3-基于日志点的复制和基于gtid的复制">3. 基于日志点的复制和基于GTID的复制</h4>
-<h5 id="31-基于日志点的复制">3.1 基于日志点的复制</h5>
-<p>基于日志点的复制MySQL会记录当前日志的数据偏移量并且将该值传递给从库， 从库根据该偏移量进行复制。
-通常来讲我们启用主从复制是在已经有了主库的情况下而添加从库的， 那么此时就需要将数据导入到从库中：</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 只允许读操作不允许写入</span>
-flush tables with <span class="nb">read </span>lock<span class="p">;</span>
-<span class="c"># 记录日志的偏移量</span>
-mysqldump <span class="nt">--master-data</span> <span class="o">[</span>databses | <span class="nt">--all-databases</span><span class="o">]</span> <span class="o">&gt;</span> all.sql
-or
-xtrbackup <span class="nt">--slave-info</span>  <span class="c"># 第三方工具， 仅用于InnoDB， 属于热备工具</span>
-</code></pre></div></div>
-<p>那么此时从库就可以开启复制链路了， 其中的<code class="highlighter-rouge">master_log_file</code>以及<code class="highlighter-rouge">master_log_pos</code>可以在刚才的数据库备份中找到：</p>
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">将数据进行导入</span>
-<span class="n">change</span> <span class="n">master</span> <span class="k">to</span> <span class="n">master_host</span><span class="o">=</span><span class="nv">"192.168.0.5"</span><span class="p">,</span>
-                 <span class="n">master_user</span><span class="o">=</span><span class="nv">""</span><span class="p">,</span>
-                 <span class="n">master_password</span><span class="o">=</span><span class="nv">""</span><span class="p">,</span>
-                 <span class="n">master_log_file</span><span class="o">=</span><span class="nv">"二进制日志文件名"</span><span class="p">,</span>
-                 <span class="n">master_log_pos</span><span class="o">=</span><span class="err">偏移量</span>
-<span class="k">start</span> <span class="n">slave</span><span class="p">;</span>
-
-<span class="err">主库执行：</span> <span class="n">unlock</span> <span class="n">tables</span><span class="err">；</span>
-</code></pre></div></div>
-
-<p>优点： 基于日志点的复制是MySQL最早支持的复制技术， 相对而言BUG比较少， 并且对SQL没有任何的限制， 故障处理较为容易。
-缺点： 故障转移时重新获取新主的日志点信息比较困难。</p>
-
-<h5 id="32-基于gtid的复制">3.2 基于GTID的复制</h5>
-<p>基于GTID的复制原理上其实是执行每一个事务， 主库中每一个事务都有一个唯一的自增标志。</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GTID <span class="o">=</span> server_uuid:transaction_id
-</code></pre></div></div>
-<p>借助GTID， 在发生主备切换的情况下， MySQL的其它Slave可以自动在新主上找到正确的复制位置， 不再需要像基于日志点复制一样人工的添加日志记录的偏移量， 简化了复杂复制拓扑下集群的维护。 另外，基于GTID的复制可以忽略已经执行过的事务，减少了数据发生不一致的风险。
-但是这种模式同样具有缺点： 其故障处理较为复杂， 并且对执行的SQL有一定的限制。</p>
-
 
 	  ]]></description>
 	</item>

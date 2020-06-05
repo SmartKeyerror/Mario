@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>MySQL主从复制</title>
+        
+          <description>&lt;p&gt;MySQL的异步复制算的上是一种典型的单领导者复制模式，就复制本身而已并无特殊之处。但是复制的细节，例如binlog的格式选取，从节点如何在保证数据准确的情况下进行并行复制，MySQL的实现方案总是能令人眼前一亮。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Thu, 04 Jun 2020 07:06:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/MySQL-Replication</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/MySQL-Replication</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>InnoDB如何保证事务的原子性与持久性</title>
         
           <description>&lt;p&gt;在InnoDB存储引擎中，一个事务的执行将涉及到3个日志的数据写入: redo log，undo log以及binlog。其中redo log以及binlog主要实现事务的原子性和持久性，而undo log主要用于实现事务的隔离性。&lt;/p&gt;
@@ -604,21 +619,6 @@
         <link>
         https://smartkeyerror.com/MySQL-binlog</link>
         <guid isPermaLink="true">https://smartkeyerror.com/MySQL-binlog</guid>
-      </item>
-      
-    
-      
-      <item>
-        <title>MySQL之主从复制</title>
-        
-          <description>&lt;p&gt;MySQL的主从复制是建立读写分离以及MySQL集群的根本， 为了能够保证复制的正常运行， 那么就必然需要对其原理以及核心的配置项有足够的了解， 才能够在复杂的生产环境中对错误进行排查。&lt;/p&gt;
-
-</description>
-        
-        <pubDate>Tue, 23 Oct 2018 09:49:09 +0000</pubDate>
-        <link>
-        https://smartkeyerror.com/MySQL-master-slave</link>
-        <guid isPermaLink="true">https://smartkeyerror.com/MySQL-master-slave</guid>
       </item>
       
     
