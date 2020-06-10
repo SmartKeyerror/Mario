@@ -6,6 +6,7 @@
 
 ## 归档
 
+- 2020/06/09 [InnoDB独特的LRU](https://smartkeyerror.com/InnoDB-LRU)
 - 2020/06/04 [MySQL主从复制](https://smartkeyerror.com/MySQL-Replication)
 - 2020/05/28 [InnoDB如何保证事务的原子性与持久性](https://smartkeyerror.com/InnoDB-AD)
 - 2020/02/27 [Linux主机通过Windows虚拟机转发Easyconnect内网请求](https://smartkeyerror.com/Linux-Use-EasyConnect)
