@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>TCP有限状态机</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+<!--    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">-->
+<!--    <style>.hljs { background: none; }</style>-->
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//TCP-Finite-State-Machine" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="TCP有限状态机" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//TCP-Finite-State-Machine" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TCP有限状态机" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//TCP-Finite-State-Machine" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "TCP有限状态机",
+    "url": "https://smartkeyerror.com//TCP-Finite-State-Machine",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">TCP有限状态机</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2020-06-09">09 Jun 2020</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/Network'>Network</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>相较于Linux进程状态的变迁，TCP的状态变迁则会复杂许多，当然这与TCP本身的实现有关。当线上的Web服务或者是基于TCP连接的服务出现了时断时续的网络状况时，往往需要通过<code class="highlighter-rouge">tcpdump</code>以及TCP连接的状态进行问题定位。同时，这一复杂的有限状态机设计也能够为业务的设计提供指导性的帮助。</p>
+
+<!---more--->
+
+<h3 id="1-tcp连接的建立">1. TCP连接的建立</h3>
+
+<p>TCP连接本质上是两个进程的某些属性的状态值，在TCP连接的建立和断开过程中，实际是状态的变更。连接的建立需要经过三次握手，确认连接的双方能够正确应答，同时进行<code class="highlighter-rouge">MSS</code>、<code class="highlighter-rouge">Win</code>等信息的交换。</p>
+
+<p>TCP协议是可靠传输协议，所以存在TCP序列号以及确认机制。序列号是指当前传输方向上数据报第一个字节的逻辑偏移，由于TCP连接是双向的，所以连接的双方都会有各自的序列号，记为Sequence Number，简写为Seq。</p>
+
+<p>确认机制则由位于TCP报文段中大小为1bit的ACK确认位以及确认序号实现。当一方收到了Seq为$s$、Len为$l$的报文后，需要向对方确认已经收到了该报文。确认的方式是设置ACK确认位，并且将确认序号设置为$s+l$，表示下一次想要接收的数据字节序列号。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Network/TCP-Status/TCP-build.png" alt="" /></p>
+
+<p>如上图所示，TCP连接的建立需要进行三次握手，其中的细节不再赘述。当客户端使用SYN发起连接时，其状态将会由<code class="highlighter-rouge">CLOSED</code>变迁为<code class="highlighter-rouge">SYN_SENT</code>，表示进程主动地打开了一个连接，并等待对端回应以此完成连接的建立。</p>
+
+<p>当服务端收到来自客户端带有SYN控制位的数据包时，将回复带有SYN以及ACK控制位的数据包，并将状态置为<code class="highlighter-rouge">SYN_RECV</code>，等待对端发送的ACK数据包以建立连接。</p>
+
+<p>客户端收到服务端的报文以后，将连接状态改变为<code class="highlighter-rouge"> ESTABLISHED</code>，表示与对端TCP节点间的连接建立完成，可以正式地传输数据了。同样地，服务端收到对端的ACK确认包以后，也会将状态改变为<code class="highlighter-rouge">ESTABLISHED</code>，两者的连接正式建立。</p>
+
+<p>在连接建立时，只有在确认对方能够正确应答(SYN发送且收到ACK应答)时才会进入<code class="highlighter-rouge">ESTABLISHED</code>状态。</p>
+
+<h3 id="2-tcp连接的拆除">2. TCP连接的拆除</h3>
+
+<p>TCP连接的建立相对来说比较简单，其状态变迁也相对较少，而连接的拆除则远比连接的建立复杂的多。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Network/TCP-Status/TCP-disconnect.png" alt="" /></p>
+
+<p>发起连接断开的一段称为主动断开方，那么另一端则称为被动断开方。主动断开方执行<code class="highlighter-rouge">close()</code>系统调用，断开TCP连接，此时主动方将发送设置了FIN控制位的报文，并进入<code class="highlighter-rouge">FIN_WAIT_1</code>阶段，等待对方对该FIN包的应答。</p>
+
+<p>当被动断开方收到FIN包以后，立即回送该FIN的确认包，并进入到<code class="highlighter-rouge">CLOSE_WAIT</code>阶段，<strong>主要的工作就是等待上层应用主动调用<code class="highlighter-rouge">close</code>方法关闭连接</strong>，在该阶段中上层应用任何的<code class="highlighter-rouge">read()</code>系统调用都将返回0，表示文件结尾。当应用层调用了<code class="highlighter-rouge">close()</code>系统调用之后，被动断开方将发送FIN结束包。</p>
+
+<p>主动断开方收到FIN包以后，同样地回送ACK确认报文，并进入<code class="highlighter-rouge">TIME_WAIT</code>阶段，此时将固定的等待2倍MSL时间，MSL为报文的最大生存时间，Linux中默认的MSL时间为60S，那么主动断开方将等待120S后彻底关闭TCP连接。</p>
+
+<p>被动断开方在收到ACK确认包以后，释放内核资源，完全关闭TCP连接。</p>
+
+<h4 id="21-close_wait">2.1 CLOSE_WAIT</h4>
+
+<p><code class="highlighter-rouge">CLOSE_WAIT</code>状态只有在被动断开方才会出现，其过程的长短并不由内核控制，必须等待上层应用程序主动调用<code class="highlighter-rouge">close()</code>系统调用，才会从此状态变迁为<code class="highlighter-rouge">LAST_ACK</code>状态。所以，由于此阶段需要应用程序的主动参与，该阶段也是最容易出现问题的阶段。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Network/TCP-Status/CLOSE_WAIT.png" alt="" /></p>
+
+<p>当服务器出现了大量的、长时间的<code class="highlighter-rouge">CLOSE_WAIT</code>状态的连接，就需要判断是否是应用程序存在BUG，导致TCP连接未主动地关闭。或者是锁争抢过于激烈，又或是CPU资源不足导致应用程序没有额外的CPU对连接进行处理。</p>
+
+<h4 id="22-time_wait">2.2 TIME_WAIT</h4>
+
+<p><code class="highlighter-rouge">TIME_WAIT</code>阶段往往会被开发者所误解当做是优化的对象，因为该阶段的超时时间为2倍的MSL，开发人员认为该值过大，通常会将其减少至15S或者更短。但是，<code class="highlighter-rouge">TIME_WAIT</code>阶段的存在主要目的在于实现连接的可靠终止，以及让原有报文段在网络中过期失效，不会发送给新的连接。</p>
+
+<h5 id="221-连接的可靠终止">2.2.1 连接的可靠终止</h5>
+
+<p>在TCP四次挥手的过程中，首次发送FIN报文和最后一次发送ACK报文的都是主动断开方，被动断开方被”夹在中间”。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Network/TCP-Status/NOT-TIME-WAIT.png" alt="" /></p>
+
+<p>如上图所示，假设没有<code class="highlighter-rouge">TIME_WAIT</code>阶段，并且主动断开方的最后一个ACK在网络中丢失。被动断开方迟迟等不到自己FIN包的ACK，当达到最大超时时间时将重传FIN包(此时无法触发快速重传)。但是，由于此时主动断开方的状态已经是<code class="highlighter-rouge">CLOSED</code>，即当前连接并不存在，则会返回一个RST，而该RST则会被视为错误。</p>
+
+<h5 id="222-确保老的重复的报文在网络中过期失效">2.2.2 确保老的重复的报文在网络中过期失效</h5>
+
+<p>TCP的重传算法可能会导致生成重复的报文，并且根据路由的不同选择，这些重复的报文可能会在连接终止之后到达。</p>
+
+<p>假设主动断开方在发送最后一个ACK包以后立即进入<code class="highlighter-rouge">CLOSED</code>状态，并且在该段又新建了一个与之前一样的连接(IP地址和端口号相同)，那么此连接就是原来连接的化身。在这种情况下，TCP必须确保上一次连接中老的重复报文不会在新的连接中被当成合法数据接收。当有TCP结点处于<code class="highlighter-rouge">TIME_WAIT</code>状态时是无法通过该结点创建新的连接的，这样就阻止了新连接的建立。</p>
+
+<p>当一条连接处于<code class="highlighter-rouge">TIME_WAIT</code>阶段时，其向内核申请的端口号并不会得到释放。如果系统中同时存在大量的处于<code class="highlighter-rouge">TIME_WAIT</code>阶段的连接的话，可能无法再建立新的连接: 端口号资源不够。所以某些并发量较高的应用程序会选择缩短<code class="highlighter-rouge">TIME_WAIT</code>的时间，已获得更高的并发量。</p>
+
+<p>但是，当系统因为<code class="highlighter-rouge">TIME_WAIT</code>而无法建立新的连接时，表示当前节点的资源已经吃紧，最好的办法是增加机器，而不是缩短<code class="highlighter-rouge">TIME_WAIT</code>的时间。</p>
+
+<h3 id="3-使用netstat查看套接字状态">3. 使用netstat查看套接字状态</h3>
+
+<p><code class="highlighter-rouge">netstat</code>可以显示出系统中Internet和UNIX域套接字的状态，当服务器出现网络问题时，可首先用此命令获取基本情况。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smartkeyerror@Zero:~<span class="nv">$ </span>netstat 
+Active Internet connections <span class="o">(</span>w/o servers<span class="o">)</span>
+Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+tcp        0      0 localhost:33406         localhost:7890          TIME_WAIT  
+tcp        0      0 Zero:56626              183.61.83.4:https       ESTABLISHED
+tcp        0      0 localhost:33528         localhost:7890          ESTABLISHED
+tcp        0      0 Zero:54438              119.147.134.30:https    TIME_WAIT  
+tcp        0      0 Zero:32856              220.181.107.131:https   ESTABLISHED
+tcp        0      1 Zero:60558              media-router-fp1.:https LAST_ACK
+</code></pre></div></div>
+
+<ul>
+  <li>proto: 表示套接字所使用的协议，例如tcp、udp和unix。</li>
+  <li>Recv-Q: 表示套接字接收缓冲区中还未被本地应用读取的字节数。对于UDP套接字
+来说，该字段不只包含数据，还包含UDP首部及其他元数据所占的字节。</li>
+  <li>Send-Q: 表示套接字发送缓冲区中排队等待发送的字节数。</li>
+  <li>Local Address: 本地套接字所绑定的地址，格式为IP+端口号。</li>
+  <li>Foreign Address: 对端套接字所绑定的地址。</li>
+  <li>State: 套接字所处的状态。</li>
+</ul>
+
+<p>通常来说我们并不关心UNIX域套接字的相关信息，所以可以使用<code class="highlighter-rouge">--tcp</code>进行过滤，得到的结果仅包含TCP套接字的相关信息。还有一些其他有用的选项:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>选项</th>
+      <th>描述</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>-a</td>
+      <td>显示所有套接字的信息，保证正在监听(LISTEN)的套接字</td>
+    </tr>
+    <tr>
+      <td>-c</td>
+      <td>每隔一秒钟刷新显示套接字信息</td>
+    </tr>
+    <tr>
+      <td>-l</td>
+      <td>仅显示正在监听的套接字信息</td>
+    </tr>
+    <tr>
+      <td>-p</td>
+      <td>显示进程 ID 号以及套接字所归属的程序名称</td>
+    </tr>
+    <tr>
+      <td>–tcp</td>
+      <td>显示 Internet域TCP(流)套接字的信息</td>
+    </tr>
+    <tr>
+      <td>–udp</td>
+      <td>显示 Internet域UDP(数据报)套接字的信息</td>
+    </tr>
+    <tr>
+      <td>–unix</td>
+      <td>显示 UNIX 域套接字的信息</td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=TCP有限状态机&amp;url=https://smartkeyerror.comTCP-Finite-State-Machine"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comTCP-Finite-State-Machine"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comTCP-Finite-State-Machine"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/InnoDB-LRU">
+            <section class="post">
+                <h2>InnoDB独特的LRU</h2>
+                <p>由于硬盘和内存的造价差异，一台主机实例的硬盘容量通常会远超于内存容量。对于数据库等应用而言，为了保证更快的查询效率，通常会将使用过的数据放在内存中进行加速读取。LRU算法经常用于数据的置换，但InnoDB的LRU却更加独特。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2020</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-150652886-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

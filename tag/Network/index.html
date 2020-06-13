@@ -26,7 +26,7 @@
 <!--    <style>.hljs { background: none; }</style>-->
 
     <!-- Ghost outputs important style and meta data with this tag -->
-        <link rel="canonical" href="https://smartkeyerror.com//page5/" />
+        <link rel="canonical" href="https://smartkeyerror.com//tag/Network/" />
     <meta name="referrer" content="origin" />
     <link rel="next" href="/page2/" />
 
@@ -34,13 +34,13 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="知其然, 知其所以然" />
     <meta property="og:description" content="Keep coding, Keep curiosity" />
-    <meta property="og:url" content="https://smartkeyerror.com//page5/" />
+    <meta property="og:url" content="https://smartkeyerror.com//tag/Network/" />
     <meta property="og:image" content="/assets/images/cover.jpg" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="知其然, 知其所以然" />
     <meta name="twitter:description" content="Keep coding, Keep curiosity" />
-    <meta name="twitter:url" content="https://smartkeyerror.com//page5/" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//tag/Network/" />
     <meta name="twitter:image:src" content="/assets/images/cover.jpg" />
 
     <script type="application/ld+json">
@@ -49,7 +49,7 @@
     "@type": "Website",
     "publisher": "知其然, 知其所以然",
     "name": "知其然, 知其所以然",
-    "url": "https://smartkeyerror.com//page5/",
+    "url": "https://smartkeyerror.com//tag/Network/",
     "image": "/assets/images/cover.jpg",
     "description": "Keep coding, Keep curiosity"
 }
@@ -60,7 +60,7 @@
 
 
 </head>
-<body class="paged archive-template nav-closed">
+<body class="tag-template nav-closed">
 
     <!-- The blog navigation links -->
     <div class="nav">
@@ -69,7 +69,7 @@
         <span class="hidden">Close</span>
     </a>
     <ul>
-        <li class="nav-home  nav-current" role="presentation"><a href="/">Home</a></li>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
         <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
         <li class="nav-about " role="presentation"><a href="/about">About</a></li>
     </ul>
@@ -81,12 +81,11 @@
     <div class="site-wrapper">
 
         <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
-        <!-- < default -->
+        <!-- default -->
 <!-- The tag above means - insert everything in this file into the [body] of the default.hbs template -->
 
-<!-- The big featured header  -->
-<header class="main-header "
-        style="background-image: url(/assets/images/cover.jpg) ">
+<!-- If we have a tag cover, display that - else blog cover - else nothing -->
+<header class="main-header tag-head " style="background-image: url(/assets/images/cover.jpg) ">
     <nav class="main-nav overlay clearfix">
         <a class="blog-logo" href="/"><img src="/assets/images/ghost.png" alt="Blog Logo" /></a>
         
@@ -95,11 +94,14 @@
     </nav>
     <div class="vertical">
         <div class="main-header-content inner">
-            <h1 class="page-title">知其然, 知其所以然</h1>
-            <h2 class="page-description">Keep coding, Keep curiosity</h2>
+            <h1 class="page-title">Network</h1>
+            <h2 class="page-description">
+            
+			    Totally 1 Articles
+            
+            </h2>
         </div>
     </div>
-    <a class="scroll-down icon-arrow-left" href="#content" data-offset="-45"><span class="hidden">Scroll Down</span></a>
 </header>
 
 <!-- The main content area on the homepage -->
@@ -111,11 +113,7 @@
         <!---->
             <!--<nav class="pagination" role="pagination">
     
-        
-            <a class="newer-posts" href="/page4/" title="Previous Page">&laquo; Newer Posts</a>
-      
-    
-    <span class="page-number"> Page 5 of 5 </span>
+    <span class="page-number"> Page 1 of 1 </span>
      
 </nav>-->
         <!---->
@@ -125,12 +123,12 @@
     
     <article class="post">
         <header class="post-header">
-            <h2 class="post-title"><a href="/MySQL-Permissions">MySQL权限管理</a></h2>
+            <h2 class="post-title"><a href="/TCP-Finite-State-Machine">TCP有限状态机</a></h2>
         </header>
         <section class="post-excerpt">
-            <p>MySQL的权限管理重要性等同于服务器数据的重要性， 权限体系如果建立的不到位的话， 也就意味着生产数据处于危险状态。
+            <p>相较于Linux进程状态的变迁，TCP的状态变迁则会复杂许多，当然这与TCP本身的实现有关。当线上的Web服务或者是基于TCP连接的服务出现了时断时续的网络状况时，往往需要通过tcpdump以及TCP连接的状态进行问题定位。同时，这一复杂的有限状态机设计也能够为业务的设计提供指导性的帮助。
 
- <a class="read-more" href="/MySQL-Permissions">&raquo;</a></p>
+ <a class="read-more" href="/TCP-Finite-State-Machine">&raquo;</a></p>
         </section>
         <footer class="post-meta">
             
@@ -148,118 +146,11 @@
                 on
                 
                     
-                       <a href='/tag/MySQL'>MySQL</a>
+                       <a href='/tag/Network'>Network</a>
                     
                 
             
-            <time class="post-date" datetime="2018-10-30">30 Oct 2018</time>
-        </footer>
-    </article>
-    
-    <article class="post">
-        <header class="post-header">
-            <h2 class="post-title"><a href="/MySQL-slow-query-analysis-tool">MySQL慢查询日志分析工具</a></h2>
-        </header>
-        <section class="post-excerpt">
-            <p>慢查询日志使我们对MySQL进行性能优化的关键指标， 只有在确定了哪些查询的确是慢查询之后才能对症下药， 进行性能优化， 而不是凭自身的感觉去判断， 结果有事往往出乎意料。 直接打开慢查询日志进行查看效率比较低效， 所以需要借助pt-query-digest工具来进行分析。
-
- <a class="read-more" href="/MySQL-slow-query-analysis-tool">&raquo;</a></p>
-        </section>
-        <footer class="post-meta">
-            
-                
-
-                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
-                <!-- author -->
-                <a href='/author/smartkeyerror'>smartkeyerror</a>
-
-                
-            
-
-            <!-- [[tags prefix=" on "]] -->
-            
-                on
-                
-                    
-                       <a href='/tag/MySQL'>MySQL</a>
-                    
-                
-            
-            <time class="post-date" datetime="2018-10-25">25 Oct 2018</time>
-        </footer>
-    </article>
-    
-    <article class="post">
-        <header class="post-header">
-            <h2 class="post-title"><a href="/MySQL-binlog">binlog的正确打开方式</a></h2>
-        </header>
-        <section class="post-excerpt">
-            <p>在前面的主从复制中我们提到了bin-log， 主从复制中bing-log主要作为一种增量复制的方法进行主库与从库的同步。 在日常生产中， bin-log常常也作为实时数据恢复的必要手段。
-
- <a class="read-more" href="/MySQL-binlog">&raquo;</a></p>
-        </section>
-        <footer class="post-meta">
-            
-                
-
-                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
-                <!-- author -->
-                <a href='/author/smartkeyerror'>smartkeyerror</a>
-
-                
-            
-
-            <!-- [[tags prefix=" on "]] -->
-            
-                on
-                
-                    
-                       <a href='/tag/MySQL'>MySQL</a>
-                    
-                
-            
-            <time class="post-date" datetime="2018-10-23">23 Oct 2018</time>
-        </footer>
-    </article>
-    
-    <article class="post">
-        <header class="post-header">
-            <h2 class="post-title"><a href="/django-concurrent-data-process">Django处理数据并发问题</a></h2>
-        </header>
-        <section class="post-excerpt">
-            <p>在Web开发中， 请求的并发处理通常会直接反映到数据库中数据的并发处理。 如果需要在并发的条件下保证数据的准确性， 则必须借助锁的力量来完成。 锁又分乐观锁和悲观锁， 表示了世界的两极。 本篇文章只是以Django作为载体， 来描述数据的并发处理。
-
- <a class="read-more" href="/django-concurrent-data-process">&raquo;</a></p>
-        </section>
-        <footer class="post-meta">
-            
-                
-
-                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
-                <!-- author -->
-                <a href='/author/smartkeyerror'>smartkeyerror</a>
-
-                
-            
-
-            <!-- [[tags prefix=" on "]] -->
-            
-                on
-                
-                    
-                       <a href='/tag/Django'>Django</a>
-                    
-                
-                    
-                       <a href='/tag/Concurrent'>Concurrent</a>
-                    
-                
-                    
-                       <a href='/tag/Lock'>Lock</a>
-                    
-                
-            
-            <time class="post-date" datetime="2018-09-18">18 Sep 2018</time>
+            <time class="post-date" datetime="2020-06-09">09 Jun 2020</time>
         </footer>
     </article>
     
@@ -268,11 +159,7 @@
     
         <nav class="pagination" role="pagination">
     
-        
-            <a class="newer-posts" href="/page4/" title="Previous Page">&laquo; Newer Posts</a>
-      
-    
-    <span class="page-number"> Page 5 of 5 </span>
+    <span class="page-number"> Page 1 of 1 </span>
      
 </nav>
     

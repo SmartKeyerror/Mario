@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>TCP有限状态机</title>
+        
+          <description>&lt;p&gt;相较于Linux进程状态的变迁，TCP的状态变迁则会复杂许多，当然这与TCP本身的实现有关。当线上的Web服务或者是基于TCP连接的服务出现了时断时续的网络状况时，往往需要通过&lt;code class=&quot;highlighter-rouge&quot;&gt;tcpdump&lt;/code&gt;以及TCP连接的状态进行问题定位。同时，这一复杂的有限状态机设计也能够为业务的设计提供指导性的帮助。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 09 Jun 2020 18:06:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/TCP-Finite-State-Machine</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/TCP-Finite-State-Machine</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>InnoDB独特的LRU</title>
         
           <description>&lt;p&gt;由于硬盘和内存的造价差异，一台主机实例的硬盘容量通常会远超于内存容量。对于数据库等应用而言，为了保证更快的查询效率，通常会将使用过的数据放在内存中进行加速读取。LRU算法经常用于数据的置换，但InnoDB的LRU却更加独特。&lt;/p&gt;
