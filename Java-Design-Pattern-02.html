@@ -525,6 +525,22 @@
 
         </footer>
 
+        <div id="container"></div>
+        <link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
+        <script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+        <script>
+        var gitment = new Gitment({
+          id: '/Java-Design-Pattern-02',
+          owner: 'SmartKeyerror',
+          repo: 'Mario',
+          oauth: {
+            client_id: 'eefe92695c77d5456b89',
+            client_secret: 'd75803b95f6becb3e2c0429be74d690a5bf04d2d',
+          },
+        });
+        gitment.render('container')
+        </script>
+
     </article>
 
 </main>
