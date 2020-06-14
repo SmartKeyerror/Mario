@@ -638,10 +638,10 @@ notifyAll：唤醒所有对当前对象处于wait状态的线程， 并让这些
         </footer>
 
         <div id="container"></div>
-        <link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
-        <script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+        <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+        <script src="https://unpkg.com/gitalk@latest/dist/gitalk.min.js"></script>
         <script>
-        var gitment = new Gitment({
+        var gitalk = new Gitalk({
           id: '/Lock',
           owner: 'SmartKeyerror',
           repo: 'Mario',
@@ -650,7 +650,7 @@ notifyAll：唤醒所有对当前对象处于wait状态的线程， 并让这些
             client_secret: 'd75803b95f6becb3e2c0429be74d690a5bf04d2d',
           },
         });
-        gitment.render('container')
+        gitalk.render('container')
         </script>
 
     </article>
