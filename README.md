@@ -6,6 +6,7 @@
 
 ## 归档
 
+- 2020/06/17 [MySQL向客户端发送数据，客户端不接收会发生什么?](https://smartkeyerror.com/MySQL-Sending-Data)
 - 2020/06/13 [TCP有限状态机](https://smartkeyerror.com/TCP-Finite-State-Machine)
 - 2020/06/09 [InnoDB独特的LRU](https://smartkeyerror.com/InnoDB-LRU)
 - 2020/06/04 [MySQL主从复制](https://smartkeyerror.com/MySQL-Replication)
