@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>MySQL向客户端发送数据，客户端不接收会发生什么?</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+<!--    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">-->
+<!--    <style>.hljs { background: none; }</style>-->
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//MySQL-Sending-Data" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="MySQL向客户端发送数据，客户端不接收会发生什么?" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//MySQL-Sending-Data" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MySQL向客户端发送数据，客户端不接收会发生什么?" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//MySQL-Sending-Data" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "MySQL向客户端发送数据，客户端不接收会发生什么?",
+    "url": "https://smartkeyerror.com//MySQL-Sending-Data",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">MySQL向客户端发送数据，客户端不接收会发生什么?</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2020-06-17">17 Jun 2020</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>MySQL服务端在发送数据时，为了减少数据在用户空间和内核空间的复制次数，往往会使用缓冲区对数据进行缓冲。那么，如果客户端在接收大量数据时，选择不接收，或者处理非常慢的时候，会影响MySQL的正常运行吗?</p>
+
+<!---more--->
+
+<h3 id="1-tcp连接的收发模型">1. TCP连接的收发模型</h3>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MySQL/MySQL-Send-Buffer/TCP-buffer.png" alt="" /></p>
+
+<p>当调用<code class="highlighter-rouge">write()</code>或者<code class="highlighter-rouge">send()</code>系统调用向socket写入数据时，并不会直接被发送至网络，而是被发送至位于内核空间的TCP发送缓冲区。在缓冲区中，由TCP连接的窗口控制发送频率和数量。当发送缓冲区已满时，阻塞模式下的<code class="highlighter-rouge">write()</code>调用将会一直阻塞，直到有可用的发送缓冲区为止。而非阻塞模式下则会直接返回-1，<code class="highlighter-rouge">errno</code>将会被置为<code class="highlighter-rouge">EAGAIN</code>或者是<code class="highlighter-rouge">EWOULDBLOCK</code>。</p>
+
+<p>对于<code class="highlighter-rouge">read()</code>或者是<code class="highlighter-rouge">recv()</code>系统调用读取socket数据时，情况和发送数据基本类似，只不过是读取接收缓冲区中的内容。阻塞模式下如果接收缓冲区为空，那么将会阻塞，而非阻塞模式下则会立即返回，<code class="highlighter-rouge">errno</code>为<code class="highlighter-rouge">EAGAIN</code>或者是<code class="highlighter-rouge">EWOULDBLOCK</code>。</p>
+
+<p>接收方与发送方的窗口大小、MSS大小以及网络状况都会对发送缓冲区的动态大小变化造成影响。当接收方的缓冲区较小时，也就意味地接收窗口较小，那么当发送方持续发送数据时，很有可能将发送缓冲区填满导致发送方数据写入的阻塞。同样地，如果发送方的网络出现波动导致大量的丢包，由拥塞避免阶段重新进入慢启动阶段，也会导致发送缓冲区的数据不能及时地发出。</p>
+
+<p>在一般的Linux操作系统下，发送缓冲区和接收缓冲区的的大小默认为208K。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smartkeyerror@Zero:~<span class="nv">$ </span><span class="nb">cat</span> /proc/sys/net/core/wmem_default
+212992
+smartkeyerror@Zero:~<span class="nv">$ </span><span class="nb">cat</span> /proc/sys/net/core/rmem_default
+212992
+</code></pre></div></div>
+
+<h3 id="2-mysql结果发送与客户端接收">2. MySQL结果发送与客户端接收</h3>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MySQL/MySQL-Send-Buffer/MySQL-Send.png" alt="" /></p>
+
+<p>当客户端向MySQL请求查询数据时，MySQL会将结果暂存于net_buffer中，net_buffer的大小默认为16K，由参数<code class="highlighter-rouge">net_buffer_length</code>决定。当net_buffer已满或者是无更多结果时，调用网络接口将数据写入至TCP连接的发送缓冲区中。如果发送缓冲区已满，那么该查询请求的数据发送将会阻塞，直到有可用的发送缓冲区为止。</p>
+
+<p>当TCP发送缓冲区已满时，通过<code class="highlighter-rouge">show processlist</code>将会得到Query语句”正在发送给客户端”的结果:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MySQL/MySQL-Send-Buffer/Sending-To-Client.png" alt="" /></p>
+
+<p>当出现State为<code class="highlighter-rouge">Sending to client</code>的查询语句时，表示当前线程已将TCP发送缓冲区填满，无法继续发送数据给客户端，并等待客户端接收数据。</p>
+
+<p>如果出现了较多的<code class="highlighter-rouge">Sending to client</code>状态的线程，那么要么是客户端网络情况较差，要么是客户端在处理结果时过慢，此时需要优化客户端代码。</p>
+
+<p><code class="highlighter-rouge">Sending to client</code>状态需要和<code class="highlighter-rouge">Sending data</code>状态区分开来，前者表示正在等待客户端接收结果，而后者则表示事务正在执行(不一定在发送数据，也可能在等待锁)。</p>
+
+<h3 id="3-客户端不接收mysql的发送数据会发生什么">3. 客户端不接收MySQL的发送数据会发生什么?</h3>
+
+<h4 id="31-innodb的一致性非锁定读">3.1 InnoDB的一致性非锁定读</h4>
+
+<p>在InnoDB存储引擎中，每条UPDATE语句都会默认的在该TABLE上添加一个意向写锁(IX Lock)，并且在要修改的数据行上添加X Lock，防止其它线程对其同时更新。而在这个过程中，普通的数据读取操作依然能够进行，并不会等待X Lock的释放，极大的提升了数据库的并发读取能力，该读取方式称为一致性非锁定读，由undo段实现。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MySQL/MySQL-Send-Buffer/undo-read.png" alt="" /></p>
+
+<p>在undo段中，同一行数据可能因为事务并发的执行而导致出现多个版本的快照，在一致性非锁定读中，只需要选择其中一个快照数据进行读取即可。在RC隔离级别，总是读取最新版本的快照数据，而在RR隔离级别下，总是读取事务开始时的行数据版本。</p>
+
+<h4 id="32-sending-to-client导致undo段迅速膨胀">3.2 <code class="highlighter-rouge">Sending to client</code>导致undo段迅速膨胀</h4>
+
+<p>当服务端出现大量的线程处于<code class="highlighter-rouge">Sending to client</code>状态时，所执行的查询语句未完成，那么会导致长事务的产生。而如果此时数据更新较为频繁时，将会导致undo段空间迅速膨胀，因为长事务的进行导致undo页无法被回收。</p>
+
+<p>最常见的例子就是使用<code class="highlighter-rouge">mysqldump</code>对数据进行热备时，备份存储节点的磁盘已满，导致<code class="highlighter-rouge">mysqldump</code>无法向备份文件中写入数据。数据由客户端的接收缓冲区开始堆积，到服务端的发送缓冲区，再到<code class="highlighter-rouge">net_buffer</code>，最终可能会导致undo段的数据堆积，使得MySQL服务出现大面积的异常。</p>
+
+<h3 id="4-小结">4. 小结</h3>
+
+<p>综上，客户端如果在处理MySQL发送的大量数据时，应该尽可能地将其暂存在本地的某个缓冲区中，而后应用程序想怎么处理、以何种速度处理都没问题，避免让MySQL产生过多的长事务。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=MySQL向客户端发送数据，客户端不接收会发生什么?&amp;url=https://smartkeyerror.comMySQL-Sending-Data"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comMySQL-Sending-Data"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comMySQL-Sending-Data"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/TCP-Finite-State-Machine">
+            <section class="post">
+                <h2>TCP有限状态机</h2>
+                <p>相较于Linux进程状态的变迁，TCP的状态变迁则会复杂许多，当然这与TCP本身的实现有关。当线上的Web服务或者是基于TCP连接的服务出现了时断时续的网络状况时，往往需要通过tcpdump以及TCP连接的状态进行问题定位。同时，这一复杂的有限状态机设计也能够为业务的设计提供指导性的帮助。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2020</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-150652886-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

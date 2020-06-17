@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>MySQL向客户端发送数据，客户端不接收会发生什么?</title>
+        
+          <description>&lt;p&gt;MySQL服务端在发送数据时，为了减少数据在用户空间和内核空间的复制次数，往往会使用缓冲区对数据进行缓冲。那么，如果客户端在接收大量数据时，选择不接收，或者处理非常慢的时候，会影响MySQL的正常运行吗?&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Wed, 17 Jun 2020 10:50:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/MySQL-Sending-Data</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/MySQL-Sending-Data</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>TCP有限状态机</title>
         
           <description>&lt;p&gt;相较于Linux进程状态的变迁，TCP的状态变迁则会复杂许多，当然这与TCP本身的实现有关。当线上的Web服务或者是基于TCP连接的服务出现了时断时续的网络状况时，往往需要通过&lt;code class=&quot;highlighter-rouge&quot;&gt;tcpdump&lt;/code&gt;以及TCP连接的状态进行问题定位。同时，这一复杂的有限状态机设计也能够为业务的设计提供指导性的帮助。&lt;/p&gt;

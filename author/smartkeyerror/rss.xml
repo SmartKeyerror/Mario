@@ -12,6 +12,74 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>MySQL向客户端发送数据，客户端不接收会发生什么?</title>
+	  <link>//MySQL-Sending-Data</link>
+	  <author></author>
+	  <pubDate>2020-06-17T10:50:25+00:00</pubDate>
+	  <guid>//MySQL-Sending-Data</guid>
+	  <description><![CDATA[
+	     <p>MySQL服务端在发送数据时，为了减少数据在用户空间和内核空间的复制次数，往往会使用缓冲区对数据进行缓冲。那么，如果客户端在接收大量数据时，选择不接收，或者处理非常慢的时候，会影响MySQL的正常运行吗?</p>
+
+<!---more--->
+
+<h3 id="1-tcp连接的收发模型">1. TCP连接的收发模型</h3>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MySQL/MySQL-Send-Buffer/TCP-buffer.png" alt="" /></p>
+
+<p>当调用<code class="highlighter-rouge">write()</code>或者<code class="highlighter-rouge">send()</code>系统调用向socket写入数据时，并不会直接被发送至网络，而是被发送至位于内核空间的TCP发送缓冲区。在缓冲区中，由TCP连接的窗口控制发送频率和数量。当发送缓冲区已满时，阻塞模式下的<code class="highlighter-rouge">write()</code>调用将会一直阻塞，直到有可用的发送缓冲区为止。而非阻塞模式下则会直接返回-1，<code class="highlighter-rouge">errno</code>将会被置为<code class="highlighter-rouge">EAGAIN</code>或者是<code class="highlighter-rouge">EWOULDBLOCK</code>。</p>
+
+<p>对于<code class="highlighter-rouge">read()</code>或者是<code class="highlighter-rouge">recv()</code>系统调用读取socket数据时，情况和发送数据基本类似，只不过是读取接收缓冲区中的内容。阻塞模式下如果接收缓冲区为空，那么将会阻塞，而非阻塞模式下则会立即返回，<code class="highlighter-rouge">errno</code>为<code class="highlighter-rouge">EAGAIN</code>或者是<code class="highlighter-rouge">EWOULDBLOCK</code>。</p>
+
+<p>接收方与发送方的窗口大小、MSS大小以及网络状况都会对发送缓冲区的动态大小变化造成影响。当接收方的缓冲区较小时，也就意味地接收窗口较小，那么当发送方持续发送数据时，很有可能将发送缓冲区填满导致发送方数据写入的阻塞。同样地，如果发送方的网络出现波动导致大量的丢包，由拥塞避免阶段重新进入慢启动阶段，也会导致发送缓冲区的数据不能及时地发出。</p>
+
+<p>在一般的Linux操作系统下，发送缓冲区和接收缓冲区的的大小默认为208K。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smartkeyerror@Zero:~<span class="nv">$ </span><span class="nb">cat</span> /proc/sys/net/core/wmem_default
+212992
+smartkeyerror@Zero:~<span class="nv">$ </span><span class="nb">cat</span> /proc/sys/net/core/rmem_default
+212992
+</code></pre></div></div>
+
+<h3 id="2-mysql结果发送与客户端接收">2. MySQL结果发送与客户端接收</h3>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MySQL/MySQL-Send-Buffer/MySQL-Send.png" alt="" /></p>
+
+<p>当客户端向MySQL请求查询数据时，MySQL会将结果暂存于net_buffer中，net_buffer的大小默认为16K，由参数<code class="highlighter-rouge">net_buffer_length</code>决定。当net_buffer已满或者是无更多结果时，调用网络接口将数据写入至TCP连接的发送缓冲区中。如果发送缓冲区已满，那么该查询请求的数据发送将会阻塞，直到有可用的发送缓冲区为止。</p>
+
+<p>当TCP发送缓冲区已满时，通过<code class="highlighter-rouge">show processlist</code>将会得到Query语句”正在发送给客户端”的结果:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MySQL/MySQL-Send-Buffer/Sending-To-Client.png" alt="" /></p>
+
+<p>当出现State为<code class="highlighter-rouge">Sending to client</code>的查询语句时，表示当前线程已将TCP发送缓冲区填满，无法继续发送数据给客户端，并等待客户端接收数据。</p>
+
+<p>如果出现了较多的<code class="highlighter-rouge">Sending to client</code>状态的线程，那么要么是客户端网络情况较差，要么是客户端在处理结果时过慢，此时需要优化客户端代码。</p>
+
+<p><code class="highlighter-rouge">Sending to client</code>状态需要和<code class="highlighter-rouge">Sending data</code>状态区分开来，前者表示正在等待客户端接收结果，而后者则表示事务正在执行(不一定在发送数据，也可能在等待锁)。</p>
+
+<h3 id="3-客户端不接收mysql的发送数据会发生什么">3. 客户端不接收MySQL的发送数据会发生什么?</h3>
+
+<h4 id="31-innodb的一致性非锁定读">3.1 InnoDB的一致性非锁定读</h4>
+
+<p>在InnoDB存储引擎中，每条UPDATE语句都会默认的在该TABLE上添加一个意向写锁(IX Lock)，并且在要修改的数据行上添加X Lock，防止其它线程对其同时更新。而在这个过程中，普通的数据读取操作依然能够进行，并不会等待X Lock的释放，极大的提升了数据库的并发读取能力，该读取方式称为一致性非锁定读，由undo段实现。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MySQL/MySQL-Send-Buffer/undo-read.png" alt="" /></p>
+
+<p>在undo段中，同一行数据可能因为事务并发的执行而导致出现多个版本的快照，在一致性非锁定读中，只需要选择其中一个快照数据进行读取即可。在RC隔离级别，总是读取最新版本的快照数据，而在RR隔离级别下，总是读取事务开始时的行数据版本。</p>
+
+<h4 id="32-sending-to-client导致undo段迅速膨胀">3.2 <code class="highlighter-rouge">Sending to client</code>导致undo段迅速膨胀</h4>
+
+<p>当服务端出现大量的线程处于<code class="highlighter-rouge">Sending to client</code>状态时，所执行的查询语句未完成，那么会导致长事务的产生。而如果此时数据更新较为频繁时，将会导致undo段空间迅速膨胀，因为长事务的进行导致undo页无法被回收。</p>
+
+<p>最常见的例子就是使用<code class="highlighter-rouge">mysqldump</code>对数据进行热备时，备份存储节点的磁盘已满，导致<code class="highlighter-rouge">mysqldump</code>无法向备份文件中写入数据。数据由客户端的接收缓冲区开始堆积，到服务端的发送缓冲区，再到<code class="highlighter-rouge">net_buffer</code>，最终可能会导致undo段的数据堆积，使得MySQL服务出现大面积的异常。</p>
+
+<h3 id="4-小结">4. 小结</h3>
+
+<p>综上，客户端如果在处理MySQL发送的大量数据时，应该尽可能地将其暂存在本地的某个缓冲区中，而后应用程序想怎么处理、以何种速度处理都没问题，避免让MySQL产生过多的长事务。</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>TCP有限状态机</title>
 	  <link>//TCP-Finite-State-Machine</link>
 	  <author></author>
@@ -2136,129 +2204,6 @@ As for performance, there can be some (minor) loss that comes with using unbuffe
   <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-locking.html</li>
   <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-deadlocks.html</li>
 </ul>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>MySQL中的联合索引与覆盖索引</title>
-	  <link>//MySQL-union-index-and-cover-index</link>
-	  <author></author>
-	  <pubDate>2019-09-01T21:39:25+00:00</pubDate>
-	  <guid>//MySQL-union-index-and-cover-index</guid>
-	  <description><![CDATA[
-	     <p>在上一篇文章中， 通过解析InnoDB存储引擎的<code class="highlighter-rouge">.ibd</code>数据存储文件得到了数据与索引的真实组织方式: 数据通过聚集索引在逻辑上连续存放， 二级索引保存数据主键ID(Row ID)， 多棵B+Tree组合起来提供高效的索引数据查询。 除辅助索引(二级索引)外， 联合索引与覆盖索引在日常中也会经常用到。</p>
-
-<!---more--->
-
-<h4 id="1-联合索引">1. 联合索引</h4>
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">union_test</span> <span class="p">(</span>
-	<span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
-	<span class="n">user_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
-	<span class="n">order_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
-	<span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
-	<span class="k">KEY</span> <span class="n">ix_union_order_id_user_id</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span>
-<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
-
-<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0000"</span><span class="p">,</span> <span class="nv">"A0000"</span><span class="p">);</span>
-<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0000"</span><span class="p">,</span> <span class="nv">"A0001"</span><span class="p">);</span>
-<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">union_test</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">order_id</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="nv">"0001"</span><span class="p">,</span> <span class="nv">"A0003"</span><span class="p">);</span>
-<span class="p">...</span>
-</code></pre></div></div>
-
-<p>在创建表结构以及插入部分测试数据之后， 我们依然使用<code class="highlighter-rouge">hexdump -C</code>来对<code class="highlighter-rouge">.ibd</code>文件进行分析， 从最基本的数据存储结构中更能够发现联合索引的存储特点。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>00010070  73 75 70 72 65 6d 75 6d  03 04 00 00 10 00 36 30  |supremum......60|
-00010080  30 35 38 41 31 34 80 00  00 01 03 04 07 00 18 05  |058A14..........|
-00010090  e2 30 30 33 36 41 32 30  80 00 00 02 03 04 08 00  |.0036A20........|
-000100a0  20 00 fb 30 30 34 33 41  31 33 80 00 00 03 03 04  | ..0043A13......|
-000100b0  00 00 28 01 67 30 30 35  39 41 32 31 80 00 00 04  |..<span class="o">(</span>.g0059A21....|
-000100c0  03 04 08 00 30 02 65 30  30 34 39 41 38 39 80 00  |....0.e0049A89..|
-000100d0  00 05 03 04 00 00 38 01  1f 30 30 35 31 41 35 34  |......8..0051A54|
-000100e0  80 00 00 06 02 04 06 00  40 05 76 30 30 32 33 41  |........@.v0023A|
-000100f0  36 80 00 00 07 03 04 00  00 48 02 0c 30 30 30 31  |6........H..0001|
-00010100  41 35 30 80 00 00 08 03  04 00 00 50 06 19 30 30  |A50........P..00|
-00010110  31 35 41 39 31 80 00 00  09 03 04 00 00 58 ff 83  |15A91........X..|
-00010120  30 30 34 32 41 37 32 80  00 00 0a 03 04 00 00 60  |0042A72........<span class="sb">`</span>|
-00010130  01 56 30 30 33 38 41 39  35 80 00 00 0b 03 04 00  |.V0038A95.......|
-00010140  00 68 03 4f 30 30 32 39  41 39 37 80 00 00 0c 03  |.h.O0029A97.....|
-00010150  04 05 00 70 05 41 30 30  35 37 41 31 31 80 00 00  |...p.A0057A11...|
-00010160  0d 03 04 00 00 78 02 c0  30 30 31 39 41 35 32 80  |.....x..0019A52.|
-</code></pre></div></div>
-
-<p>直接截取部分的联合索引内容进行分析， 索引数据从<code class="highlighter-rouge">00010078</code>开始:</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="mi">03</span> <span class="mi">04</span>  <span class="cm">/* 倒序索引长度列表 */</span>
-<span class="mi">00</span> <span class="mi">00</span> <span class="mi">10</span> <span class="mi">00</span> <span class="mi">36</span>
-<span class="mi">30</span> <span class="mi">30</span> <span class="mi">35</span> <span class="mi">38</span>  <span class="cm">/* 列1索引数据 */</span>
-<span class="mi">41</span> <span class="mi">31</span> <span class="mi">34</span>  <span class="cm">/* 列2索引数据 */</span>
-<span class="mi">80</span> <span class="mi">00</span>  <span class="mi">00</span> <span class="mi">01</span>  <span class="cm">/* 主键id */</span>
-</code></pre></div></div>
-
-<p>可以看到， 联合索引的物理存储方式与单一索引的最大区别就是索引数据不是分开存储的。 所以， 联合索引要比两个或多个单独的索引占用更少的磁盘空间。</p>
-
-<p>事实上， 联合索引与单列索引在组织形式上没什么区别， 都是一棵B+Tree。 只不过联合索引的键值数量不是1， 而是大于等于2。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/union-index.png" alt="" /></p>
-
-<p>如上图所示， 联合索引的第1列数据将严格按照B+Tree的字典序进行排序， 第2列数据则在第一列数据有序的基础上进行排序。 可以认为， 联合索引的B+Tree结构就是对一个多维数组进行排序， 以Python为例:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 假设有如下数据</span>
-<span class="n">unsorted_list</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>  <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
-
-<span class="n">res</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">unsorted_list</span><span class="p">)</span>
-<span class="c"># Out: [(1, 2), (1, 3), (2, 4), (2, 5), (4, 1), (4, 2)]</span>
-</code></pre></div></div>
-
-<p>假设现在有两列数据a, b组合成为了联合索引， 那么当a列相同时， b列数据一定是有序存放的， 也就是说当执行:</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="k">table</span> <span class="k">WHERE</span> <span class="n">a</span> <span class="o">=</span> <span class="n">XX</span> <span class="k">AND</span> <span class="n">b</span> <span class="o">=</span> <span class="n">XX</span><span class="p">;</span>
-</code></pre></div></div>
-
-<p>其效率要高于a, b两个单独的索引列查询， 原因就在于其索引数据保存在同一棵B+Tree中， 使用更少的逻辑I/O就能将数据取出。</p>
-
-<p>在单独查询列a时， 依然可以使用联合索引进行查询， 但是在单独查询b列时， 则不可以使用联合索引。 因为b列数据并不是有序存放的。</p>
-
-<p>如上例所示， b列的数据为<code class="highlighter-rouge">[2, 3, 2, 4, 1, 2]</code>， 完全无序， 故使用:</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="k">table</span> <span class="k">WHERE</span> <span class="n">b</span> <span class="o">=</span> <span class="n">XX</span><span class="p">;</span>
-</code></pre></div></div>
-
-<p>进行查询时将无法使用联合索引。 联合索引除了能加速查询以外， 还有另外一个好处， 就是加速<code class="highlighter-rouge">ORDER BY</code>的查询。</p>
-
-<p>这也很好理解， 因为在建立了联合索引以后， 第2列数据， 甚至是第n列数据， 将会有序的组成B+Tree， 如此一来就省去了排序的的时间。</p>
-
-<p>假设现在有4列数据a, b, c, d组成的联合索引(a, b, c, d)， 那么B+Tree的结构为a有序排列， b在a相同的情况下有序排列， c在b相同的情况下有序排列， d在c相同的情况下有序排列。 在查询时， 只要查询条件包含a字段， 均可以使用索引进行查询。</p>
-
-<h4 id="2-覆盖索引cover-index">2. 覆盖索引(Cover Index)</h4>
-<p>现在我们已经知道了InnoDB的物理存储方式是一个聚集索引+多个辅助索引组成， 辅助索引包含单列索引以及上面提到的联合索引。 在使用索引进行数据查询时， 首先在辅助索引树中找到该条数据对应的主键id(Row ID)， 而后根据主键id在聚集索引树中进行查询， 粗略的认为就是2次逻辑I/O。</p>
-
-<p>覆盖索引的本质就是不使用聚集索引， 只使用辅助索引就能够将所需要的数据查询出来， 最典型的例子就是<code class="highlighter-rouge">count(*)</code>。</p>
-
-<p>当某张表内存在二级索引时， <code class="highlighter-rouge">count(*)</code>将直接统计二级索引的数量并返回。 由于二级索引的B+Tree要比聚集索引更加的矮胖， 每页能够容纳更多的索引数据行， 所以其效率要高于扫描聚集索引。</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="p">(</span>
-	<span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
-	<span class="n">user_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
-	<span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
-	<span class="k">KEY</span> <span class="n">ix_user_id</span> <span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
-<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">LATIN1</span><span class="p">;</span>
-</code></pre></div></div>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/count-with-cover-index.png" alt="" /></p>
-
-<p>如果表内有多个二级索引， 则<code class="highlighter-rouge">count(*)</code>将会选择长度最短的二级索引。 索引长度越短， 每页就能够容纳更多的数据， 就会有更少的逻辑I/O， 因此效率也就越高。</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="k">ADD</span> <span class="n">order_id</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">;</span>
-<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">count_test</span> <span class="k">ADD</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">order_id</span><span class="p">);</span>
-</code></pre></div></div>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/ibd/count-with-shorter-cover-index.png" alt="" /></p>
-
-<p>覆盖索引严格意义上来讲是MySQL的查询优化器所做的优化， 并不是物理上存在的索引。 但是， 借助于覆盖索引的特点， 我们可以有目的的对某些查询进行优化。</p>
-
-<h4 id="3-小结">3. 小结</h4>
-<p>联合索引是优化多字段查询以及需要对某个字段进行排序的一种手段， 而覆盖索引则是MySQL查询优化器的一种优化策略， 并不能称为真正意义上的索引。</p>
 
 	  ]]></description>
 	</item>
