@@ -6,6 +6,7 @@
 
 ## 归档
 
+- 2020/07/13 [揭开Python元类(metaclass)神秘的面纱](https://smartkeyerror.com/Python-metaclass)
 - 2020/06/09 [InnoDB独特的LRU](https://smartkeyerror.com/InnoDB-LRU)
 - 2020/06/04 [MySQL主从复制](https://smartkeyerror.com/MySQL-Replication)
 - 2020/05/28 [InnoDB如何保证事务的原子性与持久性](https://smartkeyerror.com/InnoDB-AD)
