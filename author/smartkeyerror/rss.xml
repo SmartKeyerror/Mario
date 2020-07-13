@@ -80,6 +80,322 @@ smartkeyerror@Zero:~<span class="nv">$ </span><span class="nb">cat</span> /proc/
 	</item>
 
 	<item>
+	  <title>揭开Python元类(metaclass)神秘的面纱</title>
+	  <link>//Python-metaclass</link>
+	  <author></author>
+	  <pubDate>2020-06-13T10:06:25+00:00</pubDate>
+	  <guid>//Python-metaclass</guid>
+	  <description><![CDATA[
+	     <p>Python语言的<code class="highlighter-rouge">metaclass</code>特性一直是初学者的”噩梦”，当初博主在学习元类时也是一头雾水，但是一旦真正的理解了什么是”动态语言”之后，元类就不再神秘与难以理解了。Python这门动态语言最大的特性就是不需要一个类的字节码就能够在运行时创建出一个类，这是理解元类最为关键的信息。</p>
+
+<!---more--->
+
+<h3 id="1-基础知识汇总">1. 基础知识汇总</h3>
+
+<h4 id="11-stackoverflow">1.1 stackoverflow</h4>
+
+<p>首先，强烈推荐阅读stackoverflow上关于<code class="highlighter-rouge">metaclass</code>的回答，作者并没有使用什么高级词汇，就算英语稀烂也能看的懂。</p>
+
+<blockquote>
+  <p>https://stackoverflow.com/a/6581949/12523821</p>
+</blockquote>
+
+<h4 id="12-类属性和实例属性">1.2 类属性和实例属性</h4>
+
+<p>类属性表示绑定在一个类上的属性，而实例属性则是绑定在不同实例上的属性，类属性只有一份，而实例属性则可以有多份。当实例属性和类属性重名，并通过实例获取该属性时，会返回实例属性，而不是类属性。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Hugo</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="n">Hugo</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"smart"</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">Hugo</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>      <span class="c"># "smart"</span>
+
+    <span class="n">hugo</span> <span class="o">=</span> <span class="n">Hugo</span><span class="p">(</span><span class="s">"raven"</span><span class="p">)</span>  
+    <span class="k">print</span><span class="p">(</span><span class="n">hugo</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>      <span class="c"># "raven"</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="n">Hugo</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>      <span class="c"># "smart"</span>
+</code></pre></div></div>
+
+<h4 id="13-__new__方法和__init__方法">1.3 <code class="highlighter-rouge">__new__</code>方法和<code class="highlighter-rouge">__init__</code>方法</h4>
+
+<p>在Python中，实际创建对象的过程是由<code class="highlighter-rouge">__new__</code>方法控制的，该方法接收class对象(cls)。而<code class="highlighter-rouge">__init__</code>方法则是在<code class="highlighter-rouge">__new__</code>方法所创建的对象实例上，进行属性的赋值或者其它操作，所以接收实例对象(self)。</p>
+
+<p>当想要控制创建对象的过程时，应该使用<code class="highlighter-rouge">__new__</code>方法，例如常用的单例模式，而不是使用<code class="highlighter-rouge">__init__</code>方法:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Lock</span>
+
+<span class="k">class</span> <span class="nc">SingletonClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">instance</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">cls</span><span class="o">.</span><span class="n">instance</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">instance</span>
+        <span class="k">with</span> <span class="n">cls</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+            <span class="c"># double check</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">cls</span><span class="o">.</span><span class="n">instance</span><span class="p">:</span>
+                <span class="n">cls</span><span class="o">.</span><span class="n">instance</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">instance</span>
+</code></pre></div></div>
+
+<h4 id="14-mro">1.4 MRO</h4>
+
+<p>Python是通过MRO列表来实现类的继承的，MRO列表的构造由C3线性化算法实现。实际上，类的继承层级关系最终会表现成包含所有基类的线性顺序表。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Parent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"Parent init"</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">Children</span><span class="p">(</span><span class="n">Parent</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Children</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"Children init"</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">Grandchildren</span><span class="p">(</span><span class="n">Children</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Grandchildren</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"Grandchildren init"</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">Grandchildren</span><span class="o">.</span><span class="n">__mro__</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>运行结果为:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">(</span>
+    &lt;class <span class="s1">'__main__.Grandchildren'</span><span class="o">&gt;</span>, 
+    &lt;class <span class="s1">'__main__.Children'</span><span class="o">&gt;</span>, 
+    &lt;class <span class="s1">'__main__.Parent'</span><span class="o">&gt;</span>, 
+    &lt;class <span class="s1">'object'</span><span class="o">&gt;</span>
+<span class="o">)</span>
+</code></pre></div></div>
+
+<p>其顺序与继承顺序刚好相反，也就是说，通过类的<code class="highlighter-rouge">__mro__</code>属性即可找到该类的所有父类，包括<code class="highlighter-rouge">object</code>类。</p>
+
+<p>Python同时也提供了内建的反射函数，来返回某个类的MRO列表:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">getmro</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">__mro__</span>
+</code></pre></div></div>
+
+<h3 id="2-metaclass">2. metaclass</h3>
+
+<p>我们已经知道了<code class="highlighter-rouge">metaclass</code>是创建一个类的工具，通过<code class="highlighter-rouge">metaclass</code>能够更加灵活地动态地创建一个类，其中一个非常重要的结果就是能够获取到”子类”的全部信息，例如类属性、类方法等。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+    
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">f</span><span class="s">"get class field: {name}===&gt;{value}"</span><span class="p">)</span>
+            
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">Hugo</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">HugoMetaclass</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">"smart"</span>
+    <span class="n">gender</span> <span class="o">=</span> <span class="s">"male"</span>
+</code></pre></div></div>
+
+<p>运行上述代码将会打印出<code class="highlighter-rouge">Hugo</code>类的所有属性信息:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>get class field: <span class="nv">__module__</span><span class="o">===&gt;</span>__main__
+get class field: <span class="nv">__qualname__</span><span class="o">===&gt;</span>Hugo
+get class field: <span class="nv">name</span><span class="o">===&gt;</span>smart
+get class field: <span class="nv">gender</span><span class="o">===&gt;</span>male
+</code></pre></div></div>
+
+<p>其中<code class="highlighter-rouge">__module__</code>和<code class="highlighter-rouge">__qualname__</code>为内部属性，而<code class="highlighter-rouge">name</code>和<code class="highlighter-rouge">gender</code>则是用户自定义的类属性。可以看到，在<code class="highlighter-rouge">HugoMetaclass。__new__</code>方法中，完全能够获取到<code class="highlighter-rouge">Hugo</code>类的相关类属性，那么更进一步地来说，不管用户定义了什么样的类属性，都可以使用<code class="highlighter-rouge">metaclass</code>在创建该类之前获取到该类的所有属性。这就为诸如ORM、表单验证等基础服务提供了构建的基础。</p>
+
+<h4 id="21-metaclass的应用">2.1 metaclass的应用</h4>
+
+<p><code class="highlighter-rouge">type</code>的<code class="highlighter-rouge">__new__</code>方法接收4个参数，分别为类对象，类名称，父类元组以及类属性。这四个参数中最为关键的就是父类元组和类属性，通常项目中使用<code class="highlighter-rouge">metaclass</code>时也是和这两个参数频繁打交道。</p>
+
+<h5 id="211-父类元组">2.1.1 父类元组</h5>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">bases</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">Hugo</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">HugoMetaclass</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">HugoChild</span><span class="p">(</span><span class="n">Hugo</span><span class="p">):</span>
+    <span class="k">pass</span>
+</code></pre></div></div>
+
+<p>运行后将得到以下结果:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">()</span>
+<span class="o">(</span>&lt;class <span class="s1">'__main__.Hugo'</span><span class="o">&gt;</span>,<span class="o">)</span>
+</code></pre></div></div>
+
+<p>一共需要创建两个类: <code class="highlighter-rouge">Hugo</code>和<code class="highlighter-rouge">HugoChild</code>，<code class="highlighter-rouge">Hugo</code>类直接使用<code class="highlighter-rouge">HugoMetaclass</code>创建，所以其父类元组为空。而<code class="highlighter-rouge">HugoChild</code>直接继承自<code class="highlighter-rouge">Hugo</code>，所以其父类为<code class="highlighter-rouge">Hugo</code>。所以，可以通过<code class="highlighter-rouge">bases</code>参数来判断当前创建的类是否需要进行处理。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+    
+        <span class="n">parents</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bases</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">HugoMetaclass</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">parents</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="c"># 这里所创建的类都是Hugo的子类, 而不是Hugo类</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h5 id="212-类属性">2.1.2 类属性</h5>
+
+<p>类属性是”子类”中最为重要的数据，可以说元类的最终目的就是为了根据类属性创建出一个模板，将该模板数据保存在类中。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+
+        <span class="n">parents</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bases</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">HugoMetaclass</span><span class="p">)]</span>
+
+        <span class="c"># 对Hugo类不做任何处理</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">parents</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="n">klass</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="c"># 保存attrs中所有的int类型数据</span>
+        <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="k">return</span> <span class="n">klass</span>
+        
+<span class="k">class</span> <span class="nc">Hugo</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">HugoMetaclass</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">HugoChild</span><span class="p">(</span><span class="n">Hugo</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">"smart"</span>
+    <span class="n">age</span> <span class="o">=</span> <span class="mi">24</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">HugoChild</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>上面创建了一个<code class="highlighter-rouge">int</code>类型的”模板”，并保存在了<code class="highlighter-rouge">declared_fields</code>这个字典中。注意不要将<code class="highlighter-rouge">declared_fields</code>挂到<code class="highlighter-rouge">mcs</code>上，<code class="highlighter-rouge">mcs</code>就是<code class="highlighter-rouge">HugoMetaclass</code>，变量绑定到<code class="highlighter-rouge">mcs</code>上会丢失一些信息，导致程序出现BUG。</p>
+
+<p>那么如果<code class="highlighter-rouge">HugoChild</code>又有子类呢? 上述方式是否能够将<code class="highlighter-rouge">HugoChild</code>和其子类的属性一起获取到呢?</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoChild</span><span class="p">(</span><span class="n">Hugo</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">"smart"</span>
+    <span class="n">age</span> <span class="o">=</span> <span class="mi">24</span>
+
+<span class="k">class</span> <span class="nc">HugoGrandChild</span><span class="p">(</span><span class="n">HugoChild</span><span class="p">):</span>
+    <span class="n">height</span> <span class="o">=</span> <span class="mi">180</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">Hugo</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">HugoChild</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">HugoGrandChild</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>这时候会发现，这三个类的<code class="highlighter-rouge">declared_fields</code>结果都是<code class="highlighter-rouge">{'height': 180}</code>，<code class="highlighter-rouge">age</code>字段丢失了。原因也很简单，在创建<code class="highlighter-rouge">HugoGrandChild</code>类时，<code class="highlighter-rouge">declared_fields</code>被重新声明成了空字典，所以<code class="highlighter-rouge">HugoChild</code>中的类属性就会丢失。那么有没有什么办法能够得到完整版呢? 这就需要用到上面所提到的MRO列表了。</p>
+
+<p>我们可以通过MRO列表，来获取到<code class="highlighter-rouge">HugoGrandChild</code>的所有父类，而后逐一的遍历找出类型为<code class="highlighter-rouge">int</code>的类属性，保存在<code class="highlighter-rouge">declared_fields</code>这个字典中。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+
+        <span class="n">parents</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bases</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">HugoMetaclass</span><span class="p">)]</span>
+
+        <span class="c"># 对Hugo类不做任何处理</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">parents</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="c"># 保存attrs中所有的int类型数据</span>
+        <span class="n">klass</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c"># 遍历__mro__列表并找出类型为`int`的类属性, 保存在字典中</span>
+        <span class="k">for</span> <span class="n">parent</span> <span class="ow">in</span> <span class="n">klass</span><span class="o">.</span><span class="n">__mro__</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="s">'declared_fields'</span><span class="p">,</span> <span class="n">parent</span><span class="o">.</span><span class="n">__dict__</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                    <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="k">return</span> <span class="n">klass</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">HugoChild</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">HugoGrandChild</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>其运行结果为:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">{</span><span class="s1">'age'</span>: 24<span class="o">}</span>
+<span class="o">{</span><span class="s1">'height'</span>: 180, <span class="s1">'age'</span>: 24<span class="o">}</span>
+</code></pre></div></div>
+
+<p>如此一来，<code class="highlighter-rouge">HugoGrandChild</code>在继承了<code class="highlighter-rouge">HugoChild</code>之后，也能够获取到其中的相关字段，并且父类不会受到子类的影响。</p>
+
+<p>上述代码中存在一些重复的代码片段，将其抽离出来，使代码结构更加清晰:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">is_instance_or_subclass</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">class_</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">class_</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">TypeError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">class_</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_get_fields</span><span class="p">(</span><span class="n">attrs</span><span class="p">,</span> <span class="n">field_class</span><span class="p">):</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">field_name</span><span class="p">,</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field_name</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_value</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">is_instance_or_subclass</span><span class="p">(</span><span class="n">field_value</span><span class="p">,</span> <span class="n">field_class</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">fields</span>
+
+<span class="k">def</span> <span class="nf">_get_fields_by_mro</span><span class="p">(</span><span class="n">klass</span><span class="p">,</span> <span class="n">field_class</span><span class="p">):</span>
+    <span class="n">mro</span> <span class="o">=</span> <span class="n">klass</span><span class="o">.</span><span class="n">__mro__</span>
+    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span>
+        <span class="p">(</span>
+            <span class="n">_get_fields</span><span class="p">(</span>
+                <span class="nb">getattr</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s">'declared_fields'</span><span class="p">,</span> <span class="n">base</span><span class="o">.</span><span class="n">__dict__</span><span class="p">),</span>
+                <span class="n">field_class</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">mro</span><span class="p">[:</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">),</span>
+        <span class="p">[],</span>
+    <span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+
+        <span class="n">parents</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bases</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">HugoMetaclass</span><span class="p">)]</span>
+
+        <span class="c"># 对Hugo类不做任何处理</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">parents</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="c"># 保存attrs中所有的int类型数据</span>
+        <span class="n">klass</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="n">class_fields</span> <span class="o">=</span> <span class="n">_get_fields</span><span class="p">(</span><span class="n">attrs</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+        <span class="n">inherited_fields</span> <span class="o">=</span> <span class="n">_get_fields_by_mro</span><span class="p">(</span><span class="n">klass</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+        <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">class_fields</span> <span class="o">+</span> <span class="n">inherited_fields</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">klass</span>
+</code></pre></div></div>
+
+<h3 id="3-小结">3. 小结</h3>
+
+<p><code class="highlighter-rouge">metaclass</code>并不神秘，得益于Python是动态语言，可以在运行时动态地创建一个类的特性，我们能够在事前去创建一些有用的”模板”，在运行时将模板和数据有机的结合起来，最终呈现出宛如魔术般的效果。</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>TCP有限状态机</title>
 	  <link>//TCP-Finite-State-Machine</link>
 	  <author></author>
@@ -1908,302 +2224,6 @@ As for performance, there can be some (minor) loss that comes with using unbuffe
 <h4 id="7-总结">7. 总结</h4>
 
 <p>对于非数据库类型的应用而言， 文件I/O的可选范围并不广， 即与其花费大量时间调试异步I/O， 不如直接选择C标准库I/O， 因为同时监听成百上千的文件读写并不常见。 对于频繁随机读取和写入的文件而言， 可以使用内存映射I/O来减少<code class="highlighter-rouge">lseek</code>的调用， 而<code class="highlighter-rouge">sendfile</code>系统调用更多地应用于文件至socket的数据传输。</p>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>MySQL中的悲观锁与常见的死锁场景</title>
-	  <link>//MySQL-Pessimistic-Lock</link>
-	  <author></author>
-	  <pubDate>2019-09-18T21:39:25+00:00</pubDate>
-	  <guid>//MySQL-Pessimistic-Lock</guid>
-	  <description><![CDATA[
-	     <p>在MySQL中， 锁机制是并发条件下保护数据一致性与稳定性的一个非常重要的机制， 并且事务的实现也依赖于于锁机制。 其锁定的数据不单包括数据行记录， 同时也包括缓冲池中的LRU列表数据、日志数据等。 悲观锁(FOR UPDATE)则是日常开发中使用最多的一种锁， 但是， 由于事务隔离级别的多样性导致了悲观锁在使用时常常会有不同的表现， 死锁在程序员稍不注意时就会发生。</p>
-
-<!---more--->
-
-<h4 id="1-悲观锁概述">1. 悲观锁概述</h4>
-<p>在通用的程序设计语言中， 锁通常是基于某一个对象， 或者是一组对象而言。 在Python、Java和Golang中， 分别提供了<code class="highlighter-rouge">threading.Lock</code>、<code class="highlighter-rouge">synchronized</code>以及<code class="highlighter-rouge">sync.Mutex</code>互斥所机制。 而数据库要更为特殊一些， 其原因就在于我们所管理的不是一个个的对象， 而是一行行的数据。</p>
-
-<p>InnoDB存储引擎支持的最小锁粒度为行锁， 可以通过在事务中执行<code class="highlighter-rouge">SELECT .. FOR UPDATE</code>为某一行或者是多行数据添加互斥锁。 锁的生命周期完全由InnoDB管理， 当事务成功提交或者是失败回滚时， 互斥锁则自动释放。</p>
-
-<p>需要注意的一点是， 互斥锁必须在事务中执行才会生效。 当<code class="highlighter-rouge">autocommit</code>为<code class="highlighter-rouge">ON</code>时， 需要显示的使用<code class="highlighter-rouge">BEGIN</code>开启事务， 而后对数据添加互斥锁。</p>
-
-<p>在程序设计语言中， 锁的目的是串行化修改、删除操作， InnoDB中的互斥锁有着同样的目的。 但是， 由于事务隔离级别的分类， 使得互斥锁的行为变得复杂许多。 其中最让人感到迷惑的就是为了解决幻读问题所添加的<code class="highlighter-rouge">GAP Lock</code>。</p>
-
-<h4 id="2-事务隔离级别概述">2. 事务隔离级别概述</h4>
-
-<p>不同的事务隔离级别， 悲观锁会产生不同的行为。 所以， 理解事务隔离级别是理解悲观锁的第一步。</p>
-
-<p>InnoDB事务隔离级别从低到高依次为未提交读(READ UNCOMMITED)， 提交读(READ COMMITED)， 可重复读(READ REPEATABLE)以及串行化(SERIALIZABLE)。</p>
-
-<p>未提交读指的是事务B可以读取到事务A未提交的数据， 此时若事务A回滚， 那么事务B读到的就是错误数据， 也称为脏数据。 该读取行为有时也会被称为脏读， 因为未提交读会导致脏读的问题， 从而导致数据混乱， 所以该事务隔离级别基本不会被使用。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/read-uncommitted-with-dirty-data.png" alt="" /></p>
-
-<p>提交读是指在执行事务B时， 可以读取到事务A提交到的数据， 未提交的数据不可读取。 提交读解决了脏读的问题， 读取到的数据一定是已经持久化至磁盘的数据， 但是会出现同一条SQL语句在执行时出现不一致的情况。 例如事务A、B先后开始执行， 事务A首先读取row-1的内容， 而此时事务B对row-1的内容修改并提交， 此时事务A再次读取row-1数据， 发现其已经发生改变， 而该变化并不是事务A自身进行的。 这种情况又称为不可重复读。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/Read-Committed.png" alt="" /></p>
-
-<p>可重复读， 顾名思义， 解决了提交读的不可重复读问题， 使得事务在读取同一行数据时， 结果并不会因为其它事务的执行而发生改变， 数据发生的修改行为在整个事务内是可以自恰的。 但是并没有解决幻读的问题， 幻读是指其余事务在某一个区间内插入数据， 而非修改数据， 此时事务也会读取到这部分插入的数据。 InnoDB借助MVCC(多版本并发控制)以及锁机制来解决幻读问题。</p>
-
-<p>MVCC即在数据中添加版本号， 数据插入时会有初始版本号， 在修改、删除时更新版本号。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/Repeatable-Read.png" alt="" /></p>
-
-<p>串行化指事务串行化执行， 自然就不会有出现上述出现的脏读、不可重复读以及幻读了。 一个很重要的事实是， 串行化的事务隔离级别执行效率并不会比可重复读事务隔离级别差很多。 同样的， 提交读执行效率也不会比可重复读执行效率高多少， 所以在优化数据库时， 事务隔离级别不应该是效率优化目标， 而是业务优化目标。</p>
-
-<h4 id="3-mysql中的锁">3. MySQL中的锁</h4>
-
-<p>使用<code class="highlighter-rouge">FOR UPDATE</code>对某一行或者是多行数据添加的锁， 其实是由MySQL更细粒度的锁组合而成的， 不同的事务隔离级别有不同的组合方式。</p>
-
-<p>在InnoDB存储引擎中， 存在3种行锁的算法， 其分别为:</p>
-<ul>
-  <li>Record Lock: 单个行记录上的锁，聚集索引及辅助索引均会添加锁。</li>
-  <li>Gap Lock: 间隙锁， 锁定一个范围， 但不包含行记录本身。</li>
-  <li>Next-Key Lock: Record Lock + Gap Lock，锁定行记录本身并且锁定一个范围。</li>
-</ul>
-
-<p>下面用一个实际的例子来解释Record Lock以及Gap Lock。 首先表结构定义如下:</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">lock_test</span> <span class="p">(</span>
-  <span class="n">id</span> <span class="n">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
-  <span class="n">a</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
-  <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="n">id</span><span class="p">),</span>
-  <span class="k">KEY</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span>
-<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">latin1</span><span class="p">;</span>
-
-<span class="c1">-- 插入部分测试数据</span>
-<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"1"</span><span class="p">);</span>
-<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"3"</span><span class="p">);</span>
-<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"5"</span><span class="p">);</span>
-<span class="k">insert</span> <span class="k">into</span> <span class="n">lock_test</span> <span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">values</span> <span class="p">(</span><span class="nv">"8"</span><span class="p">);</span>
-</code></pre></div></div>
-
-<p>接着执行下面的语句:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th style="text-align: left">时间</th>
-      <th style="text-align: left">会话A</th>
-      <th style="text-align: left">会话B</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align: left">1</td>
-      <td style="text-align: left">BEGIN;</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">2</td>
-      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “5” FOR UPDATE;</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">3</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">BEGIN;</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">4</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“4”); <br /> 阻塞，等待会话A事务的提交</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">5</td>
-      <td style="text-align: left">COMMIT;</td>
-      <td style="text-align: left">Query OK, 1 row affected (6.87 sec)</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>尽管列<code class="highlighter-rouge">a</code>添加了辅助索引， 但是在对该列使用<code class="highlighter-rouge">FOR UPDATE</code>添加悲观锁时， 仍然会出现其它列被锁定的现象。 这是因为<code class="highlighter-rouge">a = "5"</code>该行数据不仅被添加了Record Lock， 并且也添加了Gap Lock， 其目的就是为了解决幻读问题， 前提是当前事务隔离级别为REPEATABLE READ。</p>
-
-<p>在列<code class="highlighter-rouge">a</code>的辅助索引中， 值”5”之前的值为”3”， 故存在(3, 5)这个间隙， 所以在插入值”4”时， InnoDB为了杜绝幻读现象的发生， 使得只有在会话A事务提交时才允许插入操作的进行。 另外一点需要注意的是， 当查询的索引具有唯一属性时， InnoDB存储引擎会对Next-Key Lock进行优化， 将其降级为Record Lock， 即仅锁住索引本身， 而不锁定一个范围。</p>
-
-<blockquote>
-  <p>For a unique index with a unique search condition, InnoDB locks only the index record found, not the gap before it.</p>
-</blockquote>
-
-<h4 id="4-锁与事务之间的关联">4. 锁与事务之间的关联</h4>
-
-<p>前面提到了Gap Lock的存在主要是为了解决幻读问题的发生， 而在READ COMMITTED事务隔离级别中， 只解决了脏读问题， 所以说， 在该事务隔离级别下， <code class="highlighter-rouge">FOR UPDATE</code>仅会添加Record Lock， 并不会添加Gap Lock。</p>
-
-<blockquote>
-  <p>For locking reads (SELECT with FOR UPDATE or FOR SHARE), UPDATE statements, and DELETE statements, InnoDB locks only index records, not the gaps before them.</p>
-</blockquote>
-
-<blockquote>
-  <p>Because gap locking is disabled, phantom problems may occur, as other sessions can insert new rows into the gaps</p>
-</blockquote>
-
-<p>此外， 如果用户通过索引查询一个值， 并在其之上添加排它锁， 当查询的值不存在时， READ COMMITTED与REPEATABLE READ两个事务隔离级别所产生的行为同样存在差异， 一个最直观的差异就是REPEATABLE READ在并发条件下会产生死锁， 而READ COMMITTED则不会。</p>
-
-<p>READ COMMITTED事务隔离级别:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th style="text-align: left">时间</th>
-      <th style="text-align: left">会话A</th>
-      <th style="text-align: left">会话B</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align: left">1</td>
-      <td style="text-align: left">BEGIN;</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">2</td>
-      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “100” FOR UPDATE;</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">3</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">BEGIN;</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">4</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “100” FOR UPDATE; <br /> 不会被阻塞</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">5</td>
-      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“100”); <br /> 不会被阻塞</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">6</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“100”); <br /> 不会被阻塞</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">7</td>
-      <td style="text-align: left">COMMIT;</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">8</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">COMMIT;</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>所以说， 当事务隔离级别为READ COMMITTED时， 无法使用Next-Key Lock来帮助我们实现类似于<code class="highlighter-rouge">update_or_create</code>或者是<code class="highlighter-rouge">get_or_create</code>等方法， 因为在并发条件下会造成重复数据创建， 除非表中存在唯一索引。 这也是Django框架官网中所提到的Multiply records问题。 感兴趣的小伙伴可访问官网获取更多详细内容:</p>
-
-<blockquote>
-  <p>https://docs.djangoproject.com/en/2.2/ref/models/querysets/#get-or-create</p>
-</blockquote>
-
-<p>REPEATABLE READ事务隔离级别:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th style="text-align: left">时间</th>
-      <th style="text-align: left">会话A</th>
-      <th style="text-align: left">会话B</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align: left">1</td>
-      <td style="text-align: left">BEGIN;</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">2</td>
-      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE;</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">3</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">BEGIN;</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">4</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE; <br /> 不会被阻塞</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">5</td>
-      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“200”); <br /> 阻塞, 等待事务B的结束</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">6</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">INSERT INTO lock_test (a) VALUES (“200”); <br /> ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction，死锁发生</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>当在REPEATABLE READ事务隔离级别级别下实现<code class="highlighter-rouge">get_or_create</code>方法时，会产生死锁问题， 原因就在于锁定的记录并不存在， 多个事务可同时对其添加悲观锁， 但是插入语句的执行位置是不确定的， 所以就会有死锁问题的出现。解决此类问题的一个方法就是使用指数退避方式的重试。</p>
-
-<h4 id="5-死锁">5. 死锁</h4>
-
-<p>通常来讲， 如果我们的SQL执行计划较为简单， 几乎所有的执行均为单条语句执行时， 死锁基本与我们无关。 但是当执行计划稍加复杂， 事务执行的语句较多时， 就会出现死锁问题。 一个最经典的死锁场景即为AB-BA死锁。</p>
-
-<table>
-  <thead>
-    <tr>
-      <th style="text-align: left">时间</th>
-      <th style="text-align: left">会话A</th>
-      <th style="text-align: left">会话B</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align: left">1</td>
-      <td style="text-align: left">BEGIN;</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">2</td>
-      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE;</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">3</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">BEGIN;</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">4</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “400” FOR UPDATE;</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">5</td>
-      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “400” FOR UPDATE<br /> 阻塞, 等待事务B的结束</td>
-      <td style="text-align: left"> </td>
-    </tr>
-    <tr>
-      <td style="text-align: left">6</td>
-      <td style="text-align: left"> </td>
-      <td style="text-align: left">SELECT * FROM lock_test <br /> WHERE a = “200” FOR UPDATE; <br /> ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction，死锁发生</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>当MySQL检测到死锁时， 会根据其事务权重选择性的回滚其中一个事务。 但是， 权重的判定完全由MySQL决定， 业务系统无法人为的干预， 如果某一个事务在业务系统中非常重要， 但是MySQL却回滚了该事务， 而业务系统仅捕捉了该异常并向外扩散的话， 并不是我们期望的结果。 所以， 在绝大多数场景下， 指数退避的重试策略要更好一些。 或者对于关键性的业务逻辑， 使用Redis等消息队列进行串行化操作。</p>
-
-<p>另外一个死锁场景则是上一小节中我们所见到的并发执行<code class="highlighter-rouge">if not exist then create</code>模式所带来的死锁问题， 该模式在业务场景下其实非常常见。</p>
-
-<h4 id="reference">Reference</h4>
-<ul>
-  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-isolation-levels.html</li>
-  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-locking.html</li>
-  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-deadlocks.html</li>
-</ul>
 
 	  ]]></description>
 	</item>
