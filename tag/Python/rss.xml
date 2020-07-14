@@ -15,7 +15,7 @@
 	  <title>揭开Python元类(metaclass)神秘的面纱</title>
 	  <link>//Python-metaclass</link>
 	  <author></author>
-	  <pubDate>2020-06-13T10:06:25+00:00</pubDate>
+	  <pubDate>2020-07-13T10:06:25+00:00</pubDate>
 	  <guid>//Python-metaclass</guid>
 	  <description><![CDATA[
 	     <p>Python语言的<code class="highlighter-rouge">metaclass</code>特性一直是初学者的”噩梦”，当初博主在学习元类时也是一头雾水，但是一旦真正的理解了什么是”动态语言”之后，元类就不再神秘与难以理解了。Python这门动态语言最大的特性就是不需要一个类的字节码就能够在运行时创建出一个类，这是理解元类最为关键的信息。</p>
