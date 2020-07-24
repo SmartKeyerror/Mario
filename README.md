@@ -33,7 +33,6 @@
 - 2019/03/12 [那些有趣的数据结构与算法(01)--优先队列](https://smartkeyerror.com/PriorityQueue)
 - 2019/01/15 [分布式系统基础学习(04)--Nginx](https://smartkeyerror.com/Nginx)
 - 2019/01/11 [分布式系统基础学习(03)--消息队列(RabbitMQ)](https://smartkeyerror.com/message-queue)
-- 2019/01/08 [分布式系统基础学习(02)--应用间通信(gRPC)](https://smartkeyerror.com/service-communication)
 - 2019/01/03 [分布式系统基础学习(01)--通信(TCP/UDP)](https://smartkeyerror.com/distributed-system-of-communication)
 - 2018/12/31 [Java并发编程(07)--锁](https://smartkeyerror.com/Lock)
 - 2018/12/26 [Java并发编程(06)--AbstractQueuedSynchronizer](https://smartkeyerror.com/AbstractQueuedSynchronizer)
