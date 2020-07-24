@@ -73,10 +73,6 @@
 <lastmod>2019-01-03T09:49:09+00:00</lastmod>
 </url>
 <url>
-<loc>https://smartkeyerror.com/service-communication</loc>
-<lastmod>2019-01-08T09:49:09+00:00</lastmod>
-</url>
-<url>
 <loc>https://smartkeyerror.com/message-queue</loc>
 <lastmod>2019-01-11T09:52:09+00:00</lastmod>
 </url>
@@ -185,6 +181,10 @@
 <lastmod>2020-07-13T10:06:25+00:00</lastmod>
 </url>
 <url>
+<loc>https://smartkeyerror.com/gRPC</loc>
+<lastmod>2020-07-23T09:06:25+00:00</lastmod>
+</url>
+<url>
 <loc>https://smartkeyerror.com/archives/</loc>
 </url>
 <url>
@@ -267,6 +267,9 @@
 </url>
 <url>
 <loc>https://smartkeyerror.com/tag/Network/</loc>
+</url>
+<url>
+<loc>https://smartkeyerror.com/tag/gRPC/</loc>
 </url>
 <url>
 <loc>https://smartkeyerror.com/author/smartkeyerror/</loc>

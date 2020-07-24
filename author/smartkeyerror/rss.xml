@@ -12,6 +12,351 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>浅析gRPC</title>
+	  <link>//gRPC</link>
+	  <author></author>
+	  <pubDate>2020-07-23T09:06:25+00:00</pubDate>
+	  <guid>//gRPC</guid>
+	  <description><![CDATA[
+	     <p>gRPC是一个高性能、通用的开源RPC框架，其由Google主要面向移动应用开发并基于HTTP/2协议标准而设计，基于ProtoBuf(Protocol Buffers)序列化协议开发，且支持众多开发语言。(这Ctrl-C/V也是没有下限了….</p>
+
+<!---more--->
+
+<h3 id="1-protocol-buffers">1. Protocol Buffers</h3>
+
+<p>在早期，ProtoBuf主要用于解决Google内部的服务器高低版本的兼容性问题，后来由于其高效的数据传输效率被用于gRPC的传输数据格式。</p>
+
+<p>相较于XML以及Json，ProtoBuf在传输和存储时由于其体积更小，所以效率更高，并且序列化的速度也比Json的序列化速度更快，原因将在后续部分介绍。</p>
+
+<p>除此之外，ProtoBuf的最大特点就是支持向后兼容。如果使用Json或者XML的话，需要应用程序自行处理新旧版本数据格式之间的兼容性。而ProtoBuf则不需要破坏已经被部署的服务结构，ProtoBuf会帮助用户处理好高低版本的兼容性问题。</p>
+
+<h4 id="11-protobuf所支持的数据类型">1.1 ProtoBuf所支持的数据类型</h4>
+
+<p>对于基本数据类型，如int，float，double，string，bool以及bytes，ProtoBuf均支持定义以上数据类型。对于int类型的数据，ProtoBuf对其进行了额外的拓展，在不同的场景使用不同的整型将会有不同的运行效率。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">ProtoBuf Type</th>
+      <th style="text-align: left">Explain</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">int32</td>
+      <td style="text-align: left">int32最大支持4字节的整型数字，编码负数时效率较低</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">int64</td>
+      <td style="text-align: left">int32最大支持8字节的整型数字，编码负数时效率较低</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">uint32</td>
+      <td style="text-align: left">uint32最大支持4字节的无符整数</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">uint64</td>
+      <td style="text-align: left">uint32最大支持8字节的无符整数</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">sint32</td>
+      <td style="text-align: left">sint32最大支持4字节的有符整数，编码负数时效率更高</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">sint64</td>
+      <td style="text-align: left">sint32最大支持8字节的有符整数，编码负数时效率更高</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">fixed32</td>
+      <td style="text-align: left">不使用可变长度方式进行编码，总是传输4字节，在编码超过$2^{28}$数值的整数时效率更高</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">fixed64</td>
+      <td style="text-align: left">不使用可变长度方式进行编码，总是传输8字节，在编码超过$2^{56}$数值的整数时效率更高</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>除了上述的基本数据类型以外，ProtoBuf同时也支持列表，字典以及枚举类型的定义，再加上<code class="highlighter-rouge">message</code>类型支持嵌套定义，几乎可以说能够覆盖日常开发中的所有需求了。</p>
+
+<h4 id="12-protobuf中的消息定义">1.2 ProtoBuf中的消息定义</h4>
+
+<p><code class="highlighter-rouge">message</code>数据类型是ProtoBuf在序列化和反序列化中的最小单位，和C结构体非常类似。</p>
+
+<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">message</span> <span class="nc">Response</span> <span class="p">{</span>
+    <span class="kt">int32</span> <span class="na">code</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="kt">string</span> <span class="na">msg</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="kt">int32</span> <span class="na">data</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">message</code>中的字段类型和字段名称无需赘述，值得关注的是后面的Field Numbers，字段序列号。该序列号将会在数据存储和传输时用于指代<code class="highlighter-rouge">message</code>中所定义的字段，即对源数据编码成ProtoBuf格式数据后，字段名称将会被舍弃，转而使用字段系列号进行代替，所以会说ProtoBuf并不是自描述的传输格式，同时也是数据体积更小的原因之一。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MicroService/gRPC/FieldNumbers.png" alt="" /></p>
+
+<p>所以，一个<code class="highlighter-rouge">message</code>中的字段系列号必须唯一，同时范围必须在[$1$, $2^{29}-1$]之间。并且19000到19999之间的数值被ProtoBuf内部所用，也不可定义。</p>
+
+<p>下面是一个使用了大部分数据类型的<code class="highlighter-rouge">message</code>定义:</p>
+
+<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">enum</span> <span class="n">UserStatus</span> <span class="p">{</span>
+    <span class="c1">// 值为0的枚举值必须定义，因为这是ProtoBuf对枚举值的默认值
+</span>    <span class="c1">// 同时，该零值不应该被应用程序所使用，否则会出现歧义
+</span>    <span class="na">USER_STATUS_INVALID</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="na">USER_STATUS_NORMAL</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="na">USER_STATUS_FROZEN</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="na">USER_STATUS_DELETED</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">MainAddress</span> <span class="p">{</span>
+    <span class="kt">string</span> <span class="na">province</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="kt">string</span> <span class="na">city</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="kt">string</span> <span class="na">address</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">UserInfo</span> <span class="p">{</span>
+    <span class="kt">uint32</span> <span class="na">user_id</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="kt">string</span> <span class="na">mobile</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="k">repeated</span> <span class="kt">string</span> <span class="na">extra_mobile</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+    <span class="n">UserStatus</span> <span class="na">status</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+    <span class="n">MainAddress</span> <span class="na">main_address</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="na">is_vip</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h4 id="13-protobuf编码">1.3 ProtoBuf编码</h4>
+
+<p>ProtoBuf格式的数据体积更小的原因一方面归功于使用字段系列号来代替字段名称，另一方面则是因为对整型采用了可变长度编码方式，即使是指定了<code class="highlighter-rouge">int32</code>类型的数据也可能只使用一字节存储。</p>
+
+<h5 id="131-base-128-varints">1.3.1 Base 128 Varints</h5>
+
+<p>Varint使用一个或者多个字节表示一个数字，数字的值越小，所使用的字节数也会更小。其长度并不固定，所以称之为”可变长整数”。</p>
+
+<p>Varint中的每个字节(最后一个字节除外)都设置了最高有效位(msb)，用于表示后面还会有更多字节出现，所以Varint中的最后一个字节不会设置msb。由于首位被当做是msb使用，所以一个字节只有7位有效位。</p>
+
+<p>例如数字1，可以使用1字节进行表示，那么其最高有效位即可设置为0:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000 0001
+</code></pre></div></div>
+
+<p>对于多字节的数字，除了最后一个字节以外，其余字节的首位都应该置为1，以表示后续仍有字节。以数字1024为例，在一般情况下，1024需要使用2个字才能表示:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1024 <span class="o">=</span> 0000 0100 0000 0000
+</code></pre></div></div>
+
+<p>现在来看下Varint的编码过程:</p>
+
+<ul>
+  <li>首先，1024超过了7位，所以必须使用至少2个字节表示，但是又小于14位，所以需要2个字节表示。按每7位取一个字节，若不够7位则用0补齐:</li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000 0100 0000 0000 -&gt; 0001000 0000000
+</code></pre></div></div>
+
+<ul>
+  <li>将低字节写入到高字节，最后一个字节最高位补0，其余字节最高位补1，即为最终结果:</li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>10000000 00001000
+</code></pre></div></div>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MicroService/gRPC/Varint.png" alt="" /></p>
+
+<h5 id="132-message-structure">1.3.2 Message Structure</h5>
+
+<p>在ProtoBuf中，<code class="highlighter-rouge">message</code>结构其实就是一系列的键值对，只不过<code class="highlighter-rouge">message</code>在序列化成二进制时，对键和值进行了特殊的处理而已。</p>
+
+<p>首先来看对键的处理，键的计算方式是<code class="highlighter-rouge">(field_number &lt;&lt; 3) | wire_type</code>，根据键的计算公式可以看出，键的最后3位就是字段类型。<code class="highlighter-rouge">field_number</code>即为用户自定义的字段序列号，而<code class="highlighter-rouge">wire_type</code>则是一个由ProtoBuf所定义的对类型的”枚举”。:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">Write Type</th>
+      <th style="text-align: left">Meaning</th>
+      <th style="text-align: left">Used For</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">0</td>
+      <td style="text-align: left">Varint</td>
+      <td style="text-align: left">int32, int64, uint32, uint64, sint32, sint64, bool, enum</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">64-bit</td>
+      <td style="text-align: left">fixed64, sfixed64, double</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">Length-delimited</td>
+      <td style="text-align: left">string, bytes, embedded messages, packed repeated fields</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">32-bit</td>
+      <td style="text-align: left">fixed32, sfixed32, float</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>值得注意是当<code class="highlighter-rouge">wire_type</code>为2时，序列化结果中还需要包含数据的长度，即<code class="highlighter-rouge">length</code>。</p>
+
+<ul>
+  <li>当<code class="highlighter-rouge">wire_type</code>为0、1和5时，序列化的结果为<strong>key + 数据</strong>，数据长度由数据自描述。</li>
+  <li>当<code class="highlighter-rouge">wire_type</code>为2时，序列化的结果为<strong>key + length + 数据</strong>，数据长度由<code class="highlighter-rouge">length</code>决定。</li>
+</ul>
+
+<p>下面通过一个实际的例子看下Message Structure的编码形式:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
+
+message foo <span class="o">{</span>
+    string bar <span class="o">=</span> 5<span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>将<code class="highlighter-rouge">bar</code>的值设置为”Hello”，序列化后将得到以下结果:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>052a 6548 6c6c 006f
+</code></pre></div></div>
+
+<p>ProtoBuf是小端字节序，阅读起来不是很方便，将其转换一下:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2a05 4865 6c6c 6f
+</code></pre></div></div>
+
+<p>其中<code class="highlighter-rouge">4865 6c6c 6f</code>为字符串”Hello”的16进制表示，那么<code class="highlighter-rouge">2a05</code>就是前面提到的<strong>key+length</strong>了。<code class="highlighter-rouge">2a</code>的二进制格式为<code class="highlighter-rouge">101010</code>，最后3位为<code class="highlighter-rouge">010</code>，转换成十进制结果是2，对应string类型的<code class="highlighter-rouge">write_type</code>。<code class="highlighter-rouge">101</code>转换成十进制结果为5，对应bar字段的<code class="highlighter-rouge">field_number</code>。length则由<code class="highlighter-rouge">05</code>确定，表示字符串的长度为5。</p>
+
+<h3 id="2-http2">2. HTTP/2</h3>
+
+<p>HTTP/2协议在原有的HTTP/1协议版本之上进行了大幅度的修改，其传输效率大大提升，并且能够有效地降低服务端的资源消耗。</p>
+
+<ul>
+  <li>由文本传输改变为二进制数据传输，解析更加高效。</li>
+  <li>使用新的二进制分帧机制改变了客户端和服务端之间交换数据的方式，每个二进制帧可进行乱序传输，解决了HTTP/1中的首部阻塞问题。</li>
+  <li>对请求头部字段的压缩使得传输数据更小，传输效率更高。</li>
+</ul>
+
+<p>为了更好的理解HTTP/2，首先要明确HTTP/1的缺陷之处，首当其冲的就是TCP连接数限制。在浏览器中，同一个域名下同时只能创建6~8个TCP连接，剩下的请求只能等待这些请求的返回。并且，每个TCP连接只能承载一次请求/响应，当初始发送的请求响应时间较长时，整个页面加载也会受到阻塞。</p>
+
+<h4 id="21-二进制分帧">2.1 二进制分帧</h4>
+
+<p>在HTTP/1中，请求的数据以明文进行传输，例如:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GET / HTTP/1.1
+Host: example.com
+</code></pre></div></div>
+
+<p>而在HTTP/2中，请求或者响应数据不再以文本的方式进行传输，而是直接使用二进制数据进行传输，使得解析更加高效。其原因在于HTTP/1是通过特殊符号，如空格，<code class="highlighter-rouge">\r\n</code>等特殊字符进行分割并解析的。而HTTP/2首先对数据进行了分类，将请求头和Payload分开，并且在每一个传输单元中都进行了标记。</p>
+
+<p>HTTP/2的基本传输单元为帧(Frame)，每一个都以固定的9个字节开头，后跟不定长度的Payload。Payload可以是用户传输的数据，也可以是协议本身携带的数据。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+-----------------------------------------------+
+|                 Length <span class="o">(</span>24<span class="o">)</span>                   |
++---------------+---------------+---------------+
+|   Type <span class="o">(</span>8<span class="o">)</span>    |   Flags <span class="o">(</span>8<span class="o">)</span>   |
++-+-------------+---------------+-------------------------------+
+| R <span class="o">(</span>1<span class="o">)</span> |                 Stream Identifier <span class="o">(</span>31<span class="o">)</span>                |
++<span class="o">=</span>+<span class="o">=============================================================</span>+
+|                   Frame Payload <span class="o">(</span>0...<span class="o">)</span>                      ...
++---------------------------------------------------------------+
+</code></pre></div></div>
+
+<p>24+8+8+1+31，刚好为72位，即9字节。下面来看每一个字段的含义:</p>
+
+<ul>
+  <li>Length: 表示Payload的长度，是一个24位的无符整数，单位为字节。也就是说，通常情况下一个帧最多能够传输2^14(16,384)个字节。如果想在一个帧中传输更多的数据，则可以通过传输<code class="highlighter-rouge">SETTINGS_MAX_FRAME_SIZE</code>帧来改变基本大小。</li>
+  <li>Type: 帧的类型，如<code class="highlighter-rouge">DATA</code>帧、<code class="highlighter-rouge">HEADERS</code>帧。</li>
+  <li>Flags: 该字段用于各类型的帧进行补充说明，表示特殊的含义。一个常见的标志就是<code class="highlighter-rouge">END_HEADERS</code>，表示头数据已经结束。</li>
+  <li>R: 预留位，并未使用。</li>
+  <li>Stream Identifier: 流标识符，31位无符整数，作用将在下方描述。</li>
+</ul>
+
+<h4 id="22-多路复用">2.2 多路复用</h4>
+
+<p>HTTP/2一个最重要的特性就是多路复用，即在一个TCP连接中同时传输多个请求或者是响应，而HTTP/1想要做到这一点的话，必须要建立多个TCP连接。</p>
+
+<p>在HTTP/2中引入了”流”(Stream)的概念，对应HTT/1的话，其实就是一个请求: 在一个连接中发送多个请求其实就是发送多个流。而流又是由帧组成的，所以在帧中需要字段<code class="highlighter-rouge">Stream Identifier</code>来标记当前帧属于哪个流。</p>
+
+<p>实现多路复用的逻辑概念就是流，和TCP流式传输不同的是，HTTP/2中的流只是一个逻辑上的概念，每一个流使用<code class="highlighter-rouge">Stream Identifier</code>进行标识。一个请求或者是响应在拆分成多个帧以后，将使用同一个流ID在连接中进行传输，接收方在接收到乱序传输的帧以后，按照流ID进行组装，即可得到一个完整的请求或者是响应。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MicroService/gRPC/stream.png" alt="" /></p>
+
+<h4 id="22-头部字段压缩">2.2 头部字段压缩</h4>
+
+<p>TODO</p>
+
+<h3 id="3-一些实践的代码用例">3. 一些实践的代码用例</h3>
+
+<h4 id="31-python-client">3.1 Python Client</h4>
+
+<p>gRPC的错误响应(如Not Found，Internal Server Error等)通常会以异常的形式抛出，所以，Python Client必须要对gRPC的相关方法进行进一步的封装，例如重试机制或者是进行其它行为。</p>
+
+<p>最为常见的异常就是<code class="highlighter-rouge">_Rendezvous</code>，该异常为<code class="highlighter-rouge">RpcError</code>的一个子类，通常来说，只需要捕获该异常即可。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">grpc</span> <span class="kn">import</span> <span class="n">StatusCode</span><span class="p">,</span> <span class="n">RpcError</span>
+
+
+<span class="c"># define retry times with different situation</span>
+<span class="n">MAX_RETRIES_BY_CODE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">StatusCode</span><span class="o">.</span><span class="n">INTERNAL</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">StatusCode</span><span class="o">.</span><span class="n">ABORTED</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">StatusCode</span><span class="o">.</span><span class="n">UNAVAILABLE</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">StatusCode</span><span class="o">.</span><span class="n">DEADLINE_EXCEEDED</span><span class="p">:</span> <span class="mi">5</span>
+<span class="p">}</span>
+
+<span class="c"># define MIN and MAX sleeping seconds</span>
+<span class="n">MIN_SLEEPING</span> <span class="o">=</span> <span class="mf">0.015625</span>
+<span class="n">MAX_SLEEPING</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+
+<span class="k">class</span> <span class="nc">RetriesExceeded</span><span class="p">(</span><span class="nb">Exception</span><span class="p">):</span>
+    <span class="s">"""docstring for RetriesExceeded"""</span>
+    <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">retry</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wraps</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">retries</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">RpcError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">code</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">()</span>  <span class="c"># 使用e.code()获取响应码</span>
+                <span class="n">max_retries</span> <span class="o">=</span> <span class="n">MAX_RETRIES_BY_CODE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">max_retries</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">e</span>
+
+                <span class="k">if</span> <span class="n">retries</span> <span class="o">&gt;</span> <span class="n">max_retries</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">RetriesExceeded</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+                <span class="n">back_off</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">MIN_SLEEPING</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">retries</span><span class="p">,</span> <span class="n">MAX_SLEEPING</span><span class="p">)</span>
+
+                <span class="n">retries</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">back_off</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wraps</span>
+</code></pre></div></div>
+
+<h4 id="32-golang-server">3.2 Golang Server</h4>
+
+<p>TODO</p>
+
+<h3 id="4-reference">4. Reference</h3>
+
+<ul>
+  <li>https://hpbn.co/</li>
+  <li>https://blog.wangriyu.wang/</li>
+  <li>https://tools.ietf.org/html/rfc7540</li>
+  <li>https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn</li>
+</ul>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>揭开Python元类(metaclass)神秘的面纱</title>
 	  <link>//Python-metaclass</link>
 	  <author></author>
@@ -1959,271 +2304,6 @@ binlog_group_commit_sync_no_delay_count
     </span><span class="n">foo</span><span class="p">([]</span><span class="kt">string</span><span class="p">{</span><span class="s">"smart"</span><span class="p">})</span><span class="x">
 </span><span class="p">}</span><span class="x">
 </span></code></pre></div></div>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>Linux操作系统-文件I/O</title>
-	  <link>//Linux-IO</link>
-	  <author></author>
-	  <pubDate>2019-12-17T09:39:25+00:00</pubDate>
-	  <guid>//Linux-IO</guid>
-	  <description><![CDATA[
-	     <p>在操作系统中， 最为复杂同时也最为重要的功能就是文件I/O。 一台PC可以不连接互联网， 但是一定需要程序的载入、文件的打开， 而这些操作与I/O均密不可分。 包括软件开发中， 数据库与I/O的关系密切相关， 有时衡量一个DB的效率， 其实就是在衡量其I/O效率。 理解文件I/O， 就是在理解我们常用应用软件， 如MySQL、Redis、Nginx、ES、Prometheus等的核心。</p>
-
-<!---more--->
-
-<h4 id="1-处于内核态的系统调用">1. 处于内核态的系统调用</h4>
-
-<p>操作系统的本质就是帮助用户更加高效的管理硬件， 向上提供统一的接口， 向下兼容不同的硬件， 使得用户并不需要关心硬件， 如硬盘的细节， 只需要关心操作系统为我们提供的抽象: 文件系统。 然而引入操作系统的代价就是用户对硬件的所有操作， 例如打开一个文件， 运行一个程序， 均需经由操作系统来完成， 如此以来， 就有了系统调用。</p>
-
-<p>系统调用存在的原因就在于操作系统不允许用户直接访问硬件， 如果用户有此需求， 则需将想要访问的地址与内容告诉操作系统， 由操作系统进行硬件的访问， 最后由操作系统将结果返回给用户。</p>
-
-<p>操作系统也是软件， 也是由一行行的代码所组成， 所以必定运行在内存中， 只不过操作系统所运行的内存受到保护， 用户无法直接对其进行操作而已。 当用户想要打开一个文件时， 将文件路径告知操作系统， 此时操作系统将会接管CPU的执行， 并将CPU的某标识位标记为内核态， 执行一系列的I/O操作， 取出结果并将结果发送给用户内存空间后， 再将CPU的执行权交给用户。 从本质上来看， 系统调用其实就是一次进程切换， 只不过所花费的时间要比普通的进程间切换大得多而已。</p>
-
-<p>接下来将会看到， 为了”对抗”系统调用所带来的巨大代价， 先贤们实现了各种各样增加I/O效率的方式。 但是， 没有哪一种方式能够”一招吃遍天下鲜”， 不同的应用场景会有不同的最佳解决方式。</p>
-
-<h4 id="2-linux通用io模型">2. Linux通用I/O模型</h4>
-
-<p>Linux为系统用户提供了一些通用的IO函数， 包括<code class="highlighter-rouge">open</code>、<code class="highlighter-rouge">read</code>、<code class="highlighter-rouge">write</code>等方法， 当用户每次调用这些方法时， 都将产生一次系统调用， 此时程序运行由用户态切换至内核态， 内核做完自己应该完成的事情之后， 将结果保存至用户指定的位置中， 并再由内核态切换至用户态， 使用户继续执行下面的代码。</p>
-
-<p><code class="highlighter-rouge">open</code>方法既能打开一个已经存在的文件， 也能创建并打开一个新的文件。 其原型如下:</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="n">open</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">pathname</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="p">...</span><span class="cm">/* mode_t mode */</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>具体的方法使用请参见Linux manual page。 <code class="highlighter-rouge">open</code>方法在成功时将返回该文件的文件描述符， 用于在后续函数调用中指代该文件， 该文件描述符在进程中唯一， 即使打开的是同一个文件， 两者的文件描述符也不相同。</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"hole.txt"</span><span class="p">,</span> <span class="n">O_WDONLY</span><span class="p">);</span>   <span class="c1">// 3
-</span>    <span class="kt">int</span> <span class="n">fd2</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"hole.txt"</span><span class="p">,</span> <span class="n">O_WDONLY</span><span class="p">);</span>  <span class="c1">// 4
-</span>    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>对于用户自定义的文件， 文件描述符通常都是从3开始， 0、1、2这三个描述符分别代表标准输入、标准输出以及标准错误， 定义于<code class="highlighter-rouge">unistd.h</code>头文件中。</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* Standard file descriptors.  */</span>
-<span class="cp">#define	STDIN_FILENO	0	</span><span class="cm">/* Standard input.  */</span><span class="cp">
-#define	STDOUT_FILENO	1	</span><span class="cm">/* Standard output.  */</span><span class="cp">
-#define	STDERR_FILENO	2	</span><span class="cm">/* Standard error output.  */</span><span class="cp">
-</span></code></pre></div></div>
-
-<p><code class="highlighter-rouge">read</code>系统调用此报告文件描述符fd所指代的打开文件中读取数据， 其定义为:</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include&lt;unistd.h&gt;
-</span>
-<span class="kt">ssize_t</span> <span class="n">read</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">buffer</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">count</span><span class="p">);</span>
-</code></pre></div></div>
-
-<p>count参数指定最多能读取的字节数， buffer参数提供用来存放数据的内存缓冲区地址(由用户所提供)， 缓冲区至少应有count字节。</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#define MAX_READ 20
-</span><span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="n">MAX_READ</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
-
-<span class="kt">ssize_t</span> <span class="n">num_read</span><span class="p">;</span>
-<span class="n">num_read</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">MAX_READ</span><span class="p">);</span>
-<span class="k">if</span> <span class="p">(</span><span class="n">num_read</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
-
-<span class="n">buffer</span><span class="p">[</span><span class="n">num_read</span><span class="p">]</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span>
-<span class="n">printf</span><span class="p">(</span><span class="s">"The input data was: %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">buffer</span><span class="p">);</span>
-</code></pre></div></div>
-
-<p>从标准输入中读取数据和从文件中读取数据会有些许差异， 因为在默认情况下， 从终端读取字符会在遇到换行符(\n)时<code class="highlighter-rouge">read</code>调用就会结束， 而对于普通文件， 则不会这样。</p>
-
-<p>现在来进一步地了解<code class="highlighter-rouge">read</code>系统调用背后所发生的事情。 当程序调用<code class="highlighter-rouge">read</code>方法时， 产生系统调用， 则当前程序执行的状态由用户态切换至内核态， 操作系统将所需要的文件内容读取至内核某缓冲区中。 同时， 由于I/O是一个相对来说代价较大的操作， 为了减少读取磁盘的数据， 操作系统还会额外的读取更多的内容进入内核缓冲区， 下次读取这些内容时， 直接从缓冲区中读取， 不再从磁盘中读取， 从而提升整体效率。 数据进入内核缓冲区后， 内核需要将数据复制到用户缓冲区中， 也就是<code class="highlighter-rouge">read</code>方法所传递的<code class="highlighter-rouge">void *buffer</code>中。 传输完毕后由内核态切换至用户态， <code class="highlighter-rouge">read</code>系统调用完成。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/Linux/IO/Linux%20Read.png" alt="" /></p>
-
-<p>在执行<code class="highlighter-rouge">read</code>系统调用时， 总计发生了2次用户态切换， 额外的一次数据复制(kernel to User)。 并且， kernel buffer中保存了多于用户当前所需的数据， 用于加快下一次的<code class="highlighter-rouge">read</code>调用。</p>
-
-<p><code class="highlighter-rouge">write</code>系统调用将数据写入一个打开的文件中， 当调用成功时， 返回实际写入文件的字节数。 与<code class="highlighter-rouge">read</code>系统调用相同， <code class="highlighter-rouge">write</code>调用在返回成功时， 仅是将数据写入到内核缓冲区中， 再由内核寻找适当的时机将该部分数据真正地写入到磁盘中。</p>
-
-<p>采用这一设计可以有效的减少内核必须执行的磁盘传输次数， 因为可能调用10次<code class="highlighter-rouge">write</code>系统调用， 内核仅进行一次磁盘写入， 不仅减少了单个<code class="highlighter-rouge">write</code>系统调用所需时间， 并且提高了操作系统整体的运作效率。</p>
-
-<p>这一机制所带来的唯一问题就是由于数据在某一时刻仅暂存于内核缓冲区中， 当系统发生断电或者是意外宕机时， 该部分数据就会丢失。 对于数据库等对数据要求非常严格的系统， 这种数据丢失是无法接受的。 所以， 内核额外的提供了<code class="highlighter-rouge">fsync</code>等强制刷新数据至磁盘的系统调用。</p>
-
-<p><code class="highlighter-rouge">fsync</code>系统调用将使缓冲区数据和与打开文件描述符fd相关的所有元数据都刷新到磁盘上， 调用<code class="highlighter-rouge">fsync</code>会强制使文件处于Synchronized I/O file integrity completion状态。 所以， 当程序想要确保数据完全写入磁盘时， 可在<code class="highlighter-rouge">write</code>调用后执行<code class="highlighter-rouge">fsync</code>调用， 进行强制刷盘。</p>
-
-<h4 id="3-c标准io函数库">3. C标准I/O函数库</h4>
-
-<p>上面所提到的<code class="highlighter-rouge">open</code>， <code class="highlighter-rouge">read</code>等系统调用均有Linux/Unix系统所提供， 如Windows等操作系统并不支持此类调用。 为了解决不同操作系统底层提供的通用I/O函数不同的问题， ANSI C制定了一系列的标准I/O函数， 其目的就是为了解决代码的可移植性问题以及屏蔽I/O细节(缓冲区大小的选择， 文件锁实现等)。</p>
-
-<p>标准I/O函数库中最常用的方法为<code class="highlighter-rouge">fopen</code>， <code class="highlighter-rouge">fgets</code>,  <code class="highlighter-rouge">fputs</code>以及<code class="highlighter-rouge">printf</code>， <code class="highlighter-rouge">fprintf</code>。 <code class="highlighter-rouge">fopen</code>和<code class="highlighter-rouge">open</code>的作用类似， 以某种模式(只读、只写等)打开一个文件， 唯一不同的是<code class="highlighter-rouge">open</code>返回<code class="highlighter-rouge">int</code>类型的文件描述符， 而<code class="highlighter-rouge">fopen</code>返回<code class="highlighter-rouge">FILE</code>类型的指针。</p>
-
-<p>为了更好的理解<code class="highlighter-rouge">FILE</code>文件对象， 首先需要了解C标准I/O库的过程。 C标准I/O库的底层实现， 同样是基于Linux提供的通用I/O函数， 只不过标准库对其进行了封装而已。</p>
-
-<p>C标准库除了帮助用户处理平台可移植性问题以外， 还会帮助用户减少系统调用的次数， 但是会额外的增加数据在内存间的复制次数。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/Linux/IO/C%20Standard%20Libary.png" alt="" /></p>
-
-<p>如上图所示，与Linux通用I/O相比， C标准I/O库自身也维护一个类似于内核缓冲的缓冲池， 内核缓冲区的数据并不会直接被复制到用户缓冲区中， 而是复制到标准库缓冲区中。 并且， 所复制的字节数也远大于用户所需要的字节数(count)， 当下次进行内容读取时， 直接从标准缓冲区中读取， 而不需要进行系统调用从内核缓冲区中读取。</p>
-
-<p>该方式从整体上减少了系统调用的次数， 额外的增加了一次用户空间的数据复制， 由于标准I/O函数对系统调用进行了二次封装， 所以解决了可移植性问题。</p>
-
-<p><code class="highlighter-rouge">fputc</code>以及<code class="highlighter-rouge">fputs</code>分别向所关联的文件流中写入单个字符或者是一串字符。 由于标准IO缓冲区的存在， 调用该方法时仅是将数据写入到C标准IO缓冲区中， 而后C标准库根据相应的条件决定何时执行<code class="highlighter-rouge">write</code>系统调用， 将数据写入内核缓冲区。 此后， 内核将决定在适当的时机将数据真正地写入磁盘。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/Linux/IO/fputc.png" alt="" /></p>
-
-<h5 id="31-c标准io缓冲">3.1 C标准I/O缓冲</h5>
-
-<p>标准IO库提供了3种类型的缓冲: 全缓冲、行缓冲以及不带缓冲。</p>
-
-<p>在全缓冲类型下， C函数库只有在完全填满标准IO缓冲区后才进行实际的IO操作， 磁盘文件通常是全缓冲的。 也就是说， 当程序使用<code class="highlighter-rouge">fopen</code>打开一个磁盘文件并调用<code class="highlighter-rouge">fputs</code>进行数据写入时， 数据可能仅写入了标准IO缓冲区中。 在随后的<code class="highlighter-rouge">fputs</code>调用中， 若C标准IO函数发现缓冲区已满， 则进行一次系统调用， 将数据写入至内核缓冲区中。</p>
-
-<p>在行缓冲区类型下， 在输入和输出中遇到换行符(\n)时， 标准IO库执行实际的IO操作。 当一个流涉及到终端时(如标准输出)， 通常时行缓冲的， 例如<code class="highlighter-rouge">printf</code>函数。</p>
-
-<p>不带缓冲则表示只要向标准缓冲区中写入数据， 标准库就会立即进行系统调用， 将数据写入内核缓冲。 标准错误通常是不带缓冲的， 原因在于期望能够尽快的看到错误的产生。</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include&lt;stdio.h&gt;
-#include&lt;unistd.h&gt;
-#include&lt;fcntl.h&gt;
-</span>
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">"This is printf out | "</span><span class="p">);</span>
-
-    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"This is a error output | "</span><span class="p">);</span>
-
-    <span class="n">printf</span><span class="p">(</span><span class="s">"BiuBiu</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-
-    <span class="n">printf</span><span class="p">(</span><span class="s">"Hello Aean: "</span><span class="p">);</span>
-
-    <span class="kt">char</span> <span class="o">*</span><span class="n">s</span> <span class="o">=</span> <span class="s">"I would have written you a short letter. | "</span><span class="p">;</span>
-    <span class="n">write</span><span class="p">(</span><span class="n">STDOUT_FILENO</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="mi">43</span><span class="p">);</span>
-
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>编译并运行上述代码， 将会得到:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>This is a error output | This is <span class="nb">printf </span>out | BiuBiu
-I would have written you a short letter. | Hello Aean:
-</code></pre></div></div>
-
-<p>当标准IO函数与系统调用混合使用时， 将会看到与代码期望完全不同的结果。 尽管<code class="highlighter-rouge">printf</code>函数在<code class="highlighter-rouge">fprintf</code>之前执行， 但由于<code class="highlighter-rouge">printf</code>为行缓冲， 而标准错误为不带缓冲， 所以标准错误信息将在标准输出信息打印之前打印。 <code class="highlighter-rouge">write</code>函数为系统调用， 输出的时机要优先于不带换行符的标准输出。</p>
-
-<p>标准IO函数库同时也提供了<code class="highlighter-rouge">fflush</code>函数， 用于将标准缓冲区的数据强制刷新至内核， 如果我们在<code class="highlighter-rouge">printf</code>函数调用后调用<code class="highlighter-rouge">fflush</code>， 则会在标准错误输出之前看到输出。</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">"This is printf out | "</span><span class="p">);</span>
-    <span class="n">fflush</span><span class="p">(</span><span class="n">stdout</span><span class="p">);</span>
-    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"This is a error output | "</span><span class="p">);</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>其结果为:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>This is <span class="nb">printf </span>out | This is a error output
-</code></pre></div></div>
-
-<p>使用过Docker部署Python项目的小伙伴儿可能对环境变量<code class="highlighter-rouge">PYTHONUNBUFFERED</code>感到很熟悉， 官方文档解释如下:</p>
-
-<blockquote>
-  <p>Force stdin, stdout and stderr to be totally unbuffered. On systems where it matters, also put stdin, stdout and stderr in binary mode.</p>
-</blockquote>
-
-<p>简单来说， 在Docker中使用该变量， 能够更快的使日志输出， 并且在容器crash的情况下， 也能看到必要的日志信息。</p>
-
-<p>更详细的解释:</p>
-
-<blockquote>
-  <p>Setting PYTHONUNBUFFERED=TRUE or PYTHONUNBUFFERED=1 (they are equivalent) allows for log messages to be immediately dumped to the stream instead of being buffered. This is useful for receiving timely log messages and avoiding situations where the application crashes without emitting a relevant message due to the message being “stuck” in a buffer.
-As for performance, there can be some (minor) loss that comes with using unbuffered I/O. To mitigate this, I would recommend limiting the number of log messages. If it is a significant concern, one can always leave buffered I/O on and manually flush the buffer when necessary.</p>
-</blockquote>
-
-<p>有关Linux通用IO以及C标准IO库的缓冲区， 可用下图清晰总结。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/Linux/IO/IO%20buffer.png" alt="" /></p>
-
-<p>原图来源于Linux/Unix系统编程手册， P200。</p>
-
-<h4 id="4-内存映射io">4. 内存映射I/O</h4>
-
-<p>现代操作系统大多数均采用分段+分页的方式来管理内存空间， 其目的就在于使得每一个进程的地址空间独立， 并且使系统能够运行超过其内存空间总数的各种进程。</p>
-
-<p>分页内存管理的基本思想就是映射， 思想和哈希表基本类似: 将一个大范围的空间映射至一个小范围空间内。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/Linux/IO/virtaul%20memory.png" alt="" /></p>
-
-<p>当程序想要访问的虚拟地址没有在页表项建立映射时， 系统将发起一个”缺页异常”， 由操作系统建立页表项并建立虚拟地址页与物理地址页的映射关系。 如此一来， 能够使得不常用的数据或者是内存片段被细粒度地换置至磁盘中， 内存中保留常用的数据。</p>
-
-<p><code class="highlighter-rouge">mmap</code>方法的原理与虚拟内存映射基本相同， 将进程的一部分地址空间与磁盘文件建立映射关系， 将文件当做是内存中的一个数组使用， 减少<code class="highlighter-rouge">read</code>, <code class="highlighter-rouge">write</code>以及<code class="highlighter-rouge">lseek</code>的调用。</p>
-
-<p>需要注意的是， 内存映射一个文件并不会导致整个文件被读取到内存中， 就如同虚拟内存空间不会都在物理地址空间一样， 而是仅仅为需要的文件数据保留映射关系。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">mmap</span>
-
-<span class="k">def</span> <span class="nf">memory_map</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="n">mmap</span><span class="o">.</span><span class="n">ACCESS_WRITE</span><span class="p">):</span>
-    <span class="n">size</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
-    <span class="n">fd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">O_RDWR</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">mmap</span><span class="o">.</span><span class="n">mmap</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="n">access</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
-    <span class="k">with</span> <span class="n">memory_map</span><span class="p">(</span><span class="s">'hello.txt'</span><span class="p">)</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
-        <span class="k">print</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">15</span><span class="p">])</span>
-</code></pre></div></div>
-
-<p>此外，使用内存映射I/O的读写并不一定会比C标准I/O库或者是Linux通用I/O更加高效， 其原因在于虽然<code class="highlighter-rouge">mmap</code>减少了用户态的切换以及减少了数据的复制， 但是增加了处理缺页错误、建立页表项的时间， 并且各个平台对于<code class="highlighter-rouge">mmap</code>的实现也各有不同， 其优点就在于更加简洁的随机读取以及数据写入。</p>
-
-<h4 id="5-异步io">5. 异步I/O</h4>
-
-<p>异步I/O的实现通常会有两种: 当文件可读/可写时， 内核向进程发送一个信号， 或者是内核调用进程提供的回调函数。 在Linux下， AIO有2种实现: 基于线程模拟异步I/O的glibc AIO， 以及由内核实现的Kernel AIO。</p>
-
-<p>对于glibc AIO而言， 是在用户空间使用多线程来模拟实现的， 并不能真正的称之为异步I/O， 但是能够在任意的文件系统、任意的操作系统上运行。</p>
-
-<p>而Kernel AIO采用信号通知的方式实现异步I/O， 只能在Linux操作系统上运行， 基本没有可移植性。 此外， 一个最重要的问题就是Kernel AIO要求用户必须使用<code class="highlighter-rouge">O_DIRECT</code>模式打开文件， 即绕过内核高速缓冲区， 直接将数据传递至文件或者是磁盘设备， 这种方式又称为直接I/O(direct I/O)。</p>
-
-<p>对于大多数应用而言， 使用直接I/O可能会大大的降低性能， 并且会有诸多不便之处。 其原因在于内核针对缓冲区高速缓存做了不少优化， 包括按顺序读取， 在成簇磁盘块上执行I/O， 允许访问同一文件的多个进程共享内核缓冲区。 并且， 直接I/O由于直接将数据传输至磁盘， 所以必须遵守磁盘的一些限制， 包括但不限于: 用于传递数据的缓冲区其内存边界必须对齐为块大小的整数倍， 待传输的数据长度必须是块大小的整数倍…</p>
-
-<p>正是因为诸多限制， 不管是glibc AIO， 还是Kernel AIO， 在绝大部分的应用中都未曾使用， 看起来AIO就是专门为数据库应用所提供的实现。</p>
-
-<h4 id="6-zero-copysendfile">6. Zero Copy(sendfile)</h4>
-
-<p><code class="highlighter-rouge">sendfile</code>系统调用用于在两个文件描述符之间传输数据， 在Linux Kernel 2.6.33以前， <code class="highlighter-rouge">sendfile</code>只能将数据从一个具体的文件发送到一个<code class="highlighter-rouge">socket</code>中。 而在此版本之后， <code class="highlighter-rouge">sendfile</code>的接收方可以是任意的文件， 但是输入端只能是存在于虚拟内存空间的文件描述符， <code class="highlighter-rouge">socket</code>则不在此列。</p>
-
-<p>方法原型为:</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;sys/sendfile.h&gt;
-</span>
-<span class="kt">ssize_t</span> <span class="n">sendfile</span> <span class="p">(</span><span class="kt">int</span> <span class="n">__out_fd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">__in_fd</span><span class="p">,</span> <span class="kt">off_t</span> <span class="o">*</span><span class="n">__offset</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">__count</span><span class="p">);</span>
-</code></pre></div></div>
-
-<p>一个简单的文件复制示例:</p>
-
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include&lt;fcntl.h&gt;
-#include&lt;unistd.h&gt;
-#include &lt;sys/stat.h&gt;
-#include &lt;sys/sendfile.h&gt;
-</span>
-<span class="kt">int</span> <span class="nf">get_file_size</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span> <span class="n">filename</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="k">struct</span> <span class="n">stat</span> <span class="n">statbuf</span><span class="p">;</span>
-    <span class="n">stat</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">statbuf</span><span class="p">);</span>
-    <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">statbuf</span><span class="p">.</span><span class="n">st_size</span><span class="p">;</span>
-    <span class="k">return</span> <span class="n">size</span><span class="p">;</span>
-<span class="p">}</span>
-
-<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="c1">// 省去错误判断
-</span>    <span class="kt">int</span> <span class="n">foo</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"foo.txt"</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="p">);</span>
-    <span class="kt">int</span> <span class="n">bar</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"bar.txt"</span><span class="p">,</span> <span class="n">O_WRONLY</span><span class="p">);</span>
-    <span class="kt">int</span> <span class="n">foo_size</span> <span class="o">=</span> <span class="n">get_file_size</span><span class="p">(</span><span class="s">"foo.txt"</span><span class="p">);</span>
-    <span class="n">sendfile</span><span class="p">(</span><span class="n">bar</span><span class="p">,</span> <span class="n">foo</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">foo_size</span><span class="p">);</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>另外需要注意的是， <code class="highlighter-rouge">sendfile</code>在文件之间传输数据时， 并不支持<code class="highlighter-rouge">O_APPEND</code> flags， 只能覆盖写入。</p>
-
-<p><code class="highlighter-rouge">sendfile</code>系统调用完全在内核空间进行， 数据不会从内核空间拷贝至用户空间， 并且能够得到DMA的硬件支持， 因而速度很快。</p>
-
-<h4 id="7-总结">7. 总结</h4>
-
-<p>对于非数据库类型的应用而言， 文件I/O的可选范围并不广， 即与其花费大量时间调试异步I/O， 不如直接选择C标准库I/O， 因为同时监听成百上千的文件读写并不常见。 对于频繁随机读取和写入的文件而言， 可以使用内存映射I/O来减少<code class="highlighter-rouge">lseek</code>的调用， 而<code class="highlighter-rouge">sendfile</code>系统调用更多地应用于文件至socket的数据传输。</p>
 
 	  ]]></description>
 	</item>

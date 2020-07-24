@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>浅析gRPC</title>
+        
+          <description>&lt;p&gt;gRPC是一个高性能、通用的开源RPC框架，其由Google主要面向移动应用开发并基于HTTP/2协议标准而设计，基于ProtoBuf(Protocol Buffers)序列化协议开发，且支持众多开发语言。(这Ctrl-C/V也是没有下限了….&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Thu, 23 Jul 2020 09:06:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/gRPC</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/gRPC</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>揭开Python元类(metaclass)神秘的面纱</title>
         
           <description>&lt;p&gt;Python语言的&lt;code class=&quot;highlighter-rouge&quot;&gt;metaclass&lt;/code&gt;特性一直是初学者的”噩梦”，当初博主在学习元类时也是一头雾水，但是一旦真正的理解了什么是”动态语言”之后，元类就不再神秘与难以理解了。Python这门动态语言最大的特性就是不需要一个类的字节码就能够在运行时创建出一个类，这是理解元类最为关键的信息。&lt;/p&gt;
@@ -408,21 +423,6 @@
         <link>
         https://smartkeyerror.com/message-queue</link>
         <guid isPermaLink="true">https://smartkeyerror.com/message-queue</guid>
-      </item>
-      
-    
-      
-      <item>
-        <title>分布式系统基础学习(02)--应用间通信(gRPC)</title>
-        
-          <description>&lt;p&gt;我始终认为， 随着语言和计算机技术的发展， 分布式系统才是互联网技术的未来。 而现在众多的分布式开源技术， 如&lt;code class=&quot;highlighter-rouge&quot;&gt;Zookeper&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;SpringCloud&lt;/code&gt;等的蓬勃发展也证明这一点。 在分布式的系统中， A服务可能由Java编写， B服务可能由Python编写， C服务可能由PHP编写， 服务于服务之间的通信固然可以使用&lt;code class=&quot;highlighter-rouge&quot;&gt;HTTP&lt;/code&gt;协议以&lt;code class=&quot;highlighter-rouge&quot;&gt;RESTful-API&lt;/code&gt;的方式进行通信， 但是由于许多不必要的数据传输， 例如HTTP请求头， 会降低服务之间的通信速度， 在高并发的场景下极有可能成为系统瓶颈。 所以， 就有了RPC通信机制。&lt;/p&gt;
-
-</description>
-        
-        <pubDate>Tue, 08 Jan 2019 09:49:09 +0000</pubDate>
-        <link>
-        https://smartkeyerror.com/service-communication</link>
-        <guid isPermaLink="true">https://smartkeyerror.com/service-communication</guid>
       </item>
       
     

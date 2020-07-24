@@ -26,7 +26,7 @@
 <!--    <style>.hljs { background: none; }</style>-->
 
     <!-- Ghost outputs important style and meta data with this tag -->
-        <link rel="canonical" href="https://smartkeyerror.com//tag/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/" />
+        <link rel="canonical" href="https://smartkeyerror.com//tag/gRPC/" />
     <meta name="referrer" content="origin" />
     <link rel="next" href="/page2/" />
 
@@ -34,13 +34,13 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="知其然, 知其所以然" />
     <meta property="og:description" content="Keep coding, Keep curiosity" />
-    <meta property="og:url" content="https://smartkeyerror.com//tag/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/" />
+    <meta property="og:url" content="https://smartkeyerror.com//tag/gRPC/" />
     <meta property="og:image" content="/assets/images/cover.jpg" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="知其然, 知其所以然" />
     <meta name="twitter:description" content="Keep coding, Keep curiosity" />
-    <meta name="twitter:url" content="https://smartkeyerror.com//tag/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//tag/gRPC/" />
     <meta name="twitter:image:src" content="/assets/images/cover.jpg" />
 
     <script type="application/ld+json">
@@ -49,7 +49,7 @@
     "@type": "Website",
     "publisher": "知其然, 知其所以然",
     "name": "知其然, 知其所以然",
-    "url": "https://smartkeyerror.com//tag/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/",
+    "url": "https://smartkeyerror.com//tag/gRPC/",
     "image": "/assets/images/cover.jpg",
     "description": "Keep coding, Keep curiosity"
 }
@@ -94,10 +94,10 @@
     </nav>
     <div class="vertical">
         <div class="main-header-content inner">
-            <h1 class="page-title">分布式系统</h1>
+            <h1 class="page-title">gRPC</h1>
             <h2 class="page-description">
             
-			    Totally 4 Articles
+			    Totally 1 Articles
             
             </h2>
         </div>
@@ -123,12 +123,12 @@
     
     <article class="post">
         <header class="post-header">
-            <h2 class="post-title"><a href="/distributed-cache">分布式系统基础学习(05)--分布式缓存设计</a></h2>
+            <h2 class="post-title"><a href="/gRPC">浅析gRPC</a></h2>
         </header>
         <section class="post-excerpt">
-            <p>在单机缓存中， 并发的安全性问题与语言的并发安全问题完全可以归为一类， 缓存的穿透问题可以采用巧妙的数据结构进行处理， 很多问题本质上仍然是一些基础问题。
+            <p>gRPC是一个高性能、通用的开源RPC框架，其由Google主要面向移动应用开发并基于HTTP/2协议标准而设计，基于ProtoBuf(Protocol Buffers)序列化协议开发，且支持众多开发语言。(这Ctrl-C/V也是没有下限了….
 
- <a class="read-more" href="/distributed-cache">&raquo;</a></p>
+ <a class="read-more" href="/gRPC">&raquo;</a></p>
         </section>
         <footer class="post-meta">
             
@@ -146,110 +146,11 @@
                 on
                 
                     
-                       <a href='/tag/分布式系统'>分布式系统</a>
+                       <a href='/tag/gRPC'>gRPC</a>
                     
                 
             
-            <time class="post-date" datetime="2019-04-01">01 Apr 2019</time>
-        </footer>
-    </article>
-    
-    <article class="post">
-        <header class="post-header">
-            <h2 class="post-title"><a href="/Nginx">分布式系统基础学习(04)--Nginx</a></h2>
-        </header>
-        <section class="post-excerpt">
-            <p>Nginx不管是在单机部署还是在集群部署下， 都起着非常重要的作用。 底层由C语言编写， 并且采用事件驱动模型对Socket连接进行管理， 所以有着非常高效的请求处理能力， 并且支持海量的并发。 本篇文章不会对Nginx的底层原理进行深究， 而是整理自己在工作中所遇到的一些问题和积累的经验。
-
- <a class="read-more" href="/Nginx">&raquo;</a></p>
-        </section>
-        <footer class="post-meta">
-            
-                
-
-                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
-                <!-- author -->
-                <a href='/author/smartkeyerror'>smartkeyerror</a>
-
-                
-            
-
-            <!-- [[tags prefix=" on "]] -->
-            
-                on
-                
-                    
-                       <a href='/tag/分布式系统'>分布式系统</a>
-                    
-                
-            
-            <time class="post-date" datetime="2019-01-15">15 Jan 2019</time>
-        </footer>
-    </article>
-    
-    <article class="post">
-        <header class="post-header">
-            <h2 class="post-title"><a href="/message-queue">分布式系统基础学习(03)--消息队列(RabbitMQ)</a></h2>
-        </header>
-        <section class="post-excerpt">
-            <p>消息队列常常被用于跨进程通信， 异步调用， 系统解耦以及流量削峰等场景下。 目前市场上的消息队列种类繁多， 有LinkedIn开源的kafka， 阿里开源的RocketMQ， 以及使用较为广泛的RabbiMQ。 Redis虽然也可以做消息队列， 但是更多的是用来做缓存和其它工具使用。 但是随着Redis 5.0 版本的发布， Redis的功能越来越丰富， 也不排除在未来的某一天也能够占据消息队列的重要一席。
-
- <a class="read-more" href="/message-queue">&raquo;</a></p>
-        </section>
-        <footer class="post-meta">
-            
-                
-
-                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
-                <!-- author -->
-                <a href='/author/smartkeyerror'>smartkeyerror</a>
-
-                
-            
-
-            <!-- [[tags prefix=" on "]] -->
-            
-                on
-                
-                    
-                       <a href='/tag/分布式系统'>分布式系统</a>
-                    
-                
-            
-            <time class="post-date" datetime="2019-01-11">11 Jan 2019</time>
-        </footer>
-    </article>
-    
-    <article class="post">
-        <header class="post-header">
-            <h2 class="post-title"><a href="/distributed-system-of-communication">分布式系统基础学习(01)--通信(TCP/UDP)</a></h2>
-        </header>
-        <section class="post-excerpt">
-            <p>分布式系统是一个很庞大的话题， 在我个人的知识版图中， 也仅仅只是对一小部分土地进行了开荒。 不管是分布式系统， 还是单机应用系统， 都是建立在互联网通信机制之上的。 而提到通信， 就不得不提到TCP/UDP这两个非常经典的协议。
-
- <a class="read-more" href="/distributed-system-of-communication">&raquo;</a></p>
-        </section>
-        <footer class="post-meta">
-            
-                
-
-                <img class="author-thumb" src="/assets/images/author.png" alt="Author image" nopin="nopin" />
-                <!-- author -->
-                <a href='/author/smartkeyerror'>smartkeyerror</a>
-
-                
-            
-
-            <!-- [[tags prefix=" on "]] -->
-            
-                on
-                
-                    
-                       <a href='/tag/分布式系统'>分布式系统</a>
-                    
-                
-            
-            <time class="post-date" datetime="2019-01-03">03 Jan 2019</time>
+            <time class="post-date" datetime="2020-07-23">23 Jul 2020</time>
         </footer>
     </article>
     

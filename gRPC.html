@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>浅析gRPC</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+<!--    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">-->
+<!--    <style>.hljs { background: none; }</style>-->
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//gRPC" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="浅析gRPC" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//gRPC" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="浅析gRPC" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//gRPC" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "浅析gRPC",
+    "url": "https://smartkeyerror.com//gRPC",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">浅析gRPC</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2020-07-23">23 Jul 2020</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/gRPC'>gRPC</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>gRPC是一个高性能、通用的开源RPC框架，其由Google主要面向移动应用开发并基于HTTP/2协议标准而设计，基于ProtoBuf(Protocol Buffers)序列化协议开发，且支持众多开发语言。(这Ctrl-C/V也是没有下限了….</p>
+
+<!---more--->
+
+<h3 id="1-protocol-buffers">1. Protocol Buffers</h3>
+
+<p>在早期，ProtoBuf主要用于解决Google内部的服务器高低版本的兼容性问题，后来由于其高效的数据传输效率被用于gRPC的传输数据格式。</p>
+
+<p>相较于XML以及Json，ProtoBuf在传输和存储时由于其体积更小，所以效率更高，并且序列化的速度也比Json的序列化速度更快，原因将在后续部分介绍。</p>
+
+<p>除此之外，ProtoBuf的最大特点就是支持向后兼容。如果使用Json或者XML的话，需要应用程序自行处理新旧版本数据格式之间的兼容性。而ProtoBuf则不需要破坏已经被部署的服务结构，ProtoBuf会帮助用户处理好高低版本的兼容性问题。</p>
+
+<h4 id="11-protobuf所支持的数据类型">1.1 ProtoBuf所支持的数据类型</h4>
+
+<p>对于基本数据类型，如int，float，double，string，bool以及bytes，ProtoBuf均支持定义以上数据类型。对于int类型的数据，ProtoBuf对其进行了额外的拓展，在不同的场景使用不同的整型将会有不同的运行效率。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">ProtoBuf Type</th>
+      <th style="text-align: left">Explain</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">int32</td>
+      <td style="text-align: left">int32最大支持4字节的整型数字，编码负数时效率较低</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">int64</td>
+      <td style="text-align: left">int32最大支持8字节的整型数字，编码负数时效率较低</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">uint32</td>
+      <td style="text-align: left">uint32最大支持4字节的无符整数</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">uint64</td>
+      <td style="text-align: left">uint32最大支持8字节的无符整数</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">sint32</td>
+      <td style="text-align: left">sint32最大支持4字节的有符整数，编码负数时效率更高</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">sint64</td>
+      <td style="text-align: left">sint32最大支持8字节的有符整数，编码负数时效率更高</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">fixed32</td>
+      <td style="text-align: left">不使用可变长度方式进行编码，总是传输4字节，在编码超过$2^{28}$数值的整数时效率更高</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">fixed64</td>
+      <td style="text-align: left">不使用可变长度方式进行编码，总是传输8字节，在编码超过$2^{56}$数值的整数时效率更高</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>除了上述的基本数据类型以外，ProtoBuf同时也支持列表，字典以及枚举类型的定义，再加上<code class="highlighter-rouge">message</code>类型支持嵌套定义，几乎可以说能够覆盖日常开发中的所有需求了。</p>
+
+<h4 id="12-protobuf中的消息定义">1.2 ProtoBuf中的消息定义</h4>
+
+<p><code class="highlighter-rouge">message</code>数据类型是ProtoBuf在序列化和反序列化中的最小单位，和C结构体非常类似。</p>
+
+<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">message</span> <span class="nc">Response</span> <span class="p">{</span>
+    <span class="kt">int32</span> <span class="na">code</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="kt">string</span> <span class="na">msg</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="kt">int32</span> <span class="na">data</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">message</code>中的字段类型和字段名称无需赘述，值得关注的是后面的Field Numbers，字段序列号。该序列号将会在数据存储和传输时用于指代<code class="highlighter-rouge">message</code>中所定义的字段，即对源数据编码成ProtoBuf格式数据后，字段名称将会被舍弃，转而使用字段系列号进行代替，所以会说ProtoBuf并不是自描述的传输格式，同时也是数据体积更小的原因之一。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MicroService/gRPC/FieldNumbers.png" alt="" /></p>
+
+<p>所以，一个<code class="highlighter-rouge">message</code>中的字段系列号必须唯一，同时范围必须在[$1$, $2^{29}-1$]之间。并且19000到19999之间的数值被ProtoBuf内部所用，也不可定义。</p>
+
+<p>下面是一个使用了大部分数据类型的<code class="highlighter-rouge">message</code>定义:</p>
+
+<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">enum</span> <span class="n">UserStatus</span> <span class="p">{</span>
+    <span class="c1">// 值为0的枚举值必须定义，因为这是ProtoBuf对枚举值的默认值
+</span>    <span class="c1">// 同时，该零值不应该被应用程序所使用，否则会出现歧义
+</span>    <span class="na">USER_STATUS_INVALID</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="na">USER_STATUS_NORMAL</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="na">USER_STATUS_FROZEN</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="na">USER_STATUS_DELETED</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">MainAddress</span> <span class="p">{</span>
+    <span class="kt">string</span> <span class="na">province</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="kt">string</span> <span class="na">city</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="kt">string</span> <span class="na">address</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">message</span> <span class="nc">UserInfo</span> <span class="p">{</span>
+    <span class="kt">uint32</span> <span class="na">user_id</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="kt">string</span> <span class="na">mobile</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="k">repeated</span> <span class="kt">string</span> <span class="na">extra_mobile</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+    <span class="n">UserStatus</span> <span class="na">status</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+    <span class="n">MainAddress</span> <span class="na">main_address</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="na">is_vip</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h4 id="13-protobuf编码">1.3 ProtoBuf编码</h4>
+
+<p>ProtoBuf格式的数据体积更小的原因一方面归功于使用字段系列号来代替字段名称，另一方面则是因为对整型采用了可变长度编码方式，即使是指定了<code class="highlighter-rouge">int32</code>类型的数据也可能只使用一字节存储。</p>
+
+<h5 id="131-base-128-varints">1.3.1 Base 128 Varints</h5>
+
+<p>Varint使用一个或者多个字节表示一个数字，数字的值越小，所使用的字节数也会更小。其长度并不固定，所以称之为”可变长整数”。</p>
+
+<p>Varint中的每个字节(最后一个字节除外)都设置了最高有效位(msb)，用于表示后面还会有更多字节出现，所以Varint中的最后一个字节不会设置msb。由于首位被当做是msb使用，所以一个字节只有7位有效位。</p>
+
+<p>例如数字1，可以使用1字节进行表示，那么其最高有效位即可设置为0:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000 0001
+</code></pre></div></div>
+
+<p>对于多字节的数字，除了最后一个字节以外，其余字节的首位都应该置为1，以表示后续仍有字节。以数字1024为例，在一般情况下，1024需要使用2个字才能表示:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1024 <span class="o">=</span> 0000 0100 0000 0000
+</code></pre></div></div>
+
+<p>现在来看下Varint的编码过程:</p>
+
+<ul>
+  <li>首先，1024超过了7位，所以必须使用至少2个字节表示，但是又小于14位，所以需要2个字节表示。按每7位取一个字节，若不够7位则用0补齐:</li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000 0100 0000 0000 -&gt; 0001000 0000000
+</code></pre></div></div>
+
+<ul>
+  <li>将低字节写入到高字节，最后一个字节最高位补0，其余字节最高位补1，即为最终结果:</li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>10000000 00001000
+</code></pre></div></div>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MicroService/gRPC/Varint.png" alt="" /></p>
+
+<h5 id="132-message-structure">1.3.2 Message Structure</h5>
+
+<p>在ProtoBuf中，<code class="highlighter-rouge">message</code>结构其实就是一系列的键值对，只不过<code class="highlighter-rouge">message</code>在序列化成二进制时，对键和值进行了特殊的处理而已。</p>
+
+<p>首先来看对键的处理，键的计算方式是<code class="highlighter-rouge">(field_number &lt;&lt; 3) | wire_type</code>，根据键的计算公式可以看出，键的最后3位就是字段类型。<code class="highlighter-rouge">field_number</code>即为用户自定义的字段序列号，而<code class="highlighter-rouge">wire_type</code>则是一个由ProtoBuf所定义的对类型的”枚举”。:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">Write Type</th>
+      <th style="text-align: left">Meaning</th>
+      <th style="text-align: left">Used For</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">0</td>
+      <td style="text-align: left">Varint</td>
+      <td style="text-align: left">int32, int64, uint32, uint64, sint32, sint64, bool, enum</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">1</td>
+      <td style="text-align: left">64-bit</td>
+      <td style="text-align: left">fixed64, sfixed64, double</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2</td>
+      <td style="text-align: left">Length-delimited</td>
+      <td style="text-align: left">string, bytes, embedded messages, packed repeated fields</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">5</td>
+      <td style="text-align: left">32-bit</td>
+      <td style="text-align: left">fixed32, sfixed32, float</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>值得注意是当<code class="highlighter-rouge">wire_type</code>为2时，序列化结果中还需要包含数据的长度，即<code class="highlighter-rouge">length</code>。</p>
+
+<ul>
+  <li>当<code class="highlighter-rouge">wire_type</code>为0、1和5时，序列化的结果为<strong>key + 数据</strong>，数据长度由数据自描述。</li>
+  <li>当<code class="highlighter-rouge">wire_type</code>为2时，序列化的结果为<strong>key + length + 数据</strong>，数据长度由<code class="highlighter-rouge">length</code>决定。</li>
+</ul>
+
+<p>下面通过一个实际的例子看下Message Structure的编码形式:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
+
+message foo <span class="o">{</span>
+    string bar <span class="o">=</span> 5<span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>将<code class="highlighter-rouge">bar</code>的值设置为”Hello”，序列化后将得到以下结果:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>052a 6548 6c6c 006f
+</code></pre></div></div>
+
+<p>ProtoBuf是小端字节序，阅读起来不是很方便，将其转换一下:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2a05 4865 6c6c 6f
+</code></pre></div></div>
+
+<p>其中<code class="highlighter-rouge">4865 6c6c 6f</code>为字符串”Hello”的16进制表示，那么<code class="highlighter-rouge">2a05</code>就是前面提到的<strong>key+length</strong>了。<code class="highlighter-rouge">2a</code>的二进制格式为<code class="highlighter-rouge">101010</code>，最后3位为<code class="highlighter-rouge">010</code>，转换成十进制结果是2，对应string类型的<code class="highlighter-rouge">write_type</code>。<code class="highlighter-rouge">101</code>转换成十进制结果为5，对应bar字段的<code class="highlighter-rouge">field_number</code>。length则由<code class="highlighter-rouge">05</code>确定，表示字符串的长度为5。</p>
+
+<h3 id="2-http2">2. HTTP/2</h3>
+
+<p>HTTP/2协议在原有的HTTP/1协议版本之上进行了大幅度的修改，其传输效率大大提升，并且能够有效地降低服务端的资源消耗。</p>
+
+<ul>
+  <li>由文本传输改变为二进制数据传输，解析更加高效。</li>
+  <li>使用新的二进制分帧机制改变了客户端和服务端之间交换数据的方式，每个二进制帧可进行乱序传输，解决了HTTP/1中的首部阻塞问题。</li>
+  <li>对请求头部字段的压缩使得传输数据更小，传输效率更高。</li>
+</ul>
+
+<p>为了更好的理解HTTP/2，首先要明确HTTP/1的缺陷之处，首当其冲的就是TCP连接数限制。在浏览器中，同一个域名下同时只能创建6~8个TCP连接，剩下的请求只能等待这些请求的返回。并且，每个TCP连接只能承载一次请求/响应，当初始发送的请求响应时间较长时，整个页面加载也会受到阻塞。</p>
+
+<h4 id="21-二进制分帧">2.1 二进制分帧</h4>
+
+<p>在HTTP/1中，请求的数据以明文进行传输，例如:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GET / HTTP/1.1
+Host: example.com
+</code></pre></div></div>
+
+<p>而在HTTP/2中，请求或者响应数据不再以文本的方式进行传输，而是直接使用二进制数据进行传输，使得解析更加高效。其原因在于HTTP/1是通过特殊符号，如空格，<code class="highlighter-rouge">\r\n</code>等特殊字符进行分割并解析的。而HTTP/2首先对数据进行了分类，将请求头和Payload分开，并且在每一个传输单元中都进行了标记。</p>
+
+<p>HTTP/2的基本传输单元为帧(Frame)，每一个都以固定的9个字节开头，后跟不定长度的Payload。Payload可以是用户传输的数据，也可以是协议本身携带的数据。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+-----------------------------------------------+
+|                 Length <span class="o">(</span>24<span class="o">)</span>                   |
++---------------+---------------+---------------+
+|   Type <span class="o">(</span>8<span class="o">)</span>    |   Flags <span class="o">(</span>8<span class="o">)</span>   |
++-+-------------+---------------+-------------------------------+
+| R <span class="o">(</span>1<span class="o">)</span> |                 Stream Identifier <span class="o">(</span>31<span class="o">)</span>                |
++<span class="o">=</span>+<span class="o">=============================================================</span>+
+|                   Frame Payload <span class="o">(</span>0...<span class="o">)</span>                      ...
++---------------------------------------------------------------+
+</code></pre></div></div>
+
+<p>24+8+8+1+31，刚好为72位，即9字节。下面来看每一个字段的含义:</p>
+
+<ul>
+  <li>Length: 表示Payload的长度，是一个24位的无符整数，单位为字节。也就是说，通常情况下一个帧最多能够传输2^14(16,384)个字节。如果想在一个帧中传输更多的数据，则可以通过传输<code class="highlighter-rouge">SETTINGS_MAX_FRAME_SIZE</code>帧来改变基本大小。</li>
+  <li>Type: 帧的类型，如<code class="highlighter-rouge">DATA</code>帧、<code class="highlighter-rouge">HEADERS</code>帧。</li>
+  <li>Flags: 该字段用于各类型的帧进行补充说明，表示特殊的含义。一个常见的标志就是<code class="highlighter-rouge">END_HEADERS</code>，表示头数据已经结束。</li>
+  <li>R: 预留位，并未使用。</li>
+  <li>Stream Identifier: 流标识符，31位无符整数，作用将在下方描述。</li>
+</ul>
+
+<h4 id="22-多路复用">2.2 多路复用</h4>
+
+<p>HTTP/2一个最重要的特性就是多路复用，即在一个TCP连接中同时传输多个请求或者是响应，而HTTP/1想要做到这一点的话，必须要建立多个TCP连接。</p>
+
+<p>在HTTP/2中引入了”流”(Stream)的概念，对应HTT/1的话，其实就是一个请求: 在一个连接中发送多个请求其实就是发送多个流。而流又是由帧组成的，所以在帧中需要字段<code class="highlighter-rouge">Stream Identifier</code>来标记当前帧属于哪个流。</p>
+
+<p>实现多路复用的逻辑概念就是流，和TCP流式传输不同的是，HTTP/2中的流只是一个逻辑上的概念，每一个流使用<code class="highlighter-rouge">Stream Identifier</code>进行标识。一个请求或者是响应在拆分成多个帧以后，将使用同一个流ID在连接中进行传输，接收方在接收到乱序传输的帧以后，按照流ID进行组装，即可得到一个完整的请求或者是响应。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MicroService/gRPC/stream.png" alt="" /></p>
+
+<h4 id="22-头部字段压缩">2.2 头部字段压缩</h4>
+
+<p>TODO</p>
+
+<h3 id="3-一些实践的代码用例">3. 一些实践的代码用例</h3>
+
+<h4 id="31-python-client">3.1 Python Client</h4>
+
+<p>gRPC的错误响应(如Not Found，Internal Server Error等)通常会以异常的形式抛出，所以，Python Client必须要对gRPC的相关方法进行进一步的封装，例如重试机制或者是进行其它行为。</p>
+
+<p>最为常见的异常就是<code class="highlighter-rouge">_Rendezvous</code>，该异常为<code class="highlighter-rouge">RpcError</code>的一个子类，通常来说，只需要捕获该异常即可。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">grpc</span> <span class="kn">import</span> <span class="n">StatusCode</span><span class="p">,</span> <span class="n">RpcError</span>
+
+
+<span class="c"># define retry times with different situation</span>
+<span class="n">MAX_RETRIES_BY_CODE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">StatusCode</span><span class="o">.</span><span class="n">INTERNAL</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">StatusCode</span><span class="o">.</span><span class="n">ABORTED</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">StatusCode</span><span class="o">.</span><span class="n">UNAVAILABLE</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">StatusCode</span><span class="o">.</span><span class="n">DEADLINE_EXCEEDED</span><span class="p">:</span> <span class="mi">5</span>
+<span class="p">}</span>
+
+<span class="c"># define MIN and MAX sleeping seconds</span>
+<span class="n">MIN_SLEEPING</span> <span class="o">=</span> <span class="mf">0.015625</span>
+<span class="n">MAX_SLEEPING</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+
+<span class="k">class</span> <span class="nc">RetriesExceeded</span><span class="p">(</span><span class="nb">Exception</span><span class="p">):</span>
+    <span class="s">"""docstring for RetriesExceeded"""</span>
+    <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">retry</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wraps</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">retries</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">RpcError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">code</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">()</span>  <span class="c"># 使用e.code()获取响应码</span>
+                <span class="n">max_retries</span> <span class="o">=</span> <span class="n">MAX_RETRIES_BY_CODE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">max_retries</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">e</span>
+
+                <span class="k">if</span> <span class="n">retries</span> <span class="o">&gt;</span> <span class="n">max_retries</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">RetriesExceeded</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+                <span class="n">back_off</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">MIN_SLEEPING</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">retries</span><span class="p">,</span> <span class="n">MAX_SLEEPING</span><span class="p">)</span>
+
+                <span class="n">retries</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">back_off</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wraps</span>
+</code></pre></div></div>
+
+<h4 id="32-golang-server">3.2 Golang Server</h4>
+
+<p>TODO</p>
+
+<h3 id="4-reference">4. Reference</h3>
+
+<ul>
+  <li>https://hpbn.co/</li>
+  <li>https://blog.wangriyu.wang/</li>
+  <li>https://tools.ietf.org/html/rfc7540</li>
+  <li>https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn</li>
+</ul>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=浅析gRPC&amp;url=https://smartkeyerror.comgRPC"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comgRPC"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comgRPC"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Python-metaclass">
+            <section class="post">
+                <h2>揭开Python元类(metaclass)神秘的面纱</h2>
+                <p>Python语言的metaclass特性一直是初学者的”噩梦”，当初博主在学习元类时也是一头雾水，但是一旦真正的理解了什么是”动态语言”之后，元类就不再神秘与难以理解了。Python这门动态语言最大的特性就是不需要一个类的字节码就能够在运行时创建出一个类，这是理解元类最为关键的信息。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2020</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-150652886-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>
