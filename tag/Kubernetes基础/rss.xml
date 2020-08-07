@@ -24,11 +24,15 @@
 
 <p>VXLAN全称为Virtual eXtensible Local Area Network，可拓展虚拟局域网，不依赖于硬件实现，而是在三层网络(网络层)的基础之上构建出一个虚拟的二层网络(链路层)。也就是说，只要主机间IP地址可达，就可以使用VXLAN的方式构建一个Overlay网络。</p>
 
+<blockquote>
+  <p>Overlay: 可以理解为覆盖网络，属于一种虚拟网络的实现，依赖于物理网络，而物理网络又可称之为Underlay。</p>
+</blockquote>
+
 <p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Network/VXLAN/virtual-machine-communicate-problems.png" alt="" /></p>
 
-<p>在实际的介绍VXLAN之前，先来看一个集群中虚拟机通讯的问题。如上图所示，虚拟机-A(192.19.2.2)想要和虚拟机-C(192.16.2.6)进行通信，要如何实现?</p>
+<p>在实际的介绍VXLAN之前，先来看一个集群中虚拟机通讯的问题。如上图所示，虚拟机-A(<code class="highlighter-rouge">192.19.2.2</code>)想要和虚拟机-C(<code class="highlighter-rouge">192.16.2.6</code>)进行通信，要如何实现?</p>
 
-<p>由于节点10.168.4.3和10.168.9.3能够实现通信，那么是否能够将虚拟机间通讯的数据包封装在节点间的通讯包之上，抵达目的地之后再进行解包、分发呢? 就好像特洛伊木马一样。</p>
+<p>由于节点<code class="highlighter-rouge">10.168.4.3</code>和<code class="highlighter-rouge">10.168.9.3</code>能够实现通信，那么是否能够将虚拟机间通讯的数据包封装在节点间的通讯包之上，抵达目的地之后再进行解包、分发呢? 就好像特洛伊木马一样。</p>
 
 <p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Network/VXLAN/virtual-machine-solution.png" alt="" /></p>
 
