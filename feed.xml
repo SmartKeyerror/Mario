@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>VXLAN—构建Overlay容器网络</title>
+        
+          <description>&lt;p&gt;由于VLAN实现中的VLAN ID仅有12位，只能划分4096个虚拟局域网网段，对于云计算等领域而言，其用户远远不止4096个。并且，VLAN依赖于交换机等物理设备的实现，一旦升级物理设备，集群网络可能需要重新配置。因此，基于上述的限制，VMware、Cisco等大型网络企业推出了VXLAN解决方案。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Thu, 06 Aug 2020 09:06:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/VXLAN</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/VXLAN</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>浅析gRPC</title>
         
           <description>&lt;p&gt;gRPC是一个高性能、通用的开源RPC框架，其由Google主要面向移动应用开发并基于HTTP/2协议标准而设计，基于ProtoBuf(Protocol Buffers)序列化协议开发，且支持众多开发语言。(这Ctrl-C/V也是没有下限了….&lt;/p&gt;
