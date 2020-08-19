@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Python虚拟机</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+<!--    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">-->
+<!--    <style>.hljs { background: none; }</style>-->
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Python-Virtual-Machine" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Python虚拟机" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//Python-Virtual-Machine" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Python虚拟机" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Python-Virtual-Machine" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Python虚拟机",
+    "url": "https://smartkeyerror.com//Python-Virtual-Machine",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Python虚拟机</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2020-08-18">18 Aug 2020</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/Python'>Python</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>我们常说Python一是门解释型语言，只需要敲下<code class="highlighter-rouge">python code.py</code>就可以运行编写的代码，而无需使用类似于<code class="highlighter-rouge">javac</code>或者<code class="highlighter-rouge">gcc</code>进行编译。那么，Python解释器是真的一行一行读取Python源代码而后执行吗? 实际上，Python在执行程序时和Java、C#一样，都是先将源码进行编译生成字节码，然后由虚拟机进行执行，只不过Python解释器把这两步合二为一了而已。</p>
+
+<!---more--->
+
+<h3 id="1-python程序执行过程">1. Python程序执行过程</h3>
+
+<p>事实上，Python程序在执行过程中同样需要编译(Compile)，编译产生的结果称之为字节码，而后由Python虚拟机逐行地执行这些字节码。所以，Python解释器由两部分组成: 编译器和虚拟机。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Python/Interpreter/process.png" alt="" /></p>
+
+<p>上图展示了Python程序的执行过程，以及C程序的编译、汇编与链接过程，从该图中可以非常明显地看出Python与C程序的执行区别。Python如此设计的原因在于将程序的执行与底层硬件进一步地分离，无需担心程序的编译、汇编以及链接过程，使得Python程序相较于C程序而言更加易于移植。</p>
+
+<p>这里再说一下Python和Java的区别。Java在程序执行时必须使用<code class="highlighter-rouge">javac</code>对源代码进行编译，但是并不直接编译成机器语言，而是和Python一样，编译成字节码，而后由JVM进行执行。从这一点上来看，Python和Java非常类似，只不过Python的编译过程由解释器完成，用户也可以手动的对Python源代码进行编译，生成<code class="highlighter-rouge">.pyc</code>文件，节省那么一丢丢的时间。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python <span class="nt">-m</span> compileall &lt;dir&gt;
+</code></pre></div></div>
+
+<p>通过运行上述命令可对<code class="highlighter-rouge">&lt;dir&gt;</code>目录下所有的Python文件进行编译，编译结果将会存放于该目录下的<code class="highlighter-rouge">__pycache__</code>的<code class="highlighter-rouge">.pyc</code>文件中。</p>
+
+<h3 id="2-编译过程与字节码">2. 编译过程与字节码</h3>
+
+<p>在Python的内建函数中，定义了<code class="highlighter-rouge">compile</code>以及<code class="highlighter-rouge">exec</code>两个方法，前者将源代码编译成为Code Object对象，Code Object对象中即保存着源代码所对应的字节。而<code class="highlighter-rouge">exec</code>方法则是运行Python语句或者是由<code class="highlighter-rouge">compile</code>方法所返回的Code Object。<code class="highlighter-rouge">exec</code>方法可直接运行Python语句，其参数并一定需要是Code Object。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="n">snippet</span> <span class="o">=</span> <span class="s">"for i in range(3): print(f'Output: {i}')"</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="n">result</span> <span class="o">=</span> <span class="nb">compile</span><span class="p">(</span><span class="n">snippet</span><span class="p">,</span> <span class="s">""</span><span class="p">,</span> <span class="s">"exec"</span><span class="p">)</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="n">result</span>
+<span class="o">&lt;</span><span class="n">code</span> <span class="nb">object</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span> <span class="n">at</span> <span class="mh">0x7f8e7e6471e0</span><span class="p">,</span> <span class="nb">file</span> <span class="s">""</span><span class="p">,</span> <span class="n">line</span> <span class="mi">1</span><span class="o">&gt;</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="k">exec</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="n">Output</span><span class="p">:</span> <span class="mi">0</span>
+<span class="n">Output</span><span class="p">:</span> <span class="mi">1</span>
+<span class="n">Output</span><span class="p">:</span> <span class="mi">2</span>
+</code></pre></div></div>
+
+<p>在上述代码中定义了一个非常简单的Python代码片段，其作用就是在标准输出中打印0，1，2这三个数而已。通过<code class="highlighter-rouge">compile</code>方法对该片段进行编译，得到Code Object对象，并将该对象交由<code class="highlighter-rouge">exec</code>函数执行。下面来具体看下返回的Code Object中到底包含了什么。</p>
+
+<p>在源码<code class="highlighter-rouge">cpython/Include/code.h</code>中定义了<code class="highlighter-rouge">PyCodeObject</code>结构体，即Code Object对象:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* Bytecode object */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+    <span class="n">PyObject_HEAD</span>               <span class="cm">/* Python定长对象头 */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">co_code</span><span class="p">;</span>          <span class="cm">/* 指令操作码，即字节码 */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">co_consts</span><span class="p">;</span>        <span class="cm">/* 常量列表 */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">co_names</span><span class="p">;</span>         <span class="cm">/* 名称列表(不一定是变量，也可能是函数名称、类名称等) */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">co_filename</span><span class="p">;</span>      <span class="cm">/* 源码文件名称 */</span>
+    
+    <span class="p">...</span>                         <span class="cm">/* 省略若干字段 */</span>
+<span class="p">}</span> <span class="n">PyCodeObject</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>字段<code class="highlighter-rouge">co_code</code>即为Python编译后字节码，其它字段在此处可暂时忽略。字节码的格式为人类不可阅读格式，其形式通常是这样的:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="n">result</span><span class="o">.</span><span class="n">co_code</span>
+<span class="n">b</span><span class="s">'x</span><span class="se">\x1e</span><span class="s">e</span><span class="se">\x00</span><span class="s">d</span><span class="se">\x00\x83\x01</span><span class="s">D</span><span class="se">\x00</span><span class="s">]</span><span class="se">\x12</span><span class="s">Z</span><span class="se">\x01</span><span class="s">e</span><span class="se">\x02</span><span class="s">d</span><span class="se">\x01</span><span class="s">e</span><span class="se">\x01\x9b\x00\x9d\x02\x83\x01\x01\x00</span><span class="s">q</span><span class="se">\n</span><span class="s">W</span><span class="se">\x00</span><span class="s">d</span><span class="se">\x02</span><span class="s">S</span><span class="se">\x00</span><span class="s">'</span>
+</code></pre></div></div>
+
+<p>这个时候我们需要一个”反汇编器”来将字节码转换成人类可阅读的格式，”反汇编器”打引号的原因是在Python中并不能称为真正的反汇编器。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">dis</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">co_code</span><span class="p">)</span>
+          <span class="mi">0</span> <span class="n">SETUP_LOOP</span>              <span class="mi">30</span> <span class="p">(</span><span class="n">to</span> <span class="mi">32</span><span class="p">)</span>
+          <span class="mi">2</span> <span class="n">LOAD_NAME</span>                <span class="mi">0</span> <span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+          <span class="mi">4</span> <span class="n">LOAD_CONST</span>               <span class="mi">0</span> <span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+          <span class="mi">6</span> <span class="n">CALL_FUNCTION</span>            <span class="mi">1</span>
+          <span class="mi">8</span> <span class="n">GET_ITER</span>
+    <span class="o">&gt;&gt;</span>   <span class="mi">10</span> <span class="n">FOR_ITER</span>                <span class="mi">18</span> <span class="p">(</span><span class="n">to</span> <span class="mi">30</span><span class="p">)</span>
+         <span class="mi">12</span> <span class="n">STORE_NAME</span>               <span class="mi">1</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+         <span class="mi">14</span> <span class="n">LOAD_NAME</span>                <span class="mi">2</span> <span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+         <span class="mi">16</span> <span class="n">LOAD_CONST</span>               <span class="mi">1</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+         <span class="mi">18</span> <span class="n">LOAD_NAME</span>                <span class="mi">1</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+         <span class="mi">20</span> <span class="n">FORMAT_VALUE</span>             <span class="mi">0</span>
+         <span class="mi">22</span> <span class="n">BUILD_STRING</span>             <span class="mi">2</span>
+         <span class="mi">24</span> <span class="n">CALL_FUNCTION</span>            <span class="mi">1</span>
+         <span class="mi">26</span> <span class="n">POP_TOP</span>
+         <span class="mi">28</span> <span class="n">JUMP_ABSOLUTE</span>           <span class="mi">10</span>
+    <span class="o">&gt;&gt;</span>   <span class="mi">30</span> <span class="n">POP_BLOCK</span>
+    <span class="o">&gt;&gt;</span>   <span class="mi">32</span> <span class="n">LOAD_CONST</span>               <span class="mi">2</span> <span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+         <span class="mi">34</span> <span class="n">RETURN_VALUE</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">dis</code>方法将返回字节码的助记符(mnemonics)，和汇编语言非常类似，从这些助记符的名称上我们就可以大概猜出解释器将要执行的动作，例如<code class="highlighter-rouge">LOAD_NAME</code>加载名称，<code class="highlighter-rouge">LOAD_CONST</code>加载常量。所以，我们完全可以将这些助记符看作是汇编指令，而指令的操作数则在助记符后面描述。例如<code class="highlighter-rouge">LOAD_NAME</code>操作，其操作数的下标为0，而在源代码中使用过的名称保存在<code class="highlighter-rouge">co_names</code>字段中，所以<code class="highlighter-rouge">LOAD_NAME  0</code>即表示加载<code class="highlighter-rouge">result.co_names[0]</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="n">result</span><span class="o">.</span><span class="n">co_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="s">'range'</span>
+</code></pre></div></div>
+
+<p>又比如<code class="highlighter-rouge">LOAD_CONST</code>操作，其操作数的下标也为0，只不过这次操作数不再保存在<code class="highlighter-rouge">co_names</code>，而是<code class="highlighter-rouge">co_consts</code>中，所以<code class="highlighter-rouge">LOAD_CONST  0</code>则表示加载<code class="highlighter-rouge">result.co_consts[0]</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="n">result</span><span class="o">.</span><span class="n">co_consts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="mi">3</span>
+</code></pre></div></div>
+
+<p>由于Code Object对象保存了常量、变量、名称等一系列的上下文内容，所以可以直接对该对象进行反汇编操作:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+  <span class="mi">1</span>           <span class="mi">0</span> <span class="n">SETUP_LOOP</span>              <span class="mi">30</span> <span class="p">(</span><span class="n">to</span> <span class="mi">32</span><span class="p">)</span>
+              <span class="mi">2</span> <span class="n">LOAD_NAME</span>                <span class="mi">0</span> <span class="p">(</span><span class="nb">range</span><span class="p">)</span>
+              <span class="mi">4</span> <span class="n">LOAD_CONST</span>               <span class="mi">0</span> <span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+              <span class="o">...</span>
+</code></pre></div></div>
+
+<p>现在，我们可以对Python字节码做一下小结了。Python在编译某段源码时，并不会直接返回字节码，而是返回一个Code Object对象，字节码则保存在该对象的<code class="highlighter-rouge">co_code</code>字段中。由于字节码是一个二进制字节序列，无法直接进行阅读，所以需要通过”反汇编器”(<code class="highlighter-rouge">dis</code>模块)将字节码转换成人类可读的助记符。助记符的形式和汇编语言非常类似，均由操作指令+操作数所组成。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Python/Interpreter/Compile.png" alt="" /></p>
+
+<h3 id="3-命名空间与作用域">3. 命名空间与作用域</h3>
+
+<p>Python的命名空间与作用域经常被开发者所忽略，在未深入了解Python虚拟机之前，我个人也认为这些东西并不重要。但是，命名空间和变量作用域将会是Python虚拟机在执行过程中一个非常重要的一环。</p>
+
+<p>命名空间实际上是名称到对象的一种映射，本质上就是一个键-值对，所以大部分的命名空间由<code class="highlighter-rouge">dict</code>实现。命名空间可以分为3类: 内置命名空间，全局命名空间与局部命名空间，在作用域存在嵌套的特殊情况下，可能还会有闭包命名空间。</p>
+
+<h4 id="31-内置命名空间build-in">3.1 内置命名空间(Build-in)</h4>
+<p>Python语言内置的名称，例如内置函数名(<code class="highlighter-rouge">len</code>, <code class="highlighter-rouge">dis</code>)，内置异常(<code class="highlighter-rouge">Exception</code>)等。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">builtins</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">builtins</span><span class="o">.</span><span class="n">__dict__</span>
+</code></pre></div></div>
+
+<h4 id="32-全局命名空间global">3.2 全局命名空间(Global)</h4>
+
+<p>全局命名空间以模块进行划分，每一个模块中都包含了<code class="highlighter-rouge">dict</code>对象，其中保存了模块中的变量名、类名、函数名等等。</p>
+
+<h4 id="33-局部命名空间local">3.3 局部命名空间(Local)</h4>
+
+<p>局部命名空间可以简单的认为就是函数的命名空间，例如函数参数，在函数中定义的局部变量。</p>
+
+<p>在局部命名空间中，有一个非常特殊的情况，就是类定义:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Reader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">BUFFER_SIZE</span> <span class="o">=</span> <span class="mi">4096</span>
+    
+    <span class="k">class</span> <span class="nc">Inner</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">BUFFER_SIZE</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>在执行<code class="highlighter-rouge">Reader.Inner()</code>语句时，将会抛出<code class="highlighter-rouge">NameError</code>的异常，表示<code class="highlighter-rouge">BUFFER_SIZE</code>未定义。其原因在于类的嵌套并不等同于函数嵌套</p>
+
+<h4 id="34-闭包命名空间enclosing">3.4 闭包命名空间(Enclosing)</h4>
+
+<p>当出现嵌套函数定义时，或者作用域嵌套时，Python将会把内层作用域所依赖的所有外层命名存储在一个特殊的命名空间中，也就是闭包命名空间。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">foo</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s">"Execute func: {func.__name__}"</span><span class="p">)</span>
+        <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+</code></pre></div></div>
+
+<p>闭包指函数，而不是类，所以在类的嵌套中，将不会存在闭包命名空间:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Reader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">BUFFER_SIZE</span> <span class="o">=</span> <span class="mi">4096</span>
+    
+    <span class="k">class</span> <span class="nc">Inner</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">BUFFER_SIZE</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>在执行<code class="highlighter-rouge">Reader.Inner()</code>语句时，将会抛出<code class="highlighter-rouge">NameError</code>的异常，表示<code class="highlighter-rouge">BUFFER_SIZE</code>未定义。</p>
+
+<p>当语句需要查找变量<code class="highlighter-rouge">X</code>时，将会按照 Local -&gt; Enclosing -&gt; Global -&gt; Builtin 的顺序进行查找，俗称LEGB规则。</p>
+
+<h3 id="4-python虚拟机的执行">4. Python虚拟机的执行</h3>
+
+<h4 id="41-执行上下文栈帧">4.1 执行上下文——栈帧</h4>
+
+<p>在 x86-64 CPU 中包含了16个64位的通用目的寄存器，这些寄存器用于存储数据或者是指针。在这16个通用目的寄存器中，有两个较为特殊的寄存器: %rsp 与 %rbp。%rsp 为栈指针寄存器，表示运行时栈的结束位置，可以简单地理解为栈顶。%rbp 为栈帧指针，用于标识当前栈帧的起始位置。</p>
+
+<p>在x86体系结构中，函数调用是通过栈和栈帧实现的。当一个函数被调用时，首先做的事情就是将调用者栈帧指针入栈，以保留调用关系。其次将为调用的函数创建栈帧，栈帧中包含了函数的参数、创建的局部变量等信息。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Python/Interpreter/x86-Stack.png" alt="" /></p>
+
+<p>回到Python虚拟机中，虚拟机在进行函数调用时，运行方式和x86没什么区别，都是由栈和栈帧所实现的。而栈帧则是由<code class="highlighter-rouge">PyFrameObject</code>表示，于源码<code class="highlighter-rouge">cpython/Include/frameobject.h</code>中定义。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="n">_frame</span> <span class="p">{</span>
+    <span class="n">PyObject_VAR_HEAD</span>           <span class="cm">/* Python固定长度对象头 */</span>
+    <span class="k">struct</span> <span class="n">_frame</span> <span class="o">*</span><span class="n">f_back</span><span class="p">;</span>      <span class="cm">/* 指向上一个栈帧的指针 */</span>
+    <span class="n">PyCodeObject</span> <span class="o">*</span><span class="n">f_code</span><span class="p">;</span>       <span class="cm">/* Code Object代码对象，其中包含了字节码 */</span>
+    
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_builtins</span><span class="p">;</span>       <span class="cm">/* 内建命名空间字典(PyDictObject) */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_globals</span><span class="p">;</span>        <span class="cm">/* 全局命名空间字典(PyDictObject) */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_locals</span><span class="p">;</span>         <span class="cm">/* 局部命名空间表(通常是数组) */</span>
+
+    <span class="kt">int</span> <span class="n">f_lasti</span><span class="p">;</span>                <span class="cm">/* 上一条指令编号 */</span>
+    
+    <span class="p">...</span>
+<span class="p">}</span> <span class="n">PyFrameObject</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>可以看到，在一个栈帧中包含了Code Object代码对象，三个命名空间表，上一个栈帧指针等信息。可以说，<code class="highlighter-rouge">PyFrameObject</code>对象包含了Python虚拟机执行所需的全部上下文。结合前面提到的字节码和命名空间，我们可以用一张简图来描述。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Python/Interpreter/FrameObject.png" alt="" /></p>
+
+<h4 id="42-指令的执行">4.2 指令的执行</h4>
+
+<p>指令执行的源码均位于<code class="highlighter-rouge">cpython/Python/ceval.c</code>中，入口函数有两个，一个是<code class="highlighter-rouge">PyEval_EvalCode</code>，另一个则是<code class="highlighter-rouge">PyEval_EvalCodeEx</code>，最终的实际调用函数为<code class="highlighter-rouge">_PyEval_EvalCodeWithName</code>，所以我们只需要关注该函数即可。</p>
+
+<p><code class="highlighter-rouge">_PyEval_EvalCodeWithName</code>函数的主要作用为进行函数调用的例常检查，例如校验函数参数的个数、类型，校验关键字参数等。除此之外，该函数将会初始化栈帧对象并将其交给<code class="highlighter-rouge">PyEval_EvalFrame</code>函数进行处理，最终由<code class="highlighter-rouge">_PyEval_EvalFrameDefault</code>函数真正的运行指令。</p>
+
+<p><code class="highlighter-rouge">_PyEval_EvalFrameDefault</code>函数定义超过了3K行，绝大部分的逻辑其实都是<code class="highlighter-rouge">switch-case</code>: 根据指令类型执行相应的逻辑。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span> <span class="p">(;;)</span> <span class="p">{</span>
+    <span class="k">switch</span> <span class="p">(</span><span class="n">opcode</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="n">TARGET</span><span class="p">(</span><span class="n">LOAD_CONST</span><span class="p">):</span> <span class="p">{</span>      <span class="cm">/* 加载常量 */</span>
+            <span class="p">...</span>
+        <span class="p">}</span>		
+        <span class="k">case</span> <span class="n">TARGET</span><span class="p">(</span><span class="n">ROT_TWO</span><span class="p">):</span> <span class="p">{</span>         <span class="cm">/* 交换两个变量 */</span>
+            <span class="p">...</span>
+        <span class="p">}</span>
+        <span class="k">case</span> <span class="n">TARGET</span><span class="p">(</span><span class="n">FORMAT_VALUE</span><span class="p">):{</span>     <span class="cm">/* 格式化字符串 */</span>
+            <span class="p">...</span>
+        <span class="p">}</span>
+</code></pre></div></div>
+
+<p>可以看到<code class="highlighter-rouge">TARGET()</code>调用中的参数其实就是<code class="highlighter-rouge">dis</code>方法返回的助记符，当我们在分析助记符的具体实现逻辑时，可以在该文件中找到对应的C实现方法。</p>
+
+<h4 id="43-gil与字节码的执行">4.3 GIL与字节码的执行</h4>
+
+<p>对于Python中的容器，例如dict，并没有实现像Java中的<code class="highlighter-rouge">ConcurrentHashMap</code>，或者是Golang中的<code class="highlighter-rouge">sync.Map</code>，这是因为Python中的容器(list, dict)本身就是并发安全的，但是在这些容器的源码中并没有发现定义<code class="highlighter-rouge">mutex</code>，也就是说，Python容器的并发安全并不是通过互斥锁实现的。</p>
+
+<p>实际上，Python容器的并发安全是通过GIL实现的，也就是被广大Pythoner口诛笔伐的全局解释器锁。某一个线程想要运行必须要首先获取全局锁，如此一来，在同一时刻只能有一个线程运行，无法充分利用多核的硬件资源。</p>
+
+<p>Python的线程调度非常类似于CPU的时间片实现，只不过并不是以时间为判断标准，而是以执行字节码的数量作为判断标准。当某一个线程执行了足够多的字节码条数时，当前线程将释放全局锁，唤醒其它线程进行执行。</p>
+
+<p><strong>所以，得益于GIL的存在，Python容器在进行诸如扩容、缩容操作时，完全不必担心并发问题，因为一条字节码的执行一定是原子性的。</strong></p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.png)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Python虚拟机&amp;url=https://smartkeyerror.comPython-Virtual-Machine"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comPython-Virtual-Machine"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comPython-Virtual-Machine"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/VXLAN">
+            <section class="post">
+                <h2>VXLAN—构建Overlay容器网络</h2>
+                <p>由于VLAN实现中的VLAN ID仅有12位，只能划分4096个虚拟局域网网段，对于云计算等领域而言，其用户远远不止4096个。并且，VLAN依赖于交换机等物理设备的实现，一旦升级物理设备，集群网络可能需要重新配置。因此，基于上述的限制，VMware、Cisco等大型网络企业推出了VXLAN解决方案。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2020</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-150652886-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>Python虚拟机</title>
+        
+          <description>&lt;p&gt;我们常说Python一是门解释型语言，只需要敲下&lt;code class=&quot;highlighter-rouge&quot;&gt;python code.py&lt;/code&gt;就可以运行编写的代码，而无需使用类似于&lt;code class=&quot;highlighter-rouge&quot;&gt;javac&lt;/code&gt;或者&lt;code class=&quot;highlighter-rouge&quot;&gt;gcc&lt;/code&gt;进行编译。那么，Python解释器是真的一行一行读取Python源代码而后执行吗? 实际上，Python在执行程序时和Java、C#一样，都是先将源码进行编译生成字节码，然后由虚拟机进行执行，只不过Python解释器把这两步合二为一了而已。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 18 Aug 2020 10:50:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Python-Virtual-Machine</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Python-Virtual-Machine</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>VXLAN—构建Overlay容器网络</title>
         
           <description>&lt;p&gt;由于VLAN实现中的VLAN ID仅有12位，只能划分4096个虚拟局域网网段，对于云计算等领域而言，其用户远远不止4096个。并且，VLAN依赖于交换机等物理设备的实现，一旦升级物理设备，集群网络可能需要重新配置。因此，基于上述的限制，VMware、Cisco等大型网络企业推出了VXLAN解决方案。&lt;/p&gt;

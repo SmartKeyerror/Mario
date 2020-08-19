@@ -12,6 +12,247 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>Python虚拟机</title>
+	  <link>//Python-Virtual-Machine</link>
+	  <author></author>
+	  <pubDate>2020-08-18T10:50:25+00:00</pubDate>
+	  <guid>//Python-Virtual-Machine</guid>
+	  <description><![CDATA[
+	     <p>我们常说Python一是门解释型语言，只需要敲下<code class="highlighter-rouge">python code.py</code>就可以运行编写的代码，而无需使用类似于<code class="highlighter-rouge">javac</code>或者<code class="highlighter-rouge">gcc</code>进行编译。那么，Python解释器是真的一行一行读取Python源代码而后执行吗? 实际上，Python在执行程序时和Java、C#一样，都是先将源码进行编译生成字节码，然后由虚拟机进行执行，只不过Python解释器把这两步合二为一了而已。</p>
+
+<!---more--->
+
+<h3 id="1-python程序执行过程">1. Python程序执行过程</h3>
+
+<p>事实上，Python程序在执行过程中同样需要编译(Compile)，编译产生的结果称之为字节码，而后由Python虚拟机逐行地执行这些字节码。所以，Python解释器由两部分组成: 编译器和虚拟机。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Python/Interpreter/process.png" alt="" /></p>
+
+<p>上图展示了Python程序的执行过程，以及C程序的编译、汇编与链接过程，从该图中可以非常明显地看出Python与C程序的执行区别。Python如此设计的原因在于将程序的执行与底层硬件进一步地分离，无需担心程序的编译、汇编以及链接过程，使得Python程序相较于C程序而言更加易于移植。</p>
+
+<p>这里再说一下Python和Java的区别。Java在程序执行时必须使用<code class="highlighter-rouge">javac</code>对源代码进行编译，但是并不直接编译成机器语言，而是和Python一样，编译成字节码，而后由JVM进行执行。从这一点上来看，Python和Java非常类似，只不过Python的编译过程由解释器完成，用户也可以手动的对Python源代码进行编译，生成<code class="highlighter-rouge">.pyc</code>文件，节省那么一丢丢的时间。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python <span class="nt">-m</span> compileall &lt;dir&gt;
+</code></pre></div></div>
+
+<p>通过运行上述命令可对<code class="highlighter-rouge">&lt;dir&gt;</code>目录下所有的Python文件进行编译，编译结果将会存放于该目录下的<code class="highlighter-rouge">__pycache__</code>的<code class="highlighter-rouge">.pyc</code>文件中。</p>
+
+<h3 id="2-编译过程与字节码">2. 编译过程与字节码</h3>
+
+<p>在Python的内建函数中，定义了<code class="highlighter-rouge">compile</code>以及<code class="highlighter-rouge">exec</code>两个方法，前者将源代码编译成为Code Object对象，Code Object对象中即保存着源代码所对应的字节。而<code class="highlighter-rouge">exec</code>方法则是运行Python语句或者是由<code class="highlighter-rouge">compile</code>方法所返回的Code Object。<code class="highlighter-rouge">exec</code>方法可直接运行Python语句，其参数并一定需要是Code Object。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="n">snippet</span> <span class="o">=</span> <span class="s">"for i in range(3): print(f'Output: {i}')"</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="n">result</span> <span class="o">=</span> <span class="nb">compile</span><span class="p">(</span><span class="n">snippet</span><span class="p">,</span> <span class="s">""</span><span class="p">,</span> <span class="s">"exec"</span><span class="p">)</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="n">result</span>
+<span class="o">&lt;</span><span class="n">code</span> <span class="nb">object</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span> <span class="n">at</span> <span class="mh">0x7f8e7e6471e0</span><span class="p">,</span> <span class="nb">file</span> <span class="s">""</span><span class="p">,</span> <span class="n">line</span> <span class="mi">1</span><span class="o">&gt;</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="k">exec</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="n">Output</span><span class="p">:</span> <span class="mi">0</span>
+<span class="n">Output</span><span class="p">:</span> <span class="mi">1</span>
+<span class="n">Output</span><span class="p">:</span> <span class="mi">2</span>
+</code></pre></div></div>
+
+<p>在上述代码中定义了一个非常简单的Python代码片段，其作用就是在标准输出中打印0，1，2这三个数而已。通过<code class="highlighter-rouge">compile</code>方法对该片段进行编译，得到Code Object对象，并将该对象交由<code class="highlighter-rouge">exec</code>函数执行。下面来具体看下返回的Code Object中到底包含了什么。</p>
+
+<p>在源码<code class="highlighter-rouge">cpython/Include/code.h</code>中定义了<code class="highlighter-rouge">PyCodeObject</code>结构体，即Code Object对象:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* Bytecode object */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+    <span class="n">PyObject_HEAD</span>               <span class="cm">/* Python定长对象头 */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">co_code</span><span class="p">;</span>          <span class="cm">/* 指令操作码，即字节码 */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">co_consts</span><span class="p">;</span>        <span class="cm">/* 常量列表 */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">co_names</span><span class="p">;</span>         <span class="cm">/* 名称列表(不一定是变量，也可能是函数名称、类名称等) */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">co_filename</span><span class="p">;</span>      <span class="cm">/* 源码文件名称 */</span>
+    
+    <span class="p">...</span>                         <span class="cm">/* 省略若干字段 */</span>
+<span class="p">}</span> <span class="n">PyCodeObject</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>字段<code class="highlighter-rouge">co_code</code>即为Python编译后字节码，其它字段在此处可暂时忽略。字节码的格式为人类不可阅读格式，其形式通常是这样的:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="n">result</span><span class="o">.</span><span class="n">co_code</span>
+<span class="n">b</span><span class="s">'x</span><span class="se">\x1e</span><span class="s">e</span><span class="se">\x00</span><span class="s">d</span><span class="se">\x00\x83\x01</span><span class="s">D</span><span class="se">\x00</span><span class="s">]</span><span class="se">\x12</span><span class="s">Z</span><span class="se">\x01</span><span class="s">e</span><span class="se">\x02</span><span class="s">d</span><span class="se">\x01</span><span class="s">e</span><span class="se">\x01\x9b\x00\x9d\x02\x83\x01\x01\x00</span><span class="s">q</span><span class="se">\n</span><span class="s">W</span><span class="se">\x00</span><span class="s">d</span><span class="se">\x02</span><span class="s">S</span><span class="se">\x00</span><span class="s">'</span>
+</code></pre></div></div>
+
+<p>这个时候我们需要一个”反汇编器”来将字节码转换成人类可阅读的格式，”反汇编器”打引号的原因是在Python中并不能称为真正的反汇编器。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">dis</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">co_code</span><span class="p">)</span>
+          <span class="mi">0</span> <span class="n">SETUP_LOOP</span>              <span class="mi">30</span> <span class="p">(</span><span class="n">to</span> <span class="mi">32</span><span class="p">)</span>
+          <span class="mi">2</span> <span class="n">LOAD_NAME</span>                <span class="mi">0</span> <span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+          <span class="mi">4</span> <span class="n">LOAD_CONST</span>               <span class="mi">0</span> <span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+          <span class="mi">6</span> <span class="n">CALL_FUNCTION</span>            <span class="mi">1</span>
+          <span class="mi">8</span> <span class="n">GET_ITER</span>
+    <span class="o">&gt;&gt;</span>   <span class="mi">10</span> <span class="n">FOR_ITER</span>                <span class="mi">18</span> <span class="p">(</span><span class="n">to</span> <span class="mi">30</span><span class="p">)</span>
+         <span class="mi">12</span> <span class="n">STORE_NAME</span>               <span class="mi">1</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+         <span class="mi">14</span> <span class="n">LOAD_NAME</span>                <span class="mi">2</span> <span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+         <span class="mi">16</span> <span class="n">LOAD_CONST</span>               <span class="mi">1</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+         <span class="mi">18</span> <span class="n">LOAD_NAME</span>                <span class="mi">1</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+         <span class="mi">20</span> <span class="n">FORMAT_VALUE</span>             <span class="mi">0</span>
+         <span class="mi">22</span> <span class="n">BUILD_STRING</span>             <span class="mi">2</span>
+         <span class="mi">24</span> <span class="n">CALL_FUNCTION</span>            <span class="mi">1</span>
+         <span class="mi">26</span> <span class="n">POP_TOP</span>
+         <span class="mi">28</span> <span class="n">JUMP_ABSOLUTE</span>           <span class="mi">10</span>
+    <span class="o">&gt;&gt;</span>   <span class="mi">30</span> <span class="n">POP_BLOCK</span>
+    <span class="o">&gt;&gt;</span>   <span class="mi">32</span> <span class="n">LOAD_CONST</span>               <span class="mi">2</span> <span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+         <span class="mi">34</span> <span class="n">RETURN_VALUE</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">dis</code>方法将返回字节码的助记符(mnemonics)，和汇编语言非常类似，从这些助记符的名称上我们就可以大概猜出解释器将要执行的动作，例如<code class="highlighter-rouge">LOAD_NAME</code>加载名称，<code class="highlighter-rouge">LOAD_CONST</code>加载常量。所以，我们完全可以将这些助记符看作是汇编指令，而指令的操作数则在助记符后面描述。例如<code class="highlighter-rouge">LOAD_NAME</code>操作，其操作数的下标为0，而在源代码中使用过的名称保存在<code class="highlighter-rouge">co_names</code>字段中，所以<code class="highlighter-rouge">LOAD_NAME  0</code>即表示加载<code class="highlighter-rouge">result.co_names[0]</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="n">result</span><span class="o">.</span><span class="n">co_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="s">'range'</span>
+</code></pre></div></div>
+
+<p>又比如<code class="highlighter-rouge">LOAD_CONST</code>操作，其操作数的下标也为0，只不过这次操作数不再保存在<code class="highlighter-rouge">co_names</code>，而是<code class="highlighter-rouge">co_consts</code>中，所以<code class="highlighter-rouge">LOAD_CONST  0</code>则表示加载<code class="highlighter-rouge">result.co_consts[0]</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="n">result</span><span class="o">.</span><span class="n">co_consts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="mi">3</span>
+</code></pre></div></div>
+
+<p>由于Code Object对象保存了常量、变量、名称等一系列的上下文内容，所以可以直接对该对象进行反汇编操作:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+  <span class="mi">1</span>           <span class="mi">0</span> <span class="n">SETUP_LOOP</span>              <span class="mi">30</span> <span class="p">(</span><span class="n">to</span> <span class="mi">32</span><span class="p">)</span>
+              <span class="mi">2</span> <span class="n">LOAD_NAME</span>                <span class="mi">0</span> <span class="p">(</span><span class="nb">range</span><span class="p">)</span>
+              <span class="mi">4</span> <span class="n">LOAD_CONST</span>               <span class="mi">0</span> <span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+              <span class="o">...</span>
+</code></pre></div></div>
+
+<p>现在，我们可以对Python字节码做一下小结了。Python在编译某段源码时，并不会直接返回字节码，而是返回一个Code Object对象，字节码则保存在该对象的<code class="highlighter-rouge">co_code</code>字段中。由于字节码是一个二进制字节序列，无法直接进行阅读，所以需要通过”反汇编器”(<code class="highlighter-rouge">dis</code>模块)将字节码转换成人类可读的助记符。助记符的形式和汇编语言非常类似，均由操作指令+操作数所组成。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Python/Interpreter/Compile.png" alt="" /></p>
+
+<h3 id="3-命名空间与作用域">3. 命名空间与作用域</h3>
+
+<p>Python的命名空间与作用域经常被开发者所忽略，在未深入了解Python虚拟机之前，我个人也认为这些东西并不重要。但是，命名空间和变量作用域将会是Python虚拟机在执行过程中一个非常重要的一环。</p>
+
+<p>命名空间实际上是名称到对象的一种映射，本质上就是一个键-值对，所以大部分的命名空间由<code class="highlighter-rouge">dict</code>实现。命名空间可以分为3类: 内置命名空间，全局命名空间与局部命名空间，在作用域存在嵌套的特殊情况下，可能还会有闭包命名空间。</p>
+
+<h4 id="31-内置命名空间build-in">3.1 内置命名空间(Build-in)</h4>
+<p>Python语言内置的名称，例如内置函数名(<code class="highlighter-rouge">len</code>, <code class="highlighter-rouge">dis</code>)，内置异常(<code class="highlighter-rouge">Exception</code>)等。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">builtins</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">builtins</span><span class="o">.</span><span class="n">__dict__</span>
+</code></pre></div></div>
+
+<h4 id="32-全局命名空间global">3.2 全局命名空间(Global)</h4>
+
+<p>全局命名空间以模块进行划分，每一个模块中都包含了<code class="highlighter-rouge">dict</code>对象，其中保存了模块中的变量名、类名、函数名等等。</p>
+
+<h4 id="33-局部命名空间local">3.3 局部命名空间(Local)</h4>
+
+<p>局部命名空间可以简单的认为就是函数的命名空间，例如函数参数，在函数中定义的局部变量。</p>
+
+<p>在局部命名空间中，有一个非常特殊的情况，就是类定义:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Reader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">BUFFER_SIZE</span> <span class="o">=</span> <span class="mi">4096</span>
+    
+    <span class="k">class</span> <span class="nc">Inner</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">BUFFER_SIZE</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>在执行<code class="highlighter-rouge">Reader.Inner()</code>语句时，将会抛出<code class="highlighter-rouge">NameError</code>的异常，表示<code class="highlighter-rouge">BUFFER_SIZE</code>未定义。其原因在于类的嵌套并不等同于函数嵌套</p>
+
+<h4 id="34-闭包命名空间enclosing">3.4 闭包命名空间(Enclosing)</h4>
+
+<p>当出现嵌套函数定义时，或者作用域嵌套时，Python将会把内层作用域所依赖的所有外层命名存储在一个特殊的命名空间中，也就是闭包命名空间。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">foo</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s">"Execute func: {func.__name__}"</span><span class="p">)</span>
+        <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+</code></pre></div></div>
+
+<p>闭包指函数，而不是类，所以在类的嵌套中，将不会存在闭包命名空间:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Reader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">BUFFER_SIZE</span> <span class="o">=</span> <span class="mi">4096</span>
+    
+    <span class="k">class</span> <span class="nc">Inner</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">BUFFER_SIZE</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>在执行<code class="highlighter-rouge">Reader.Inner()</code>语句时，将会抛出<code class="highlighter-rouge">NameError</code>的异常，表示<code class="highlighter-rouge">BUFFER_SIZE</code>未定义。</p>
+
+<p>当语句需要查找变量<code class="highlighter-rouge">X</code>时，将会按照 Local -&gt; Enclosing -&gt; Global -&gt; Builtin 的顺序进行查找，俗称LEGB规则。</p>
+
+<h3 id="4-python虚拟机的执行">4. Python虚拟机的执行</h3>
+
+<h4 id="41-执行上下文栈帧">4.1 执行上下文——栈帧</h4>
+
+<p>在 x86-64 CPU 中包含了16个64位的通用目的寄存器，这些寄存器用于存储数据或者是指针。在这16个通用目的寄存器中，有两个较为特殊的寄存器: %rsp 与 %rbp。%rsp 为栈指针寄存器，表示运行时栈的结束位置，可以简单地理解为栈顶。%rbp 为栈帧指针，用于标识当前栈帧的起始位置。</p>
+
+<p>在x86体系结构中，函数调用是通过栈和栈帧实现的。当一个函数被调用时，首先做的事情就是将调用者栈帧指针入栈，以保留调用关系。其次将为调用的函数创建栈帧，栈帧中包含了函数的参数、创建的局部变量等信息。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Python/Interpreter/x86-Stack.png" alt="" /></p>
+
+<p>回到Python虚拟机中，虚拟机在进行函数调用时，运行方式和x86没什么区别，都是由栈和栈帧所实现的。而栈帧则是由<code class="highlighter-rouge">PyFrameObject</code>表示，于源码<code class="highlighter-rouge">cpython/Include/frameobject.h</code>中定义。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">typedef</span> <span class="k">struct</span> <span class="n">_frame</span> <span class="p">{</span>
+    <span class="n">PyObject_VAR_HEAD</span>           <span class="cm">/* Python固定长度对象头 */</span>
+    <span class="k">struct</span> <span class="n">_frame</span> <span class="o">*</span><span class="n">f_back</span><span class="p">;</span>      <span class="cm">/* 指向上一个栈帧的指针 */</span>
+    <span class="n">PyCodeObject</span> <span class="o">*</span><span class="n">f_code</span><span class="p">;</span>       <span class="cm">/* Code Object代码对象，其中包含了字节码 */</span>
+    
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_builtins</span><span class="p">;</span>       <span class="cm">/* 内建命名空间字典(PyDictObject) */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_globals</span><span class="p">;</span>        <span class="cm">/* 全局命名空间字典(PyDictObject) */</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">f_locals</span><span class="p">;</span>         <span class="cm">/* 局部命名空间表(通常是数组) */</span>
+
+    <span class="kt">int</span> <span class="n">f_lasti</span><span class="p">;</span>                <span class="cm">/* 上一条指令编号 */</span>
+    
+    <span class="p">...</span>
+<span class="p">}</span> <span class="n">PyFrameObject</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>可以看到，在一个栈帧中包含了Code Object代码对象，三个命名空间表，上一个栈帧指针等信息。可以说，<code class="highlighter-rouge">PyFrameObject</code>对象包含了Python虚拟机执行所需的全部上下文。结合前面提到的字节码和命名空间，我们可以用一张简图来描述。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Python/Interpreter/FrameObject.png" alt="" /></p>
+
+<h4 id="42-指令的执行">4.2 指令的执行</h4>
+
+<p>指令执行的源码均位于<code class="highlighter-rouge">cpython/Python/ceval.c</code>中，入口函数有两个，一个是<code class="highlighter-rouge">PyEval_EvalCode</code>，另一个则是<code class="highlighter-rouge">PyEval_EvalCodeEx</code>，最终的实际调用函数为<code class="highlighter-rouge">_PyEval_EvalCodeWithName</code>，所以我们只需要关注该函数即可。</p>
+
+<p><code class="highlighter-rouge">_PyEval_EvalCodeWithName</code>函数的主要作用为进行函数调用的例常检查，例如校验函数参数的个数、类型，校验关键字参数等。除此之外，该函数将会初始化栈帧对象并将其交给<code class="highlighter-rouge">PyEval_EvalFrame</code>函数进行处理，最终由<code class="highlighter-rouge">_PyEval_EvalFrameDefault</code>函数真正的运行指令。</p>
+
+<p><code class="highlighter-rouge">_PyEval_EvalFrameDefault</code>函数定义超过了3K行，绝大部分的逻辑其实都是<code class="highlighter-rouge">switch-case</code>: 根据指令类型执行相应的逻辑。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span> <span class="p">(;;)</span> <span class="p">{</span>
+    <span class="k">switch</span> <span class="p">(</span><span class="n">opcode</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="n">TARGET</span><span class="p">(</span><span class="n">LOAD_CONST</span><span class="p">):</span> <span class="p">{</span>      <span class="cm">/* 加载常量 */</span>
+            <span class="p">...</span>
+        <span class="p">}</span>		
+        <span class="k">case</span> <span class="n">TARGET</span><span class="p">(</span><span class="n">ROT_TWO</span><span class="p">):</span> <span class="p">{</span>         <span class="cm">/* 交换两个变量 */</span>
+            <span class="p">...</span>
+        <span class="p">}</span>
+        <span class="k">case</span> <span class="n">TARGET</span><span class="p">(</span><span class="n">FORMAT_VALUE</span><span class="p">):{</span>     <span class="cm">/* 格式化字符串 */</span>
+            <span class="p">...</span>
+        <span class="p">}</span>
+</code></pre></div></div>
+
+<p>可以看到<code class="highlighter-rouge">TARGET()</code>调用中的参数其实就是<code class="highlighter-rouge">dis</code>方法返回的助记符，当我们在分析助记符的具体实现逻辑时，可以在该文件中找到对应的C实现方法。</p>
+
+<h4 id="43-gil与字节码的执行">4.3 GIL与字节码的执行</h4>
+
+<p>对于Python中的容器，例如dict，并没有实现像Java中的<code class="highlighter-rouge">ConcurrentHashMap</code>，或者是Golang中的<code class="highlighter-rouge">sync.Map</code>，这是因为Python中的容器(list, dict)本身就是并发安全的，但是在这些容器的源码中并没有发现定义<code class="highlighter-rouge">mutex</code>，也就是说，Python容器的并发安全并不是通过互斥锁实现的。</p>
+
+<p>实际上，Python容器的并发安全是通过GIL实现的，也就是被广大Pythoner口诛笔伐的全局解释器锁。某一个线程想要运行必须要首先获取全局锁，如此一来，在同一时刻只能有一个线程运行，无法充分利用多核的硬件资源。</p>
+
+<p>Python的线程调度非常类似于CPU的时间片实现，只不过并不是以时间为判断标准，而是以执行字节码的数量作为判断标准。当某一个线程执行了足够多的字节码条数时，当前线程将释放全局锁，唤醒其它线程进行执行。</p>
+
+<p><strong>所以，得益于GIL的存在，Python容器在进行诸如扩容、缩容操作时，完全不必担心并发问题，因为一条字节码的执行一定是原子性的。</strong></p>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>VXLAN—构建Overlay容器网络</title>
 	  <link>//VXLAN</link>
 	  <author></author>
@@ -1510,676 +1751,6 @@ binlog_group_commit_sync_no_delay_count
 <p>需要注意的是FTP端口为2121，SOCKS端口为1080，因为我不需要这两个协议，所以并没有配置。</p>
 
 <p>完)</p>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>MySQL-InnoDB中的锁</title>
-	  <link>//MySQL-InnoDB-Lock</link>
-	  <author></author>
-	  <pubDate>2020-01-31T10:06:25+00:00</pubDate>
-	  <guid>//MySQL-InnoDB-Lock</guid>
-	  <description><![CDATA[
-	     <p>锁在InnoDB存储引擎中的使用远比我们想象中的更加频繁，及时是一条最为简单的<code class="highlighter-rouge">update set</code>语句，其中也涉及到了各种锁的使用。包括常说的一致性锁定读，解决幻读等场景中，同样包含了锁的大量使用。</p>
-
-<!---more--->
-
-<h4 id="1-latch和lock">1. Latch和Lock</h4>
-
-<p>在InnoDB存储引擎中，Latch(门闩)是用来保证并发线程操作临界资源的正确性，保证某些操作的原子性。通常又分为Mutex(互斥量)和RWLock(读写锁)，例如Python中<code class="highlighter-rouge">threading.Lock</code>，Java中<code class="highlighter-rouge">synchronized</code>，Golang中的<code class="highlighter-rouge">sync.Mutex</code>，Latch通常应用于操作缓冲池中的LRU列表元素(添加、删除以及移动)，部分场景下的<code class="highlighter-rouge">AUTO_INCREMENT</code>实现。用户通常不会直接地与Latch打交道，并且没有死锁检测。</p>
-
-<p>Lock作用于事务之中，用来锁定表、页、行，锁的添加与释放通常会在事务的起始和结束时进行。数据库中的幻读问题解决就是通过Lock实现的，而非Latch。并且Lock存在死锁检测机制，当发生死锁时，会在某些情况下告知用户，例如在使用一致性锁定读(SELECT…FOR UPDATE)时产生的死锁，会直接抛出1213的Deadlock异常。</p>
-
-<p>尽管Latch与Lock操作的对象均为数据，但是Latch更为底层，操作的对象更加细小。Lock的对象相对于Latch而言，则更加”粗放”，例如表、页数据，此外最重要的是Lock的作用域为事务，Latch则不是。</p>
-
-<h4 id="2-innodb存储引擎中的lock">2. InnoDB存储引擎中的Lock</h4>
-
-<p>为了方便叙述，下面均使用锁来指代InnoDB中的Lock(仍然要说明，Lock以及Latch都可以称为锁，这里只是为了方便叙述)。</p>
-
-<p>InnoDB引擎支持行锁以及表锁，既可以锁定某一行，同时也可以锁定一整张表，先从行级锁说起。</p>
-
-<p>InnoDB引擎实现了两种标准的行级锁:</p>
-<ul>
-  <li>共享行级锁(S Lock, Share Lock)</li>
-  <li>排他行级锁(X Lock, Exclusive Lock)</li>
-</ul>
-
-<p>可以认为S Lock和X Lock分别表示读锁和写锁，如同RWLock一样。S Lock允许并发地读取数据，X Lock既限制并发地读取，同时也限制并发地修改。所以说，当某一行数据中存在S锁时，只能再次添加S锁，若想要添加X锁，则需要等待S锁的释放。行级锁X以及S Lock的兼容性如下:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th style="text-align: center">-</th>
-      <th style="text-align: center">X</th>
-      <th style="text-align: center">S</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align: center">X</td>
-      <td style="text-align: center">不兼容</td>
-      <td style="text-align: center">不兼容</td>
-    </tr>
-    <tr>
-      <td style="text-align: center">S</td>
-      <td style="text-align: center">不兼容</td>
-      <td style="text-align: center">兼容</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>同时，InnoDB支持表级锁，为了支持表级锁与行级锁这两个不同粒度的锁，InnoDB支持一种额外的上锁方式，称之为意向锁(Intention Lock)。</p>
-
-<p>为了更好的理解意向锁，首先假设没有意向锁，只有表锁和行锁。当事务A在更新某一条数据时，会在该数据行上添加X锁。此时另外事务B申请整个表的写锁，如果事务B申请成功，那么它就能修改表中任意一行数据，这与事务持有的X锁冲突。</p>
-
-<p>如果数据库想要避免该冲突，那么需要让事务B阻塞，直到事务A提交释放X锁。转而需要判断事务B阻塞的条件: ①当前表是否被其它事务添加表锁 ②判断表中是否存在行锁。这两个条件判断均可以在表层面实现，而无需遍历所有数据，只需要定义好数据结构即可。一个最简单的实现就是为表锁和行锁添加两个标识位，该标识位在添加和释放锁时进行原子更新，例如:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>table_s_lock <span class="o">=</span> <span class="nb">false
-</span>table_x_lock <span class="o">=</span> <span class="nb">false
-</span>row_s_lock <span class="o">=</span> <span class="nb">true
-</span>row_x_lock <span class="o">=</span> <span class="nb">true</span>
-</code></pre></div></div>
-
-<p>当某一行添加X锁时，将<code class="highlighter-rouge">row_x_lock</code>置为true，若其余事务想要添加表级别的X锁，则必须等待<code class="highlighter-rouge">row_x_lock</code>更新为false。反之若事务已经添加了表级别的X锁，将<code class="highlighter-rouge">table_x_lock</code>置为true，事务B若想在某一行添加X锁，则需要等待<code class="highlighter-rouge">table_s_lock</code>以及<code class="highlighter-rouge">table_x_lock</code>均更新为false。</p>
-
-<p>虽然上面的标识位能够解决问题，但仍然有些奇怪，奇怪的点在于标识位的判断粒度不同。我们更加希望表级锁与表级锁进行兼容性判断，行级锁与行级锁进行兼容性判断，而不是表级锁与行级锁进行兼容性判断。由此，就有了意向锁的诞生。</p>
-
-<p>意向锁(Intention Lock)将锁定的对象分为多个粒度，当想要对细粒度的数据进行加锁时，那么首先需要对粗粒度的对象添加意向锁。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/intention-Lock.png" alt="" /></p>
-
-<p>例如，若需要对页上的记录R添加X锁，则需要分别对数据库、表、页添加意向锁IX，添加成功后才会对记录R添加X锁，若其中任何一部分导致等待，那么该操作需要等待粗粒度上锁环节的完成。现在来看在有了意向锁之后InnoDB存储引擎如何支持多粒度的锁。</p>
-
-<p>意向锁同样分为两种: 共享和排他</p>
-
-<ul>
-  <li>意向共享锁(IS, Intention Share Lock)</li>
-  <li>意向排他锁(IX, Intention Exclusive Lock)</li>
-</ul>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/intention-lock-example.png" alt="" /></p>
-
-<p>如上图所示，事务A为了给记录R添加X锁(排他锁)，则需要依次对数据库、表、页添加意向排他锁(IX)，假设添加均成功，最终记录R添加了X锁。此时事务B想要向表A中添加表级别的排他锁，由于表A中存在IX锁，与表级别的X锁并不兼容，故事务B等待，等待表A中IX锁的释放。可以看到，在有了意向锁之后，锁的兼容性比较将处理同粒度水平，而不是跨粒度进行比较。这让我想起了一个段子:</p>
-
-<blockquote>
-  <p>不要跟傻逼争论，他会把你拉到他的水平上，然后用他丰富的经验打败你</p>
-</blockquote>
-
-<p>InnoDB存储引擎中意向锁和表级锁的兼容性如下:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th style="text-align: center">-</th>
-      <th style="text-align: center">IX</th>
-      <th style="text-align: center">IS</th>
-      <th style="text-align: center">X(表级别)</th>
-      <th style="text-align: center">S(表级别)</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align: center">IX</td>
-      <td style="text-align: center">兼容</td>
-      <td style="text-align: center">兼容</td>
-      <td style="text-align: center">不兼容</td>
-      <td style="text-align: center">不兼容</td>
-    </tr>
-    <tr>
-      <td style="text-align: center">IS</td>
-      <td style="text-align: center">兼容</td>
-      <td style="text-align: center">兼容</td>
-      <td style="text-align: center">不兼容</td>
-      <td style="text-align: center">兼容</td>
-    </tr>
-    <tr>
-      <td style="text-align: center">X(表级别)</td>
-      <td style="text-align: center">不兼容</td>
-      <td style="text-align: center">不兼容</td>
-      <td style="text-align: center">不兼容</td>
-      <td style="text-align: center">不兼容</td>
-    </tr>
-    <tr>
-      <td style="text-align: center">S(表级别)</td>
-      <td style="text-align: center">不兼容</td>
-      <td style="text-align: center">兼容</td>
-      <td style="text-align: center">不兼容</td>
-      <td style="text-align: center">兼容</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>在MySQL 5.5以上、5.7.14以下的版本中，用户可以通过<code class="highlighter-rouge">INFORMATION_SCHEMA</code>下的<code class="highlighter-rouge">INNODB_TRX</code>、<code class="highlighter-rouge">INNODB_LOCKS</code>以及<code class="highlighter-rouge">INNODB_LOCK_WAITS</code>这三张表简单地监控并分析可能存在的锁问题。</p>
-
-<p>在MySQL 8.0版本中，则需要使用<code class="highlighter-rouge">performance_schema</code>下的<code class="highlighter-rouge">data_locks</code>以及<code class="highlighter-rouge">data_lock_waits</code>获取相关的锁以及锁等待信息。</p>
-
-<p>而MySQL版本在5.7.14到8.0之间的用户，只能通过其它手段间接的获取上述信息。</p>
-
-<h5 id="21-创建通用例程">2.1 创建通用例程</h5>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="nv">`user`</span> <span class="p">(</span>
-  <span class="nv">`id`</span> <span class="n">int</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
-  <span class="nv">`nickname`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
-  <span class="nv">`password`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">128</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
-  <span class="nv">`user_id`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
-  <span class="nv">`mobile`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
-  <span class="nv">`mobile_area`</span> <span class="n">smallint</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">comment</span> <span class="nv">"手机号码区域"</span><span class="p">,</span>
-  <span class="nv">`gender`</span> <span class="n">tinyint</span> <span class="k">DEFAULT</span> <span class="mi">0</span><span class="p">,</span>
-  <span class="nv">`avatar`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">128</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">DEFAULT</span> <span class="k">NULL</span><span class="p">,</span>
-  <span class="nv">`account_id`</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span> <span class="k">COLLATE</span> <span class="n">utf8mb4_general_ci</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
-  <span class="nv">`created_at`</span> <span class="n">datetime</span> <span class="k">DEFAULT</span> <span class="k">CURRENT_TIMESTAMP</span><span class="p">,</span>
-  <span class="nv">`updated_at`</span> <span class="n">datetime</span> <span class="k">DEFAULT</span> <span class="k">CURRENT_TIMESTAMP</span> <span class="k">ON</span> <span class="k">UPDATE</span> <span class="k">CURRENT_TIMESTAMP</span><span class="p">,</span>
-  <span class="nv">`deleted_at`</span> <span class="n">datetime</span><span class="p">,</span>
-  <span class="nv">`status`</span> <span class="n">tinyint</span> <span class="k">DEFAULT</span> <span class="mi">1</span> <span class="k">comment</span> <span class="nv">"用户状态"</span><span class="p">,</span>
-  <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="nv">`id`</span><span class="p">),</span>
-  <span class="k">KEY</span> <span class="nv">`user_id`</span> <span class="p">(</span><span class="nv">`user_id`</span><span class="p">),</span>
-  <span class="k">KEY</span> <span class="nv">`mobile`</span> <span class="p">(</span><span class="nv">`mobile`</span><span class="p">),</span>
-  <span class="k">KEY</span> <span class="nv">`account_id`</span> <span class="p">(</span><span class="nv">`account_id`</span><span class="p">),</span>
-  <span class="k">KEY</span> <span class="nv">`created_at`</span> <span class="p">(</span><span class="nv">`created_at`</span><span class="p">),</span>
-  <span class="k">KEY</span> <span class="nv">`updated_at`</span> <span class="p">(</span><span class="nv">`updated_at`</span><span class="p">),</span>
-  <span class="k">UNIQUE</span> <span class="p">(</span><span class="nv">`user_id`</span><span class="p">),</span>
-  <span class="k">UNIQUE</span> <span class="p">(</span><span class="nv">`account_id`</span><span class="p">)</span>
-<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="n">AUTO_INCREMENT</span><span class="o">=</span><span class="mi">1</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">utf8mb4</span> <span class="k">COLLATE</span><span class="o">=</span><span class="n">utf8mb4_general_ci</span><span class="p">;</span>
-</code></pre></div></div>
-
-<p>这是一张非常普通但又普遍的用户信息表，其中包含了唯一主键，唯一辅助索引以及普通辅助索引。</p>
-
-<h5 id="22-innodb_trx">2.2 INNODB_TRX</h5>
-<p><code class="highlighter-rouge">INNODB_TRX</code>表中主要记录了当前正在执行的事务信息，包括只读事务。首先来看字段和字段所表示的含义:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>字段名称</th>
-      <th>字段含义</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>TRX_ID</td>
-      <td>InnoDB存储引擎内部的唯一事务ID</td>
-    </tr>
-    <tr>
-      <td>TRX_WEIGHT</td>
-      <td>事务权重(与事务修改的行数和锁定的行数有关)，当两个事务执行发生死锁时，InnoDB会选择权重较低的事务进行回滚</td>
-    </tr>
-    <tr>
-      <td>TRX_STATE</td>
-      <td>当前的事务执行状态，包括RUNNING, LOCK WAIT, ROLLING BACK, 以及COMMITTING，LOCK WAIT表示当前事务正等待某个锁的释放</td>
-    </tr>
-    <tr>
-      <td>TRX_STARTED</td>
-      <td>事务开始时间，格式如2000-01-01 14:01:08</td>
-    </tr>
-    <tr>
-      <td>TRX_REQUESTED_LOCK_ID</td>
-      <td>当前事务所等待的锁ID，该字段只有在状态为LOCK WAIT才有值，否则为NULL。可与<code class="highlighter-rouge">INNODB_LOCKS</code>通过LOCK_ID字段进行关联查询，获取更为详细的锁信息。</td>
-    </tr>
-    <tr>
-      <td>TRX_WAIT_STARTED</td>
-      <td>当前事务等待锁的起始时间，在状态为LOCK WAIT时才有值，否则为NULL。</td>
-    </tr>
-    <tr>
-      <td>TRX_QUERY</td>
-      <td>当前事务<strong>正在</strong>执行的SQL语句(不是事务所有的执行语句)</td>
-    </tr>
-    <tr>
-      <td>TRX_OPERATION_STATE</td>
-      <td>事务的当前操作状态，包括PREPARING, UPDATING, DELETING, COMMITTING以及NULL，该字段在绝大部分情况下均为NULL，捕捉某一事务的瞬间执行状态还是比较困难的(除非是大事务)</td>
-    </tr>
-    <tr>
-      <td>TRX_TABLES_IN_USE</td>
-      <td>正在执行的SQL语句所操作的表数量，是一个动态变化值，通常很难观测</td>
-    </tr>
-    <tr>
-      <td>TRX_TABLES_LOCKED</td>
-      <td>当前事务在各个表中添加行锁的表数量</td>
-    </tr>
-    <tr>
-      <td>TRX_LOCK_STRUCTS</td>
-      <td>当前事务持有的锁数量</td>
-    </tr>
-    <tr>
-      <td>TRX_LOCK_MEMORY_BYTES</td>
-      <td>当前事务中锁结构的内存总占用</td>
-    </tr>
-    <tr>
-      <td>TRX_ROWS_LOCKED</td>
-      <td>当前事务锁住的近似数据总行数</td>
-    </tr>
-    <tr>
-      <td>TRX_ROWS_MODIFIED</td>
-      <td>当前事务插入、修改的总行数</td>
-    </tr>
-    <tr>
-      <td>TRX_CONCURRENCY_TICKETS</td>
-      <td>表示当前事务在换出之前所能做的工作之和</td>
-    </tr>
-    <tr>
-      <td>TRX_ISOLATION_LEVEL</td>
-      <td>当前事务隔离级别，包括READ UNCIMMITTED、READ COMMITTED、READ REPEATABLE以及SERIALIZABLE</td>
-    </tr>
-    <tr>
-      <td>TRX_UNIQUE_CHECKS</td>
-      <td>当前事务是否开启唯一性检查</td>
-    </tr>
-    <tr>
-      <td>TRX_FOREIGN_KEY_CHECKS</td>
-      <td>当前事务是否开启外键检查</td>
-    </tr>
-    <tr>
-      <td>TRX_LAST_FOREIGN_KEY_ERROR</td>
-      <td>当前事务执行时最后发生的外键错误</td>
-    </tr>
-    <tr>
-      <td>TRX_ADAPTIVE_HASH_LATCHED</td>
-      <td>当前事务是否锁定了自适应哈希索引</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>在这20多个字段中，较为重要的包括事务ID，事务执行状态，事务等待锁的起始时间，事务锁定的近似总行数。</p>
-
-<h5 id="23-innodb_locks">2.3 INNODB_LOCKS</h5>
-
-<p><code class="highlighter-rouge">INNODB_LOCKS</code>表中记录了当前所有未释放的锁，包括行锁、页锁以及表锁，当某个事务发生严重的锁等待时，通常会在该表中查找蛛丝马迹，确定问题的根源。</p>
-
-<p>但是，<code class="highlighter-rouge">INNODB_LOCKS</code>和<code class="highlighter-rouge">INNODB_LOCK_WAITS</code>这两张表在5.7.14以上版本中被废弃不用，在8.0版本中使用<code class="highlighter-rouge">data_locks</code>以及<code class="highlighter-rouge">data_lock_waits</code>进行代替，故以下内容均采用MySQL 8.0版本进行描述。</p>
-
-<h5 id="24-data_locks">2.4 data_locks</h5>
-
-<table>
-  <thead>
-    <tr>
-      <th>字段名称</th>
-      <th>字段含义</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>ENGINE</td>
-      <td>申请或持有锁的存储引擎类型</td>
-    </tr>
-    <tr>
-      <td>ENGINE_LOCK_ID</td>
-      <td>存储引擎内部的锁ID，该值会发生动态变化，外部系统不应该依赖该值</td>
-    </tr>
-    <tr>
-      <td>ENGINE_TRANSACTION_ID</td>
-      <td>持有锁的事务ID，与INNODB_TRX中的TRX_ID对应</td>
-    </tr>
-    <tr>
-      <td>THREAD_ID</td>
-      <td>持有锁的线程ID</td>
-    </tr>
-    <tr>
-      <td>EVENT_ID</td>
-      <td>事件ID，该字段将于下方进行详细描述</td>
-    </tr>
-    <tr>
-      <td>OBJECT_SCHEMA</td>
-      <td>锁所在的schema(database)</td>
-    </tr>
-    <tr>
-      <td>OBJECT_NAME</td>
-      <td>锁所在的表名称</td>
-    </tr>
-    <tr>
-      <td>PARTITION_NAME</td>
-      <td>锁所在分片名称</td>
-    </tr>
-    <tr>
-      <td>SUBPARTITION_NAME</td>
-      <td>锁所在的子分片名称</td>
-    </tr>
-    <tr>
-      <td>INDEX_NAME</td>
-      <td>被添加锁的索引名称</td>
-    </tr>
-    <tr>
-      <td>OBJECT_INSTANCE_BEGIN</td>
-      <td>锁的内存空间起始地址</td>
-    </tr>
-    <tr>
-      <td>LOCK_TYPE</td>
-      <td>锁类型，包含TABLE和RECORD</td>
-    </tr>
-    <tr>
-      <td>LOCK_MODE</td>
-      <td>锁的模式，包括S,X,IS,IX,AUTO_INC以及UNKNOWN</td>
-    </tr>
-    <tr>
-      <td>LOCK_STATUS</td>
-      <td>锁的状态，InnoDB引擎中包括GRANTED(已添加)和WAITING(等待中)</td>
-    </tr>
-    <tr>
-      <td>LOCK_DATA</td>
-      <td>锁覆盖的范围，该字段将于下方详细描述</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>以一个具体的例子为例:</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">Mario</span><span class="p">.</span><span class="k">user</span> <span class="k">where</span> <span class="n">id</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">for</span> <span class="k">update</span><span class="p">;</span>
-
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
-<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-               <span class="n">ENGINE</span><span class="p">:</span> <span class="n">INNODB</span>
-       <span class="n">ENGINE_LOCK_ID</span><span class="p">:</span> <span class="mi">140374385659344</span><span class="p">:</span><span class="mi">1453</span><span class="p">:</span><span class="mi">140374295256456</span>
-<span class="n">ENGINE_TRANSACTION_ID</span><span class="p">:</span> <span class="mi">632837</span>
-            <span class="n">THREAD_ID</span><span class="p">:</span> <span class="mi">56</span>
-             <span class="n">EVENT_ID</span><span class="p">:</span> <span class="mi">28</span>
-        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
-          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
-       <span class="n">PARTITION_NAME</span><span class="p">:</span> <span class="k">NULL</span>
-    <span class="n">SUBPARTITION_NAME</span><span class="p">:</span> <span class="k">NULL</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">NULL</span>
-<span class="n">OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140374295256456</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="k">TABLE</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">IX</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="k">NULL</span>
-<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-               <span class="n">ENGINE</span><span class="p">:</span> <span class="n">INNODB</span>
-       <span class="n">ENGINE_LOCK_ID</span><span class="p">:</span> <span class="mi">140374385659344</span><span class="p">:</span><span class="mi">532</span><span class="p">:</span><span class="mi">4</span><span class="p">:</span><span class="mi">2</span><span class="p">:</span><span class="mi">140374295253576</span>
-<span class="n">ENGINE_TRANSACTION_ID</span><span class="p">:</span> <span class="mi">632837</span>
-            <span class="n">THREAD_ID</span><span class="p">:</span> <span class="mi">56</span>
-             <span class="n">EVENT_ID</span><span class="p">:</span> <span class="mi">28</span>
-        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
-          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
-       <span class="n">PARTITION_NAME</span><span class="p">:</span> <span class="k">NULL</span>
-    <span class="n">SUBPARTITION_NAME</span><span class="p">:</span> <span class="k">NULL</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
-<span class="n">OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140374295253576</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">1</span>
-</code></pre></div></div>
-
-<p>当我们使用<code class="highlighter-rouge">FOR UPDATE</code>一致性锁定读向id为1的行添加一个写锁时，可以看到<code class="highlighter-rouge">data_locks</code>中生成了两条记录。从<code class="highlighter-rouge">LOCK_TYPE</code>以及<code class="highlighter-rouge">LOCK_MODE</code>来看，第一条为表级别意向排他锁(IX)，第二条为行记录排他锁(X)。注意到X锁后面还有一个说明: <code class="highlighter-rouge">REC_NOT_GAP</code>，表示排他非间隙行锁，这是行锁的一种实现，将在后面小节中描述。</p>
-
-<p><code class="highlighter-rouge">LOCK_DATA</code>在IX项中为NULL，这是因为在InnoDB存储引擎中，该字段只会在<code class="highlighter-rouge">LOCK_TYPE</code>为<code class="highlighter-rouge">RECORD</code>时才有实际值，对于<code class="highlighter-rouge">TABLE</code>类型的锁而言，该值为NULL。<code class="highlighter-rouge">LOCK_DATA</code>根据不同的加锁方式会有不同具体值。当我们使用主键ID(primary key)进行加锁时，<code class="highlighter-rouge">LOCK_DATA</code>仅包含聚簇索引行记录，此时<code class="highlighter-rouge">LOCK_DATA</code>的值通常为主键ID。当我们使用辅助索引对记录加锁时，锁住的范围则会包括辅助索引+聚簇索引，所以此时<code class="highlighter-rouge">data_locks</code>会生成3条记录(表级别意向锁+索引记录锁+聚簇索引记录锁)，此时<code class="highlighter-rouge">LOCK_DATA</code>的值为”辅助索引字段值+主键ID”</p>
-
-<p>例如:</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">Mario</span><span class="p">.</span><span class="k">user</span> <span class="k">where</span> <span class="n">user_id</span> <span class="o">=</span> <span class="nv">"168236477"</span> <span class="k">for</span> <span class="k">update</span><span class="p">;</span>
-
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
-<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
-          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
-          <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">NULL</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="k">TABLE</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">IX</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="k">NULL</span>
-<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
-          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="n">user_id_2</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="cm">/* LOCK_DATA为FieldValue+记录对应的主键ID。由于user_id为unique，故此处仅一条记录 */</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="s1">'168236477'</span><span class="p">,</span> <span class="mi">3</span>
-<span class="o">***************************</span> <span class="mi">3</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
-          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">3</span>
-</code></pre></div></div>
-
-<h5 id="25-data_lock_waits">2.5 data_lock_waits</h5>
-
-<p><code class="highlighter-rouge">data_lock_waits</code>相比于<code class="highlighter-rouge">INNODB_TRX</code>以及<code class="highlighter-rouge">data_locks</code>而言则要更复杂一些，该表实际上是一个ManyToMany的关系表，记录了<code class="highlighter-rouge">data_locks</code>中锁之间的等待以及依赖关系，同时也记录了锁所对应的事务/会话信息。</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>字段名称</th>
-      <th>字段含义</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>ENGINE</td>
-      <td>存储引擎类型</td>
-    </tr>
-    <tr>
-      <td>REQUESTING_ENGINE_LOCK_ID</td>
-      <td>存储引擎内锁ID，对应于data_locks表中的ENGINE_LOCK_ID</td>
-    </tr>
-    <tr>
-      <td>REQUESTING_ENGINE_TRANSACTION_ID</td>
-      <td>存储引擎内事务ID</td>
-    </tr>
-    <tr>
-      <td>REQUESTING_THREAD_ID</td>
-      <td>线程ID</td>
-    </tr>
-    <tr>
-      <td>REQUESTING_EVENT_ID</td>
-      <td>事件ID</td>
-    </tr>
-    <tr>
-      <td>REQUESTING_OBJECT_INSTANCE_BEGIN</td>
-      <td>锁的内存空间起始地址</td>
-    </tr>
-    <tr>
-      <td>BLOCKING_ENGINE_LOCK_ID</td>
-      <td>等待释放的锁ID</td>
-    </tr>
-    <tr>
-      <td>BLOCKING_ENGINE_TRANSACTION_ID</td>
-      <td>等待结束的事务ID</td>
-    </tr>
-    <tr>
-      <td>BLOCKING_THREAD_ID</td>
-      <td>等待结束的线程ID</td>
-    </tr>
-    <tr>
-      <td>BLOCKING_EVENT_ID</td>
-      <td>等待结束的事件ID</td>
-    </tr>
-    <tr>
-      <td>BLOCKING_OBJECT_INSTANCE_BEGIN</td>
-      <td>等待结束的锁的内存空间起始地址</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>例如:</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_lock_waits</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
-<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-                          <span class="n">ENGINE</span><span class="p">:</span> <span class="n">INNODB</span>
-       <span class="n">REQUESTING_ENGINE_LOCK_ID</span><span class="p">:</span> <span class="mi">140678484647376</span><span class="p">:</span><span class="mi">532</span><span class="p">:</span><span class="mi">4</span><span class="p">:</span><span class="mi">2</span><span class="p">:</span><span class="mi">140678365511992</span>
-<span class="n">REQUESTING_ENGINE_TRANSACTION_ID</span><span class="p">:</span> <span class="mi">635403</span>
-            <span class="n">REQUESTING_THREAD_ID</span><span class="p">:</span> <span class="mi">48</span>
-             <span class="n">REQUESTING_EVENT_ID</span><span class="p">:</span> <span class="mi">15</span>
-<span class="n">REQUESTING_OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140678365511992</span>
-         <span class="n">BLOCKING_ENGINE_LOCK_ID</span><span class="p">:</span> <span class="mi">140678484646504</span><span class="p">:</span><span class="mi">532</span><span class="p">:</span><span class="mi">4</span><span class="p">:</span><span class="mi">2</span><span class="p">:</span><span class="mi">140678365506120</span>
-  <span class="cm">/*等待ID为635400的事务释放锁*/</span>
-  <span class="n">BLOCKING_ENGINE_TRANSACTION_ID</span><span class="p">:</span> <span class="mi">635400</span>
-              <span class="n">BLOCKING_THREAD_ID</span><span class="p">:</span> <span class="mi">47</span>
-               <span class="n">BLOCKING_EVENT_ID</span><span class="p">:</span> <span class="mi">12</span>
-  <span class="n">BLOCKING_OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140678365506120</span>
-</code></pre></div></div>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/data_lock_waits.png" alt="" /></p>
-
-<h4 id="3-innodb存储引擎行锁算法">3. InnoDB存储引擎行锁算法</h4>
-
-<p>InnoDB存储引擎存在3种行锁算法，分别为:</p>
-
-<ul>
-  <li>Record Lock: 单个行记录上的锁</li>
-  <li>Gap Lock: 间隙锁，锁定一个范围，单不包含记录本身</li>
-  <li>Next-Key Lock: Record Lock+Gap Lock，锁定一个范围，并且锁定记录本身</li>
-</ul>
-
-<p>Record Lock表示单个行记录上的锁，这非常好理解，例如我们<code class="highlighter-rouge">update</code>一条或多条数据时，事务会为这一条或者多条数据均添加X锁。当使用主键ID进行更新时，记录仅包含聚簇索引行记录。当使用辅助索引进行更新时，将会锁住聚簇索引记录+辅助索引记录。</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">update</span> <span class="k">user</span> <span class="k">set</span> <span class="n">status</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">where</span> <span class="n">id</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
-<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-<span class="cm">/* ...................表级别的意向排他锁，此处省略.............. */</span>
-<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-        <span class="cm">/* 省略部分非关键信息 */</span>
-        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
-          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">1</span>
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">commit</span><span class="p">;</span>
-</code></pre></div></div>
-
-<p>当使用主键ID进行一致性锁定读时，<code class="highlighter-rouge">data_locks</code>生成两条锁记录，一条为table IX，另一条为行记录的X锁，注意<code class="highlighter-rouge">LOCK_MODE</code>后面的附加声明: REC_NOT_GAP，表示当前锁的算法仅为行记录锁，非间隙锁。</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">update</span> <span class="k">user</span> <span class="k">set</span> <span class="n">status</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">where</span> <span class="n">user_id</span> <span class="o">=</span> <span class="nv">"174269548"</span><span class="p">;</span>
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
-<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-<span class="cm">/* ...................表级别的意向排他锁，此处省略.............. */</span>
-<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
-          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="n">user_id_2</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="s1">'174269548'</span><span class="p">,</span> <span class="mi">1</span>
-<span class="o">***************************</span> <span class="mi">3</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
-          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
-<span class="n">OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140678365506464</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">1</span>
-</code></pre></div></div>
-
-<p>而使用辅助索引进行一致性锁定读时，除了table IX以及聚簇索引的X锁以外，还会有额外的辅助索引X锁，<code class="highlighter-rouge">LOCK_MODE</code>同样备注了非间隙锁的标识。</p>
-
-<p>间隙锁的存在主要是为了解决幻读问题，幻读是指当某事务读取一定范围内的数据时，其余事务在该范围内插入了一条或多条数据，或者删除了一条或多条数据，导致前一个事务读取的数据条数发生改变，如同出现幻觉，所以称为幻读。</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="k">user</span> <span class="k">where</span> <span class="n">id</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="k">for</span> <span class="k">update</span><span class="p">;</span>
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
-<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-<span class="cm">/* ...................表级别的意向排他锁，此处省略.............. */</span>
-<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
-          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
-<span class="n">OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140678365506120</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="n">supremum</span> <span class="n">pseudo</span><span class="o">-</span><span class="n">record</span>
-<span class="o">***************************</span> <span class="mi">3</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-        <span class="n">OBJECT_SCHEMA</span><span class="p">:</span> <span class="n">Mario</span>
-          <span class="n">OBJECT_NAME</span><span class="p">:</span> <span class="k">user</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
-<span class="n">OBJECT_INSTANCE_BEGIN</span><span class="p">:</span> <span class="mi">140678365506120</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">3</span>
-</code></pre></div></div>
-
-<p>当我们对某一个范围使用一致性锁定读时，就可以看到间隙锁的产生。<code class="highlighter-rouge">LOCK_MODE</code>仅为X时，就表示当前锁添加了间隙锁。并且在<code class="highlighter-rouge">LOCK_DATA</code>有supremum pseudo-record的解释说明，该说明表示MySQL决定锁定最大间隙范围。在本例中，为id大于2的所有数据，故另一个事务执行:</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">insert</span> <span class="k">into</span> <span class="k">user</span><span class="p">(</span><span class="n">id</span><span class="p">,</span> <span class="n">nickname</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">mobile</span><span class="p">,</span> <span class="n">mobile_area</span><span class="p">,</span> <span class="n">gender</span><span class="p">,</span> <span class="n">avatar</span><span class="p">,</span> <span class="n">account_id</span><span class="p">,</span> <span class="n">status</span><span class="p">)</span> <span class="k">values</span><span class="p">(</span><span class="mi">9999</span><span class="p">,</span> <span class="nv">"jojo"</span><span class="p">,</span> <span class="nv">"passwd"</span><span class="p">,</span> <span class="nv">"147523659"</span><span class="p">,</span> <span class="nv">"13555555555"</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="nv">"https://jojo.com"</span><span class="p">,</span> <span class="nv">"1753681429"</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
-</code></pre></div></div>
-
-<p>将会被阻塞，直至前一个事务释放间隙锁或者当前事务锁等待超时。</p>
-
-<p>在理解了间隙锁以后，Next-Key Lock就很容易理解了，锁定一个记录+一个范围。上面例子均有一个特点，就是不管是主键ID，还是user_id，它们都具有unique约束，而对于非唯一的辅助索引而言，即使是精确查询并加锁，也会添加Gap Lock，此时就是Next-Key Lock。</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">begin</span><span class="p">;</span>
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="k">user</span> <span class="k">where</span> <span class="n">updated_at</span> <span class="o">=</span> <span class="nv">"2020-01-23 21:32:52"</span> <span class="k">for</span> <span class="k">update</span><span class="p">;</span>
-<span class="cm">/*此时DB中仅存在一条数据更新时间为"2020-01-23 21:32:52"*/</span>
-<span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">data_locks</span><span class="err">\</span><span class="k">G</span><span class="p">;</span>
-<span class="o">***************************</span> <span class="mi">1</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-<span class="cm">/* ...................表级别的意向排他锁，此处省略.............. */</span>
-<span class="o">***************************</span> <span class="mi">2</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="n">updated_at</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="n">supremum</span> <span class="n">pseudo</span><span class="o">-</span><span class="n">record</span>
-<span class="o">***************************</span> <span class="mi">3</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="n">updated_at</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">0</span><span class="n">x99A56F5834</span><span class="p">,</span> <span class="mi">1</span>
-<span class="o">***************************</span> <span class="mi">4</span><span class="p">.</span> <span class="k">row</span> <span class="o">***************************</span>
-           <span class="n">INDEX_NAME</span><span class="p">:</span> <span class="k">PRIMARY</span>
-            <span class="n">LOCK_TYPE</span><span class="p">:</span> <span class="n">RECORD</span>
-            <span class="n">LOCK_MODE</span><span class="p">:</span> <span class="n">X</span><span class="p">,</span><span class="n">REC_NOT_GAP</span>
-          <span class="n">LOCK_STATUS</span><span class="p">:</span> <span class="k">GRANTED</span>
-            <span class="n">LOCK_DATA</span><span class="p">:</span> <span class="mi">1</span>
-</code></pre></div></div>
-
-<p><code class="highlighter-rouge">updated_at</code>字段仅添加了普通索引，并且值为”2020-01-23 21:32:52”的记录主键ID为1，从<code class="highlighter-rouge">data_locks</code>的最后一条记录也可以看出。在该表的第二行和第三行中分别添加了间隙锁，第三行的<code class="highlighter-rouge">LOCK_DATA</code>字段值为16进制数+主键ID。</p>
-
-<p>此外，<strong>需要尤为注意的是，<code class="highlighter-rouge">READ COMMITTED</code>事务隔离级别下，将不会有间隙锁的添加</strong>。在文章<a href="https://smartkeyerror.com/django-concurrent-data-process">Django处理数据并发问题</a>中描述了使用Django默认的<code class="highlighter-rouge">READ COMMITTED</code>事务隔离级别所带来的问题。</p>
-
-<h4 id="4-自增长与锁">4. 自增长与锁</h4>
-
-<p>自增长在数据库中是非常常见的属性，MySQL提供<code class="highlighter-rouge">AUTO_INCREMENT</code>属性使得列可具备自增长的功能。在InnoDB存储引擎内存结构中，对每个含有自增长值的表都有一个自增长计数器。</p>
-
-<p>最初自增长是采用特殊的表锁实现，称为AUTO_INC Locking，为了提高插入的性能，锁并不是在事务结束时才释放，而是在完成对自增长值插入的SQL语句后立即释放。虽然AUTO_INC Locking从一定程度上提高了并发插入的效率，但是仍存在性能问题: 事务必须等待前一个事务插入语句的结束。所以，后续就有了轻量级的互斥量自增长实现。</p>
-
-<p>互斥量的实现就是文章最开头所说的Latch，由硬件协助实现。该实现方式只有在确定所插入的行数时才会使用，否则，将仍然使用AUTO_INC Locking。</p>
-
-<h4 id="5-metadata-lock">5. Metadata Lock</h4>
-
-<p>Metadata Lock，又称为MDL，相较于行锁和表锁，其范围更广，对象包括数据库、表、行以及触发器和外键等，与InnoDB其它锁一样，在事务开始时获取，事务结束时释放，其设计目的在于保证在事务执行过程中表的结构不会被修改。</p>
-
-<p>通常来讲，只有在修改表结构的时候我们才会直接地与MDL打交道，例如向某张表添加一列，或者删除某一列。在DML执行非常频繁的应用中，当我们执行ALTER TABLE table ADD column时，很有可能出现整个MySQL挂掉的情况，其原因就在于表结构修改语句获取MDL时阻塞，导致后续对该表的查询、修改和删除等语句阻塞。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/jojo/system-design/mysql/lock/MDL.png" alt="" /></p>
-
-<p>session A与session B会向表user添加只读MDL，而session C想要申请可写的MDL，由于前面两个事务均为提交，故只能阻塞。此时由于session C写锁的申请，导致session D以及后续的所有DML操作均会被阻塞，简单来说，此时表user不可读写。</p>
-
-<p>如果user表中的读写非常频繁，将会导致大量的查询或更新语句阻塞，且状态均为<code class="highlighter-rouge">waiting for metadata lock</code>。此时若客户端存在超时重试机制，那么会导致大量新的会话建立，最后达到MySQL线程数量的限制，导致整个DB不可用。</p>
-
-<p>在MySQL 5.6版本以上支持Online DDL，其过程如下:</p>
-<ul>
-  <li>ALTER TABLE table ADD column语句获取MDL写锁</li>
-  <li>获取成功后，将其降级为MDL读锁</li>
-  <li>执行真正的DDL操作，如添加、删除列，期间可以执行DML语句</li>
-  <li>升级MDL读锁为写锁</li>
-  <li>释放MDL写锁，整个DDL过程结束</li>
-</ul>
-
-<p>真正导致数据库不可读写的步骤为1、4，第3步为实际运行时间最长的步骤，不会影响表的读写操作，只要内存和磁盘容量足够，数据量再多也灭有关系。所以，DDL的关键影响因素不在于数据量，而是在于数据读写的QPS。这也是为什么表结构修改操作要放到月黑风高的凌晨进行操作的原因: 那时候访问量最少，而不是数据量最少。</p>
-
-<p>在更改表结构时造成大面积读写操作阻塞的另一个原因就是长事务，即长时间运行的事务。即使QPS非常小，但是系统中存在长事务，同样会造成DDL语句获取写锁阻塞，从而阻塞后续的读写语句。</p>
-
-<h4 id="6-reference">6. Reference</h4>
-
-<ul>
-  <li>https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_latch</li>
-  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-trx-table.html</li>
-  <li>https://dev.mysql.com/doc/refman/8.0/en/data-locks-table.html</li>
-  <li>https://dev.mysql.com/doc/refman/8.0/en/data-lock-waits-table.html</li>
-</ul>
 
 	  ]]></description>
 	</item>
