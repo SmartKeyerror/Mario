@@ -12,6 +12,130 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>Kubernetes-Informer</title>
+	  <link>//Kubernetes-Informer</link>
+	  <author></author>
+	  <pubDate>2020-08-26T07:50:25+00:00</pubDate>
+	  <guid>//Kubernetes-Informer</guid>
+	  <description><![CDATA[
+	     <p>Kubernetes 声明式API的核心就在于用户提交的YAML文件表示期望状态，Kubernetes 需要根据该期望状态与集群实际状态进行对比，并根据对比的结果作出相应的操作。期望状态由 APIServer 保存在 Etcd 中，Kubernetes 对资源进行调谐时，是否均需要通过 APIServer 查询 Etcd 来获取期望状态呢?</p>
+
+<!---more--->
+
+<h3 id="1-listandwatch机制">1. ListAndWatch机制</h3>
+
+<p>在 Kubernetes 中，集群的状态、用户提交的YAML文件均保存在Etcd数据库中，而获取这些数据的唯一方法就是通过 APIServer。APIServer 与 Etcd 通过 RPC 进行通信，对外则暴露需要鉴权的 REST API 接口，用户可通过这些API接口间接地获取集群状态。例如<code class="highlighter-rouge">kubectl</code>工具就是通过封装 APIServer 的 REST API 进行工作的。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Kubernetes/Informer/client-apiserver-etcd-communicate.png" alt="" /></p>
+
+<p>除了通用的<code class="highlighter-rouge">GET</code>、<code class="highlighter-rouge">POST</code>的API以外，APIServer 还提供了可用于持续监听的 Watch API。顾名思义，Watch API 本质上就是一种 APIServer 主动向客户端推送 Kubernetes 资源修改、创建的一种机制，默认采用 HTTP/1.1 的分块传输实现，同时也可以使用 websocket 协议进行信息接收。</p>
+
+<p>以获取Pod事件为例，通过调用<code class="highlighter-rouge">/api/v1/watch/namespaces/{namespace}/pods?watch=yes</code>可使得客户端与 APIServer 建立HTTP长连接，每当集群中出现了 Pod 的相关事件(创建、更新等)，APIServer 将会通过该连接将对应的事件推送至客户端。实际上，Watch API 就是一种增量更新，如同MySQL主从复制中的Binlog数据传输。</p>
+
+<p>当然，在进行资源的增量更新之前，首先要获取到当前集群中资源的存量信息，可通过 List API 获得: <code class="highlighter-rouge">/api/v1/namespaces/{namespace}/pods</code>。通过 List API 获取集群当前某资源的全部信息，以及通过 Watch API 获取资源的增量信息，在 Kubernetes 中称为 ListAndWatch 机制，是 APIServer 的核心机制之一。</p>
+
+<blockquote>
+  <p>关于kubernetes-api的更多信息可查看官网:
+https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#-strong-api-overview-strong-</p>
+</blockquote>
+
+<h3 id="2-informer工作原理">2. Informer工作原理</h3>
+
+<p>既然客户端可以使用 ListAndWatch 机制来实时地同步 Kubernetes 中某类资源的状态，那么在 Kubernetes 内部，同样可以使用该机制从 APIServer 中接收资源的变化，从而建立本地缓存减轻 APIServer 与 Etcd 的负载，并且实现 Kubernetes 中的控制器模式。该内部组件称之为 Informer，中文译为通知器。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Kubernetes/Informer/informer.png?" alt="" /></p>
+
+<p>首先，Reflector 包会和 APIServer 建立长连接，并使用 ListAndWatch 方法获取并监听某一个资源的变化。List 方法将会获取某个资源的所有实例(如ReplicaSet、Deployment等)，Watch 方法则监听资源对象的创建、更新以及删除事件，获取到的事件称之为一个增量(Delta)，该增量会被放进一个称之为 Delta FIFO Queue，即增量先进先出队列中。</p>
+
+<p>而后，Informer会不断的从 Delta FIFO Queue 中 pop 增量事件，并根据事件的类型来决定新增、更新或者是删除本地缓存，也就是 Local Key-Value Sotrage。<strong>根据集群中某资源的事件来更新本地缓存是Informer的第一个职责，同时也是最重要的职责。</strong></p>
+
+<p>Informer 的另外一个职责就是根据事件类型来触发事先注册好的 Event Handler。在回调函数中通常只会做一些简单的过滤处理，然后将该事件丢到 Work Queue 这个工作队列中。工作队列的主要作用就是平衡 Informer 和 Controller 之间的速度差，避免 Controller 处理速度过慢而影响 Informer 的工作。</p>
+
+<p>接下来就是 Controller 的表演时间了，也就是上图中的 Processer。控制器从 Work Queue 中取出一个事件并根据自身的业务逻辑对其进行处理，不同的控制器会有不同的处理逻辑。如 ReplicSet 控制器在收到某一个 Pod 被删除的事件时将会重新创建一个 Pod，以保证 Pod 的数量。</p>
+
+<h3 id="3-informer代码编写流程">3. Informer代码编写流程</h3>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span><span class="x"> </span><span class="n">main</span><span class="x">
+
+</span><span class="k">import</span><span class="x"> </span><span class="p">(</span><span class="x">
+	</span><span class="s">"log"</span><span class="x">
+
+	</span><span class="n">v1</span><span class="x"> </span><span class="s">"k8s.io/api/core/v1"</span><span class="x">
+	</span><span class="s">"k8s.io/apimachinery/pkg/labels"</span><span class="x">
+	</span><span class="s">"k8s.io/client-go/informers"</span><span class="x">
+	</span><span class="s">"k8s.io/client-go/kubernetes"</span><span class="x">
+	</span><span class="s">"k8s.io/client-go/tools/cache"</span><span class="x">
+	</span><span class="s">"k8s.io/client-go/tools/clientcmd"</span><span class="x">
+</span><span class="p">)</span><span class="x">
+
+</span><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
+	</span><span class="c">// 简单起见硬编码相关配置</span><span class="x">
+	</span><span class="n">configPath</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="s">"/home/smartkeyerror/.kube/config"</span><span class="x">
+	</span><span class="n">masterURL</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="s">"https://10.39.35.19:6443"</span><span class="x">
+
+	</span><span class="c">// 初始化config</span><span class="x">
+	</span><span class="n">config</span><span class="p">,</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">clientcmd</span><span class="o">.</span><span class="n">BuildConfigFromFlags</span><span class="p">(</span><span class="n">masterURL</span><span class="p">,</span><span class="x"> </span><span class="n">configPath</span><span class="p">)</span><span class="x">
+	</span><span class="k">if</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">!=</span><span class="x"> </span><span class="no">nil</span><span class="x"> </span><span class="p">{</span><span class="x">
+		</span><span class="nb">panic</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="x">
+	</span><span class="p">}</span><span class="x">
+
+	</span><span class="c">// 初始化client</span><span class="x">
+	</span><span class="n">kubeClient</span><span class="p">,</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">kubernetes</span><span class="o">.</span><span class="n">NewForConfig</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="x">
+	</span><span class="k">if</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">!=</span><span class="x"> </span><span class="no">nil</span><span class="x"> </span><span class="p">{</span><span class="x">
+		</span><span class="nb">panic</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="x">
+	</span><span class="p">}</span><span class="x">
+
+	</span><span class="c">// 获取工厂实例, 通过这个工厂实例可获取到所有资源的 Informer</span><span class="x">
+	</span><span class="n">factory</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">informers</span><span class="o">.</span><span class="n">NewSharedInformerFactory</span><span class="p">(</span><span class="n">kubeClient</span><span class="p">,</span><span class="x"> </span><span class="m">0</span><span class="p">)</span><span class="x">
+	</span><span class="c">// 创建Pod Informer</span><span class="x">
+	</span><span class="n">podInformer</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">factory</span><span class="o">.</span><span class="n">Core</span><span class="p">()</span><span class="o">.</span><span class="n">V1</span><span class="p">()</span><span class="o">.</span><span class="n">Pods</span><span class="p">()</span><span class="x">
+	</span><span class="n">informer</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">podInformer</span><span class="o">.</span><span class="n">Informer</span><span class="p">()</span><span class="x">
+
+	</span><span class="n">stopCh</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="nb">make</span><span class="p">(</span><span class="k">chan</span><span class="x"> </span><span class="k">struct</span><span class="p">{})</span><span class="x">
+	</span><span class="k">defer</span><span class="x"> </span><span class="nb">close</span><span class="p">(</span><span class="n">stopCh</span><span class="p">)</span><span class="x">
+	</span><span class="k">go</span><span class="x"> </span><span class="n">factory</span><span class="o">.</span><span class="n">Start</span><span class="p">(</span><span class="n">stopCh</span><span class="p">)</span><span class="x">
+
+	</span><span class="k">if</span><span class="x"> </span><span class="o">!</span><span class="n">cache</span><span class="o">.</span><span class="n">WaitForCacheSync</span><span class="p">(</span><span class="n">stopCh</span><span class="p">,</span><span class="x"> </span><span class="n">informer</span><span class="o">.</span><span class="n">HasSynced</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="x">
+		</span><span class="n">log</span><span class="o">.</span><span class="n">Fatal</span><span class="p">(</span><span class="s">"sync failed"</span><span class="p">)</span><span class="x">
+	</span><span class="p">}</span><span class="x">
+
+	</span><span class="c">// 注册定义处理函数(偷懒, 不使用队列, 直接print)</span><span class="x">
+	</span><span class="n">informer</span><span class="o">.</span><span class="n">AddEventHandler</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">ResourceEventHandlerFuncs</span><span class="p">{</span><span class="x">
+		</span><span class="n">AddFunc</span><span class="o">:</span><span class="x"> </span><span class="k">func</span><span class="p">(</span><span class="n">obj</span><span class="x"> </span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="x">
+			</span><span class="n">pod</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">obj</span><span class="o">.</span><span class="p">(</span><span class="o">*</span><span class="n">v1</span><span class="o">.</span><span class="n">Pod</span><span class="p">)</span><span class="x">
+			</span><span class="n">log</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"Get a pod:"</span><span class="p">,</span><span class="x"> </span><span class="n">pod</span><span class="o">.</span><span class="n">Name</span><span class="p">)</span><span class="x">
+		</span><span class="p">},</span><span class="x">
+		</span><span class="n">UpdateFunc</span><span class="o">:</span><span class="x"> </span><span class="k">func</span><span class="p">(</span><span class="n">oldObj</span><span class="p">,</span><span class="x"> </span><span class="n">newObj</span><span class="x"> </span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="n">log</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"update pod"</span><span class="p">)},</span><span class="x">
+		</span><span class="n">DeleteFunc</span><span class="o">:</span><span class="x"> </span><span class="k">func</span><span class="p">(</span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="n">log</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"delete pod"</span><span class="p">)},</span><span class="x">
+	</span><span class="p">})</span><span class="x">
+
+	</span><span class="c">// 创建Lister</span><span class="x">
+	</span><span class="n">podLister</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">podInformer</span><span class="o">.</span><span class="n">Lister</span><span class="p">()</span><span class="x">
+	</span><span class="c">// 获取所有标签的pod</span><span class="x">
+	</span><span class="n">podList</span><span class="p">,</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">podLister</span><span class="o">.</span><span class="n">List</span><span class="p">(</span><span class="n">labels</span><span class="o">.</span><span class="n">Everything</span><span class="p">())</span><span class="x">
+	</span><span class="k">if</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">!=</span><span class="x"> </span><span class="no">nil</span><span class="x"> </span><span class="p">{</span><span class="x">
+		</span><span class="n">log</span><span class="o">.</span><span class="n">Fatal</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="x">
+	</span><span class="p">}</span><span class="x">
+	</span><span class="n">log</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="n">podList</span><span class="p">)</span><span class="x">
+
+	</span><span class="o">&lt;-</span><span class="x"> </span><span class="n">stopCh</span><span class="x">
+</span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
+
+<p>这是一个最简单的使用 Informer 的代码示例，其作用就是通过<code class="highlighter-rouge">List</code>方法打印出当前集群中所有的 Pod，以及在创建、删除和更新 Pod 资源时打印出相关的信息。</p>
+
+<p>首先我们通过集群的地址以及<code class="highlighter-rouge">config</code>认证文件生成一个基本的<code class="highlighter-rouge">config</code>对象，并且根据该对象初始化了一个<code class="highlighter-rouge">kubeClient</code>对象，然后使用<code class="highlighter-rouge">kubeClient</code>创建了一个工厂实例。这个工厂实例中包含了 Kubernetes 中所有资源的 Informer，例如 Pod，Node，Network，RBAC等等。</p>
+
+<p>剩下的代码内容就是按照上述的原理图按部就班的编写和执行了。实际上，对上述代码进行稍加改造即可以得到一个自定义控制器(CRD)的简易版本。控制器模式本质上就是用户期望状态和集群实际状态之间的对比、调谐，使得集群实际状态在某个时刻之后与用户期望状态一致，保存在 Informer 本地缓存的资源状态，其实就是用户的期望状态。</p>
+
+<h3 id="4-小结">4. 小结</h3>
+
+<p>Kubernetes 可以说是一个由事件驱动的分布式对象管理中心，而 Informer 则正是提供驱动事件的发动机。从设计模式的角度来看，Informer 本质上就是一个观察者，Controller 和本地缓存就是基于该观察者所观察的结果进行相应的处理。</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>Python虚拟机</title>
 	  <link>//Python-Virtual-Machine</link>
 	  <author></author>
@@ -1690,67 +1814,6 @@ binlog_group_commit_sync_no_delay_count
 </code></pre></div></div>
 
 <p>这两个参数为”或”关系，即只要满足一个条件，就会调用<code class="highlighter-rouge">fsync()</code>。当磁盘IO出现性能瓶颈时，可根据实际负载来设置该值，从而降低磁盘IO负载，代价是会增加事务的响应时间。</p>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>Linux主机通过Windows虚拟机转发Easyconnect内网请求</title>
-	  <link>//Linux-Use-EasyConnect</link>
-	  <author></author>
-	  <pubDate>2020-02-27T12:06:25+00:00</pubDate>
-	  <guid>//Linux-Use-EasyConnect</guid>
-	  <description><![CDATA[
-	     <p>世界上有个恶心的公司叫Sangfor，开发出了恶心的工具EasyConnect，本来这东西都是给在校的学生用的，好不好用都无所谓。但是很多公司也开始使用这个来访问内网，并且还不支持Linux(反正到目前Ubuntu下的64bit版本连接就没成功过)，这就很令人讨厌了。回想起Ubuntu下使用Wine安装微信的种种难受，决定还是使用Windows虚拟机开启EasyConnect，并把部分的Linux流量打进虚拟机。</p>
-
-<!---more--->
-
-<h4 id="1-虚拟机配置">1. 虚拟机配置</h4>
-<p>虚拟机需要两块网卡，其中一块必须是Host-only类型的，用来和Linux主机通信，这块儿网卡是内网流量的入口，所以必须配置。另一块可以是NAT，也可以是Bridge，随个人喜好。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/VMware-Network-Config.png" alt="" /></p>
-
-<h4 id="2-windows虚拟机网络配置">2. Windows虚拟机网络配置</h4>
-
-<p>进到Windows虚拟机以后，打开网络适配器设置，这时候可以看到两张网卡: Ethernet0和Ethernet1，找到Host-only那张网卡，并修改其名称为<code class="highlighter-rouge">Host</code>，起一个有意义的名称对后面的操作非常有帮助。如果不确定哪张网卡是Host-only的话，可以对比网卡的MAC地址和虚拟机网络配置中的MAC地址。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/Ethernet.png" alt="" /></p>
-
-<p>开启EasyConnect，并建立与内网的连接，此时会多出一张名为”以太网”的网卡，这张网卡的IP地址子网掩码什么的都可以不用管，就是张工具卡。设置该网络的共享属性，和前面建立的Host-only网卡建立共享。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/share-with-host-only.png" alt="" /></p>
-
-<p>设置完成以后会发现Host-only那张网卡的IP地址被强制更改成了192.168.137.1，改了就改了吧，也不是不能用。</p>
-
-<p>并关闭Windows的公用网络防火墙，不然数据包会被防火墙拦截。</p>
-
-<h4 id="3-设置linux路由规则">3. 设置Linux路由规则</h4>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>ip a add 192.168.137.2/24 dev vmnet1
-<span class="nb">sudo </span>ip r add 10.0.0.0/8 via 192.168.137.1
-</code></pre></div></div>
-
-<p>给vmnet1，也就是Host-only网卡添加一个和192.168.137.2相同IP地址段的IP地址，使Linux能够建立正常的路由转发规则，否则Linux主机根本就不知道192.168.137.1这个IP地址是谁的。然后将所有的内网(10.0.0.0/8)请求都通过192.168.137.1走Windows的内网网络。</p>
-
-<h4 id="4-windows安装ccproxy">4. Windows安装CCProxy</h4>
-
-<p>对于某些需要域名解析的HTTP请求，又不想用dnsmasq去自己解析DNS，就可以直接用该工具进行转发，下载、安装和使用傻瓜式操作，完美，非常适合我这种智商不高的人。</p>
-
-<p>安装完成以后设置下本机局域网IP地址，选择NAT或者是Bridge的那张网卡即可:</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/CCProxy.png" alt="" /></p>
-
-<p>由于我的Chrome用了SwitchOmega，并不想牺牲某些便利，所以使用Firefox进行代理设置，内网的HTTP请求以后就用Firefox发送，流量使用分明，代理配置也尽量分开。</p>
-
-<p>Firefox中输入<code class="highlighter-rouge">about:preferences</code>，拉到最底下，选择Network Settings，就可以进行代理设置了。</p>
-
-<p>CCProxy的HTTP协议默认端口为808，IP地址则是NAT或者Bridge网卡的IP地址，进行配置即可:</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/tool/proxy/Firefox-Config.png" alt="" /></p>
-
-<p>需要注意的是FTP端口为2121，SOCKS端口为1080，因为我不需要这两个协议，所以并没有配置。</p>
-
-<p>完)</p>
 
 	  ]]></description>
 	</item>

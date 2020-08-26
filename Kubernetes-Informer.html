@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>Kubernetes-Informer</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+<!--    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">-->
+<!--    <style>.hljs { background: none; }</style>-->
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//Kubernetes-Informer" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Kubernetes-Informer" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//Kubernetes-Informer" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kubernetes-Informer" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//Kubernetes-Informer" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "Kubernetes-Informer",
+    "url": "https://smartkeyerror.com//Kubernetes-Informer",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">Kubernetes-Informer</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2020-08-26">26 Aug 2020</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/Kubernetes'>Kubernetes</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>Kubernetes 声明式API的核心就在于用户提交的YAML文件表示期望状态，Kubernetes 需要根据该期望状态与集群实际状态进行对比，并根据对比的结果作出相应的操作。期望状态由 APIServer 保存在 Etcd 中，Kubernetes 对资源进行调谐时，是否均需要通过 APIServer 查询 Etcd 来获取期望状态呢?</p>
+
+<!---more--->
+
+<h3 id="1-listandwatch机制">1. ListAndWatch机制</h3>
+
+<p>在 Kubernetes 中，集群的状态、用户提交的YAML文件均保存在Etcd数据库中，而获取这些数据的唯一方法就是通过 APIServer。APIServer 与 Etcd 通过 RPC 进行通信，对外则暴露需要鉴权的 REST API 接口，用户可通过这些API接口间接地获取集群状态。例如<code class="highlighter-rouge">kubectl</code>工具就是通过封装 APIServer 的 REST API 进行工作的。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Kubernetes/Informer/client-apiserver-etcd-communicate.png" alt="" /></p>
+
+<p>除了通用的<code class="highlighter-rouge">GET</code>、<code class="highlighter-rouge">POST</code>的API以外，APIServer 还提供了可用于持续监听的 Watch API。顾名思义，Watch API 本质上就是一种 APIServer 主动向客户端推送 Kubernetes 资源修改、创建的一种机制，默认采用 HTTP/1.1 的分块传输实现，同时也可以使用 websocket 协议进行信息接收。</p>
+
+<p>以获取Pod事件为例，通过调用<code class="highlighter-rouge">/api/v1/watch/namespaces/{namespace}/pods?watch=yes</code>可使得客户端与 APIServer 建立HTTP长连接，每当集群中出现了 Pod 的相关事件(创建、更新等)，APIServer 将会通过该连接将对应的事件推送至客户端。实际上，Watch API 就是一种增量更新，如同MySQL主从复制中的Binlog数据传输。</p>
+
+<p>当然，在进行资源的增量更新之前，首先要获取到当前集群中资源的存量信息，可通过 List API 获得: <code class="highlighter-rouge">/api/v1/namespaces/{namespace}/pods</code>。通过 List API 获取集群当前某资源的全部信息，以及通过 Watch API 获取资源的增量信息，在 Kubernetes 中称为 ListAndWatch 机制，是 APIServer 的核心机制之一。</p>
+
+<blockquote>
+  <p>关于kubernetes-api的更多信息可查看官网:
+https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#-strong-api-overview-strong-</p>
+</blockquote>
+
+<h3 id="2-informer工作原理">2. Informer工作原理</h3>
+
+<p>既然客户端可以使用 ListAndWatch 机制来实时地同步 Kubernetes 中某类资源的状态，那么在 Kubernetes 内部，同样可以使用该机制从 APIServer 中接收资源的变化，从而建立本地缓存减轻 APIServer 与 Etcd 的负载，并且实现 Kubernetes 中的控制器模式。该内部组件称之为 Informer，中文译为通知器。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Kubernetes/Informer/informer.png?" alt="" /></p>
+
+<p>首先，Reflector 包会和 APIServer 建立长连接，并使用 ListAndWatch 方法获取并监听某一个资源的变化。List 方法将会获取某个资源的所有实例(如ReplicaSet、Deployment等)，Watch 方法则监听资源对象的创建、更新以及删除事件，获取到的事件称之为一个增量(Delta)，该增量会被放进一个称之为 Delta FIFO Queue，即增量先进先出队列中。</p>
+
+<p>而后，Informer会不断的从 Delta FIFO Queue 中 pop 增量事件，并根据事件的类型来决定新增、更新或者是删除本地缓存，也就是 Local Key-Value Sotrage。<strong>根据集群中某资源的事件来更新本地缓存是Informer的第一个职责，同时也是最重要的职责。</strong></p>
+
+<p>Informer 的另外一个职责就是根据事件类型来触发事先注册好的 Event Handler。在回调函数中通常只会做一些简单的过滤处理，然后将该事件丢到 Work Queue 这个工作队列中。工作队列的主要作用就是平衡 Informer 和 Controller 之间的速度差，避免 Controller 处理速度过慢而影响 Informer 的工作。</p>
+
+<p>接下来就是 Controller 的表演时间了，也就是上图中的 Processer。控制器从 Work Queue 中取出一个事件并根据自身的业务逻辑对其进行处理，不同的控制器会有不同的处理逻辑。如 ReplicSet 控制器在收到某一个 Pod 被删除的事件时将会重新创建一个 Pod，以保证 Pod 的数量。</p>
+
+<h3 id="3-informer代码编写流程">3. Informer代码编写流程</h3>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span><span class="x"> </span><span class="n">main</span><span class="x">
+
+</span><span class="k">import</span><span class="x"> </span><span class="p">(</span><span class="x">
+	</span><span class="s">"log"</span><span class="x">
+
+	</span><span class="n">v1</span><span class="x"> </span><span class="s">"k8s.io/api/core/v1"</span><span class="x">
+	</span><span class="s">"k8s.io/apimachinery/pkg/labels"</span><span class="x">
+	</span><span class="s">"k8s.io/client-go/informers"</span><span class="x">
+	</span><span class="s">"k8s.io/client-go/kubernetes"</span><span class="x">
+	</span><span class="s">"k8s.io/client-go/tools/cache"</span><span class="x">
+	</span><span class="s">"k8s.io/client-go/tools/clientcmd"</span><span class="x">
+</span><span class="p">)</span><span class="x">
+
+</span><span class="k">func</span><span class="x"> </span><span class="n">main</span><span class="p">()</span><span class="x"> </span><span class="p">{</span><span class="x">
+	</span><span class="c">// 简单起见硬编码相关配置</span><span class="x">
+	</span><span class="n">configPath</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="s">"/home/smartkeyerror/.kube/config"</span><span class="x">
+	</span><span class="n">masterURL</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="s">"https://10.39.35.19:6443"</span><span class="x">
+
+	</span><span class="c">// 初始化config</span><span class="x">
+	</span><span class="n">config</span><span class="p">,</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">clientcmd</span><span class="o">.</span><span class="n">BuildConfigFromFlags</span><span class="p">(</span><span class="n">masterURL</span><span class="p">,</span><span class="x"> </span><span class="n">configPath</span><span class="p">)</span><span class="x">
+	</span><span class="k">if</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">!=</span><span class="x"> </span><span class="no">nil</span><span class="x"> </span><span class="p">{</span><span class="x">
+		</span><span class="nb">panic</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="x">
+	</span><span class="p">}</span><span class="x">
+
+	</span><span class="c">// 初始化client</span><span class="x">
+	</span><span class="n">kubeClient</span><span class="p">,</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">kubernetes</span><span class="o">.</span><span class="n">NewForConfig</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="x">
+	</span><span class="k">if</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">!=</span><span class="x"> </span><span class="no">nil</span><span class="x"> </span><span class="p">{</span><span class="x">
+		</span><span class="nb">panic</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="x">
+	</span><span class="p">}</span><span class="x">
+
+	</span><span class="c">// 获取工厂实例, 通过这个工厂实例可获取到所有资源的 Informer</span><span class="x">
+	</span><span class="n">factory</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">informers</span><span class="o">.</span><span class="n">NewSharedInformerFactory</span><span class="p">(</span><span class="n">kubeClient</span><span class="p">,</span><span class="x"> </span><span class="m">0</span><span class="p">)</span><span class="x">
+	</span><span class="c">// 创建Pod Informer</span><span class="x">
+	</span><span class="n">podInformer</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">factory</span><span class="o">.</span><span class="n">Core</span><span class="p">()</span><span class="o">.</span><span class="n">V1</span><span class="p">()</span><span class="o">.</span><span class="n">Pods</span><span class="p">()</span><span class="x">
+	</span><span class="n">informer</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">podInformer</span><span class="o">.</span><span class="n">Informer</span><span class="p">()</span><span class="x">
+
+	</span><span class="n">stopCh</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="nb">make</span><span class="p">(</span><span class="k">chan</span><span class="x"> </span><span class="k">struct</span><span class="p">{})</span><span class="x">
+	</span><span class="k">defer</span><span class="x"> </span><span class="nb">close</span><span class="p">(</span><span class="n">stopCh</span><span class="p">)</span><span class="x">
+	</span><span class="k">go</span><span class="x"> </span><span class="n">factory</span><span class="o">.</span><span class="n">Start</span><span class="p">(</span><span class="n">stopCh</span><span class="p">)</span><span class="x">
+
+	</span><span class="k">if</span><span class="x"> </span><span class="o">!</span><span class="n">cache</span><span class="o">.</span><span class="n">WaitForCacheSync</span><span class="p">(</span><span class="n">stopCh</span><span class="p">,</span><span class="x"> </span><span class="n">informer</span><span class="o">.</span><span class="n">HasSynced</span><span class="p">)</span><span class="x"> </span><span class="p">{</span><span class="x">
+		</span><span class="n">log</span><span class="o">.</span><span class="n">Fatal</span><span class="p">(</span><span class="s">"sync failed"</span><span class="p">)</span><span class="x">
+	</span><span class="p">}</span><span class="x">
+
+	</span><span class="c">// 注册定义处理函数(偷懒, 不使用队列, 直接print)</span><span class="x">
+	</span><span class="n">informer</span><span class="o">.</span><span class="n">AddEventHandler</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">ResourceEventHandlerFuncs</span><span class="p">{</span><span class="x">
+		</span><span class="n">AddFunc</span><span class="o">:</span><span class="x"> </span><span class="k">func</span><span class="p">(</span><span class="n">obj</span><span class="x"> </span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="x">
+			</span><span class="n">pod</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">obj</span><span class="o">.</span><span class="p">(</span><span class="o">*</span><span class="n">v1</span><span class="o">.</span><span class="n">Pod</span><span class="p">)</span><span class="x">
+			</span><span class="n">log</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"Get a pod:"</span><span class="p">,</span><span class="x"> </span><span class="n">pod</span><span class="o">.</span><span class="n">Name</span><span class="p">)</span><span class="x">
+		</span><span class="p">},</span><span class="x">
+		</span><span class="n">UpdateFunc</span><span class="o">:</span><span class="x"> </span><span class="k">func</span><span class="p">(</span><span class="n">oldObj</span><span class="p">,</span><span class="x"> </span><span class="n">newObj</span><span class="x"> </span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="n">log</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"update pod"</span><span class="p">)},</span><span class="x">
+		</span><span class="n">DeleteFunc</span><span class="o">:</span><span class="x"> </span><span class="k">func</span><span class="p">(</span><span class="k">interface</span><span class="p">{})</span><span class="x"> </span><span class="p">{</span><span class="n">log</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="s">"delete pod"</span><span class="p">)},</span><span class="x">
+	</span><span class="p">})</span><span class="x">
+
+	</span><span class="c">// 创建Lister</span><span class="x">
+	</span><span class="n">podLister</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">podInformer</span><span class="o">.</span><span class="n">Lister</span><span class="p">()</span><span class="x">
+	</span><span class="c">// 获取所有标签的pod</span><span class="x">
+	</span><span class="n">podList</span><span class="p">,</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">podLister</span><span class="o">.</span><span class="n">List</span><span class="p">(</span><span class="n">labels</span><span class="o">.</span><span class="n">Everything</span><span class="p">())</span><span class="x">
+	</span><span class="k">if</span><span class="x"> </span><span class="n">err</span><span class="x"> </span><span class="o">!=</span><span class="x"> </span><span class="no">nil</span><span class="x"> </span><span class="p">{</span><span class="x">
+		</span><span class="n">log</span><span class="o">.</span><span class="n">Fatal</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="x">
+	</span><span class="p">}</span><span class="x">
+	</span><span class="n">log</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="n">podList</span><span class="p">)</span><span class="x">
+
+	</span><span class="o">&lt;-</span><span class="x"> </span><span class="n">stopCh</span><span class="x">
+</span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
+
+<p>这是一个最简单的使用 Informer 的代码示例，其作用就是通过<code class="highlighter-rouge">List</code>方法打印出当前集群中所有的 Pod，以及在创建、删除和更新 Pod 资源时打印出相关的信息。</p>
+
+<p>首先我们通过集群的地址以及<code class="highlighter-rouge">config</code>认证文件生成一个基本的<code class="highlighter-rouge">config</code>对象，并且根据该对象初始化了一个<code class="highlighter-rouge">kubeClient</code>对象，然后使用<code class="highlighter-rouge">kubeClient</code>创建了一个工厂实例。这个工厂实例中包含了 Kubernetes 中所有资源的 Informer，例如 Pod，Node，Network，RBAC等等。</p>
+
+<p>剩下的代码内容就是按照上述的原理图按部就班的编写和执行了。实际上，对上述代码进行稍加改造即可以得到一个自定义控制器(CRD)的简易版本。控制器模式本质上就是用户期望状态和集群实际状态之间的对比、调谐，使得集群实际状态在某个时刻之后与用户期望状态一致，保存在 Informer 本地缓存的资源状态，其实就是用户的期望状态。</p>
+
+<h3 id="4-小结">4. 小结</h3>
+
+<p>Kubernetes 可以说是一个由事件驱动的分布式对象管理中心，而 Informer 则正是提供驱动事件的发动机。从设计模式的角度来看，Informer 本质上就是一个观察者，Controller 和本地缓存就是基于该观察者所观察的结果进行相应的处理。</p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.jpg)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=Kubernetes-Informer&amp;url=https://smartkeyerror.comKubernetes-Informer"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comKubernetes-Informer"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comKubernetes-Informer"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/Python-Virtual-Machine">
+            <section class="post">
+                <h2>Python虚拟机</h2>
+                <p>我们常说Python一是门解释型语言，只需要敲下python code.py就可以运行编写的代码，而无需使用类似于javac或者gcc进行编译。那么，Python解释器是真的一行一行读取Python源代码而后执行吗? 实际上，Python在执行程序时和Java、C#一样，都是先将源码进行编译生成字节码，然后由虚拟机进行执行，只不过Python解释器把这两步合二为一了而已。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2020</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="https://cdn.bootcdn.net/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-150652886-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>
