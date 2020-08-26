@@ -7,8 +7,8 @@
 ## 归档
 
 - 2020/08/26 [Kubernetes-Informer](https://smartkeyerror.com/Kubernetes-Informer)
-- 2020-08-18 [Python虚拟机](https://smartkeyerror.com/Python-Virtual-Machine)
-- 2020-08-06 [VXLAN—构建Overlay容器网络](https://smartkeyerror.com/VXLAN)
+- 2020/08/18 [Python虚拟机](https://smartkeyerror.com/Python-Virtual-Machine)
+- 2020/08/06 [VXLAN—构建Overlay容器网络](https://smartkeyerror.com/VXLAN)
 - 2020/07/23 [浅析gRPC](https://smartkeyerror.com/gRPC)
 - 2020/07/13 [揭开Python元类(metaclass)神秘的面纱](https://smartkeyerror.com/Python-metaclass)
 - 2020/06/17 [MySQL向客户端发送数据，客户端不接收会发生什么?](https://smartkeyerror.com/MySQL-Sending-Data)
