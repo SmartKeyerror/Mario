@@ -452,7 +452,7 @@ session A与session B会向表user添加只读MDL，而session C想要申请可�
 
 #### 6. Reference
 
-- https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_latch
-- https://dev.mysql.com/doc/refman/8.0/en/innodb-trx-table.html
-- https://dev.mysql.com/doc/refman/8.0/en/data-locks-table.html
-- https://dev.mysql.com/doc/refman/8.0/en/data-lock-waits-table.html
+- [https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_latch](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_latch)
+- [https://dev.mysql.com/doc/refman/8.0/en/innodb-trx-table.html](https://dev.mysql.com/doc/refman/8.0/en/innodb-trx-table.html)
+- [https://dev.mysql.com/doc/refman/8.0/en/data-locks-table.html](https://dev.mysql.com/doc/refman/8.0/en/data-locks-table.html)
+- [https://dev.mysql.com/doc/refman/8.0/en/data-lock-waits-table.html](https://dev.mysql.com/doc/refman/8.0/en/data-lock-waits-table.html)

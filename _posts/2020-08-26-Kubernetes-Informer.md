@@ -28,7 +28,7 @@ Kubernetes 声明式API的核心就在于用户提交的YAML文件表示期望�
 当然，在进行资源的增量更新之前，首先要获取到当前集群中资源的存量信息，可通过 List API 获得: `/api/v1/namespaces/{namespace}/pods`。通过 List API 获取集群当前某资源的全部信息，以及通过 Watch API 获取资源的增量信息，在 Kubernetes 中称为 ListAndWatch 机制，是 APIServer 的核心机制之一。
 
 > 关于kubernetes-api的更多信息可查看官网:
-https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#-strong-api-overview-strong-
+[https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#-strong-api-overview-strong-](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#-strong-api-overview-strong-)
 
 ### 2. Informer工作原理
 

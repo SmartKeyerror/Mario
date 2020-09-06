@@ -240,7 +240,7 @@ Django为用户提供了两个方便的方法: `get_or_create`以及`update_or_c
 
 原文链接:
 
-> https://docs.djangoproject.com/en/2.2/ref/models/querysets/#get-or-create
+> [https://docs.djangoproject.com/en/2.2/ref/models/querysets/#get-or-create](https://docs.djangoproject.com/en/2.2/ref/models/querysets/#get-or-create)
 
 大致的意思就是当table中未包含`unique`约束时， 在并发条件下将会创建出多条重复数据。
 
@@ -250,7 +250,7 @@ Django为用户提供了两个方便的方法: `get_or_create`以及`update_or_c
 
 原文链接:
 
-> https://docs.djangoproject.com/en/2.2/ref/models/querysets/#update-or-create
+> [https://docs.djangoproject.com/en/2.2/ref/models/querysets/#update-or-create](https://docs.djangoproject.com/en/2.2/ref/models/querysets/#update-or-create)
 
 但是当我们翻看其源码时， 发现它使用了`select_for_update`方法， 即对表中数据添加了行锁。 既然如此， 为何还会创建出多条数据呢?
 
@@ -278,7 +278,7 @@ def update_or_create(self, defaults=None, **kwargs):
 
 MySQL官方对这两种隔离级别的`FOR UPDATE`悲观锁做了比较详细的解释:
 
-> https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-isolation-levels.html
+> [https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-isolation-levels.html](https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-isolation-levels.html)
 
 关键解释:
 
