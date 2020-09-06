@@ -369,7 +369,7 @@ pre {
 }
 
 pre code, pre tt {
-    font-size: inherit;
+    font-size: 15px;
     white-space: pre-wrap;
     background: transparent;
     border: none;
