@@ -15,4 +15,3 @@ script: bundle exec rake site:deploy --quiet #--trace
 #   GIT_NAME: username of github
 #   GIT_EMAIL: email address of github username
 #   GH_TOKEN: github personal access token
-
