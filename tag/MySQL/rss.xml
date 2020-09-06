@@ -1200,10 +1200,10 @@ binlog_group_commit_sync_no_delay_count
 <h4 id="6-reference">6. Reference</h4>
 
 <ul>
-  <li>https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_latch</li>
-  <li>https://dev.mysql.com/doc/refman/8.0/en/innodb-trx-table.html</li>
-  <li>https://dev.mysql.com/doc/refman/8.0/en/data-locks-table.html</li>
-  <li>https://dev.mysql.com/doc/refman/8.0/en/data-lock-waits-table.html</li>
+  <li><a href="https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_latch">https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_latch</a></li>
+  <li><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-trx-table.html">https://dev.mysql.com/doc/refman/8.0/en/innodb-trx-table.html</a></li>
+  <li><a href="https://dev.mysql.com/doc/refman/8.0/en/data-locks-table.html">https://dev.mysql.com/doc/refman/8.0/en/data-locks-table.html</a></li>
+  <li><a href="https://dev.mysql.com/doc/refman/8.0/en/data-lock-waits-table.html">https://dev.mysql.com/doc/refman/8.0/en/data-lock-waits-table.html</a></li>
 </ul>
 
 	  ]]></description>

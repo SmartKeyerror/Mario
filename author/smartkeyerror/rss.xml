@@ -36,7 +36,7 @@
 
 <blockquote>
   <p>关于kubernetes-api的更多信息可查看官网:
-https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#-strong-api-overview-strong-</p>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#-strong-api-overview-strong-">https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#-strong-api-overview-strong-</a></p>
 </blockquote>
 
 <h3 id="2-informer工作原理">2. Informer工作原理</h3>
@@ -479,8 +479,8 @@ vagrant@node-1:~<span class="nv">$ </span><span class="nb">sudo </span>ip link <
 <h3 id="reference">Reference</h3>
 
 <ul>
-  <li>https://www.kernel.org/doc/Documentation/networking/vxlan.txt</li>
-  <li>https://support.huawei.com/enterprise/zh/doc/EDOC1100087027</li>
+  <li><a href="https://www.kernel.org/doc/Documentation/networking/vxlan.txt">https://www.kernel.org/doc/Documentation/networking/vxlan.txt</a></li>
+  <li><a href="https://support.huawei.com/enterprise/zh/doc/EDOC1100087027">https://support.huawei.com/enterprise/zh/doc/EDOC1100087027</a></li>
 </ul>
 
 	  ]]></description>
@@ -822,10 +822,10 @@ Host: example.com
 <h3 id="4-reference">4. Reference</h3>
 
 <ul>
-  <li>https://hpbn.co/</li>
-  <li>https://blog.wangriyu.wang/</li>
-  <li>https://tools.ietf.org/html/rfc7540</li>
-  <li>https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn</li>
+  <li><a href="https://hpbn.co/">https://hpbn.co/</a></li>
+  <li><a href="https://blog.wangriyu.wang/">https://blog.wangriyu.wang/</a></li>
+  <li><a href="https://tools.ietf.org/html/rfc7540">https://tools.ietf.org/html/rfc7540</a></li>
+  <li><a href="https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn">https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn</a></li>
 </ul>
 
 	  ]]></description>

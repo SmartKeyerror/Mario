@@ -347,10 +347,10 @@ Host: example.com
 <h3 id="4-reference">4. Reference</h3>
 
 <ul>
-  <li>https://hpbn.co/</li>
-  <li>https://blog.wangriyu.wang/</li>
-  <li>https://tools.ietf.org/html/rfc7540</li>
-  <li>https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn</li>
+  <li><a href="https://hpbn.co/">https://hpbn.co/</a></li>
+  <li><a href="https://blog.wangriyu.wang/">https://blog.wangriyu.wang/</a></li>
+  <li><a href="https://tools.ietf.org/html/rfc7540">https://tools.ietf.org/html/rfc7540</a></li>
+  <li><a href="https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn">https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn</a></li>
 </ul>
 
 	  ]]></description>
