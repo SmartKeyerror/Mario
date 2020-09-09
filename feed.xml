@@ -8,6 +8,24 @@
     
       
       <item>
+        <title>Linux 阻塞与唤醒实现原理</title>
+        
+          <description>&lt;p&gt;在前面的文件 I/O 文章中，我们有提到 Linux 文件 I/O 支持阻塞和非阻塞的数据读取方式，当采用阻塞方式进行 I/O 时，进程将会阻塞在&lt;code class=&quot;highlighter-rouge&quot;&gt;read()&lt;/code&gt;或者&lt;code class=&quot;highlighter-rouge&quot;&gt;write()&lt;/code&gt;系统调用上，直到文件可读或者是内核缓冲区可写。这些阻塞与唤醒的实现与内核调度紧密相关，Linux 内核使用等待队列和完成量来实现该功能。&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;注: 本篇文章所用Linux内核源码版本为v5.8&lt;/p&gt;
+&lt;/blockquote&gt;
+
+</description>
+        
+        <pubDate>Wed, 09 Sep 2020 07:50:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Linux-Blocking</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Linux-Blocking</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>Kubernetes-Informer</title>
         
           <description>&lt;p&gt;Kubernetes 声明式API的核心就在于用户提交的YAML文件表示期望状态，Kubernetes 需要根据该期望状态与集群实际状态进行对比，并根据对比的结果作出相应的操作。期望状态由 APIServer 保存在 Etcd 中，Kubernetes 对资源进行调谐时，是否均需要通过 APIServer 查询 Etcd 来获取期望状态呢?&lt;/p&gt;

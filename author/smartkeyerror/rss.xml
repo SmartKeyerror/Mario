@@ -12,6 +12,122 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>Linux 阻塞与唤醒实现原理</title>
+	  <link>//Linux-Blocking</link>
+	  <author></author>
+	  <pubDate>2020-09-09T07:50:25+00:00</pubDate>
+	  <guid>//Linux-Blocking</guid>
+	  <description><![CDATA[
+	     <p>在前面的文件 I/O 文章中，我们有提到 Linux 文件 I/O 支持阻塞和非阻塞的数据读取方式，当采用阻塞方式进行 I/O 时，进程将会阻塞在<code class="highlighter-rouge">read()</code>或者<code class="highlighter-rouge">write()</code>系统调用上，直到文件可读或者是内核缓冲区可写。这些阻塞与唤醒的实现与内核调度紧密相关，Linux 内核使用等待队列和完成量来实现该功能。</p>
+<blockquote>
+  <p>注: 本篇文章所用Linux内核源码版本为v5.8</p>
+</blockquote>
+
+<!---more--->
+
+<h3 id="1-进程状态有限状态机">1. 进程状态有限状态机</h3>
+
+<p>进程并不总是可以立即运行的，一方面是 CPU 资源有限，另一方面则是进程时常需要等待外部事件的发生，例如 I/O 事件、定时器事件等。</p>
+
+<p>因此，对进程的状态进行分类就是一件非常有必要的事情，对于等待某事件发生的进程给予 CPU 资源是没有任何意义的，因为此时事件可能仍未发生。而对于正等待 CPU 资源的进程而言，在得到 CPU 之后即可立即执行。调度器为了尽可能最大地使用硬件资源，通常会将进程分为3个主要的状态: 运行、等待和睡眠。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/schedule/process-state.png" alt="" /></p>
+
+<p>处于运行状态的进程正在使用 CPU 等资源，从上图中可以看到，运行态的进程在执行完任务后结束，进入到结束状态。当 CPU 时间片到期之后，调度器选择其它进程执行，此时将进入等待状态。同时，当运行时的进程发起 I/O 操作，或者等待其它事件的发生时，将进入睡眠状态。</p>
+
+<p>处于等待状态的进程由于缺少 CPU 资源而被迫停止运行，只要调度器下次选中该进程即可立即执行，由等待状态转变为运行状态。</p>
+
+<p>处于睡眠状态的进程在等待外部事件的发生，例如 I/O 操作的数据抵达，创建的定时器到期等等，<strong>处于睡眠状态的进程永远不会被调度器进行选择并执行</strong>。当期望的事件到达后，进程由睡眠状态更改为等待状态，等待调度器的下一次选择。</p>
+
+<p>处于等待的进程将会被放置于就绪队列中（红黑树实现），而处于睡眠状态的进程则放置于等待队列（双链表实现）中。调度器的目光主要放在就绪队列上，从该队列中取出下一个将要执行的进程，而等待队列和就绪队列中的进程会因为事件的发生而进行相互转移。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/schedule/read-and-wait-queue.png" alt="" /></p>
+
+<p>在实际的内核实现中，进程的运行状态表示要比上文所述更加详细一些，进程状态定义于<code class="highlighter-rouge">include/linux/sched.h</code>:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">TASK_RUNNING</code>，可运行状态。此时进程并不一定正在运行，一旦得到调度器的调度即可立即运行。</li>
+  <li><code class="highlighter-rouge">TASK_INTERRUPTIBLE</code>，可中断睡眠状态。此时进程因为等待外部事件的发生而睡眠，此时可由信号或者是内核唤醒。</li>
+  <li><code class="highlighter-rouge">TASK_UNINTERRUPTIBLE</code>，不可中断睡眠状态。和<code class="highlighter-rouge">TASK_INTERRUPTIBLE</code>状态类似，等待外部事件发生的睡眠状态。不同的是改状态只能由内核亲自唤醒，不能由信号唤醒，通常用于进程必须等待某件工作完成，不能被 Kill。</li>
+</ul>
+
+<p>除了这三个核心进程状态以外，还有<code class="highlighter-rouge">__TASK_STOPPED</code>、<code class="highlighter-rouge">__TASK_TRACED</code>等状态，由于这些状态在本文中并不重要，所以略去。</p>
+
+<h3 id="2-等待队列">2. 等待队列</h3>
+
+<p>等待队列相关的源码位于<code class="highlighter-rouge">include/linux/wait.h</code>以及<code class="highlighter-rouge">kernel/sched/wait.c</code>文件中，头文件中定义了等待队列以及队列元素的基本数据结构，<code class="highlighter-rouge">wait.c</code>源文件则主要包含具体的方法实现。</p>
+
+<p>首先来看等待队列的基本结构，分为队列头和队列项:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* 等待队列头 */</span>
+<span class="k">struct</span> <span class="n">wait_queue_head</span> <span class="p">{</span>
+	<span class="n">spinlock_t</span>		<span class="n">lock</span><span class="p">;</span>       <span class="cm">/* 自旋锁 */</span>
+	<span class="k">struct</span> <span class="n">list_head</span>	<span class="n">head</span><span class="p">;</span>   <span class="cm">/* previous、next指针 */</span>
+<span class="p">};</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">wait_queue_head</span> <span class="n">wait_queue_head_t</span><span class="p">;</span>
+
+<span class="cm">/* 等待队列元素 */</span>
+<span class="k">struct</span> <span class="n">wait_queue_entry</span> <span class="p">{</span>
+	<span class="kt">unsigned</span> <span class="kt">int</span>		<span class="n">flags</span><span class="p">;</span>  <span class="cm">/* 标识位 */</span>
+	<span class="kt">void</span>			<span class="o">*</span><span class="k">private</span><span class="p">;</span>   <span class="cm">/* 通常指向等待进程 */</span>
+	<span class="n">wait_queue_func_t</span>	<span class="n">func</span><span class="p">;</span>   <span class="cm">/* 唤醒函数 */</span>
+	<span class="k">struct</span> <span class="n">list_head</span>	<span class="n">entry</span><span class="p">;</span>  <span class="cm">/* previous、next指针 */</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>在内核的链表实现中，绝大多数的链表均为循环双链表，等待队列也不例外。因为等待队列可能会在系统中断时进行修改，所以必须要添加互斥锁机制保护队列元素。</p>
+
+<p>等待队列元素的设计也非常简洁，除了双链表必要的前后指针以外，仅包含一个指向等待进程<code class="highlighter-rouge">task_struct</code>实例的指针，一个唤醒函数和一个标识位。</p>
+
+<p>唤醒函数通常由调度器实现，如<code class="highlighter-rouge">kernel/sched/core.c</code>中定义的<code class="highlighter-rouge">try_to_wake_up</code>方法，可以简单的认为唤醒函数就是将进程的状态由<code class="highlighter-rouge">TASK_INTERRUPTIBLE</code>或<code class="highlighter-rouge">TASK_UNINTERRUPTIBLE</code>修改为<code class="highlighter-rouge">TASK_RUNNING</code>，并将其加入至就绪队列中。</p>
+
+<p><code class="highlighter-rouge">wait.h</code>中提供了一系列与等待队列相关的宏定义供外部使用，例如<code class="highlighter-rouge">wait_event</code>，本质上是对等待队列的进一步封装:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#define wait_event(wq_head, condition)						\
+do {										\
+	might_sleep();								\
+	if (condition)								\
+		break;								\
+    </span><span class="cm">/* 这里将原有的__wait_event宏展开，使用___wait_event代替 */</span><span class="cp">     \
+	___wait_event(wq_head, condition, TASK_UNINTERRUPTIBLE, 0, 0, schedule())	\
+} while (0)
+</span></code></pre></div></div>
+
+<p>其中<code class="highlighter-rouge">wq_head</code>即<code class="highlighter-rouge">wait_queue_head</code>，<code class="highlighter-rouge">condition</code>则是一个C语言表达式，表示一个等待条件。宏定义的<code class="highlighter-rouge">wait_event</code>使得使用标准C表达式指定条件成为可能，如果使用函数实现的话，无法做到如宏实现的灵活性。注意到在调用<code class="highlighter-rouge">___wait_event</code>之前会首先检查一遍条件是否满足，避免进行无效的睡眠。</p>
+
+<p>在<code class="highlighter-rouge">___wait_event</code>宏定义中传入的进程状态为<code class="highlighter-rouge">TASK_UNINTERRUPTIBLE</code>，也就是说，<code class="highlighter-rouge">wait_event</code>实现的事件等待是不可中断的。当然，<code class="highlighter-rouge">wait.h</code>中同样提供了其它时间等待实现:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">wait_event_timeout</code>: 带有超时时间的不可中断事件等待</li>
+  <li><code class="highlighter-rouge">wait_event_interruptible</code>: 可中断的事件等待</li>
+  <li><code class="highlighter-rouge">wait_event_interruptible_timeout</code>: 带有超时时间的可中断事件等待</li>
+</ul>
+
+<p>最后再来看<code class="highlighter-rouge">___wait_event</code>实现，该方法将会把当前进程包装成<code class="highlighter-rouge">wait_queue_entry</code>对象，并发安全地放置于等待队列中，并且在实际的让出CPU资源、引发调度器重新调度之前会再一次的检查等待事件是否发生，避免无效睡眠。由于源代码中该方法宏定义实现符号较多，所以将原实现抽象成伪代码:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">___wait_event</span><span class="p">(</span><span class="n">wq_head</span><span class="p">,</span> <span class="n">condition</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">exclusive</span><span class="p">,</span> <span class="n">ret</span><span class="p">,</span> <span class="n">cmd</span><span class="p">)</span> <span class="p">{</span>
+    <span class="cm">/* 初始化队列元素 */</span>
+    <span class="n">init_wait_entry</span><span class="p">(...);</span>
+    
+    <span class="k">for</span> <span class="p">(;;)</span> <span class="p">{</span>
+        <span class="cm">/* 将队列元素插入至等待队列中(线程安全) */</span>
+        <span class="kt">long</span> <span class="n">__int</span> <span class="o">=</span> <span class="n">prepare_to_wait_event</span><span class="p">(</span><span class="o">&amp;</span><span class="n">wq_head</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">__wq_entry</span><span class="p">,</span> <span class="n">state</span><span class="p">);</span>
+        
+        <span class="cm">/* 检查事件条件是否满足 */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">condition</span><span class="p">)</span>
+            <span class="k">break</span><span class="p">;</span>
+            
+        <span class="cm">/* 触发调度器重新调度 */</span>
+        <span class="n">schedule</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>对于唤醒一个进程在前文中已经描述过了，通用方法为<code class="highlighter-rouge">wake_up()</code>，本质上会调用内核调度模块中的<code class="highlighter-rouge">try_to_wake_up()</code>来唤醒某个进程，唤醒的实质是将进程状态修改为<code class="highlighter-rouge">TASK_RUNNING</code>，从等待队列中移出并加入至就绪队列中。</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>Kubernetes-Informer</title>
 	  <link>//Kubernetes-Informer</link>
 	  <author></author>
@@ -1678,142 +1794,6 @@ avg-cpu:  %user   %nice %system %iowait  %steal   %idle
 <h4 id="43-从节点未开启并行复制">4.3 从节点未开启并行复制</h4>
 
 <p>从节点的并行执行worker数量由<code class="highlighter-rouge">slave_parallel_workers</code>参数决定，最大值为1024，通常将其设置为CPU核心数的一半。</p>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>InnoDB如何保证事务的原子性与持久性</title>
-	  <link>//InnoDB-AD</link>
-	  <author></author>
-	  <pubDate>2020-05-28T18:06:25+00:00</pubDate>
-	  <guid>//InnoDB-AD</guid>
-	  <description><![CDATA[
-	     <p>在InnoDB存储引擎中，一个事务的执行将涉及到3个日志的数据写入: redo log，undo log以及binlog。其中redo log以及binlog主要实现事务的原子性和持久性，而undo log主要用于实现事务的隔离性。</p>
-
-<!---more--->
-
-<h3 id="1-redo-log">1. redo log</h3>
-
-<p>redo log又称之为重做日志，主要记录了事务对数据页(Page)的物理修改。redo log由两部分组成: 一是位于内存的redo log buffer，用于对redo log进行缓冲，目的在于提升性能。另一部分则位于硬盘中，用于对redo log的持久化。</p>
-
-<h4 id="11-redo-log-buffer">1.1 redo log buffer</h4>
-
-<p>redo log buffer用于优化redo log的写入性能，默认大小为16MB，最大大小为4GB。当一个事务对数据页进行修改时，首先将修改内容放置于缓冲中，而后再对其进行持久化。</p>
-
-<h4 id="12-redo-log">1.2 redo log</h4>
-
-<p>默认情况下，redo log由两个文件构成，<code class="highlighter-rouge">ib_logfile0</code>以及<code class="highlighter-rouge">ib_logfile1</code>。redo log的大小由配置文件决定，在5.7版本中，默认大小为48MB。由于其大小固定，所以数据在写入该日志文件时，将使用循环写入的方式: 首先从头开始写，写到末尾，然后再从头开始写，后面写入的内容会覆盖最初的内容，所以称之为循环写入。</p>
-
-<p>redo log的文件大小设置和MySQL的负载相关，通常来说redo log应该能容纳至少一个小时的数据修改，一般<code class="highlighter-rouge">innodb_log_file_size</code>设置为1GB，<code class="highlighter-rouge">innodb_log_files_in_group</code>设置为4，总计4GB的redo log容量。重做日志大小如果设置的过大，宕机恢复时所花的时间也会越多，所以并不是越大越好。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/redo-log.png" alt="" /></p>
-
-<p>redo log buffer中的数据将会在以下时机持久化至位于磁盘的redo log中:</p>
-
-<ul>
-  <li>事务提交</li>
-  <li>当redo log buffer有一半的空间已经被使用时</li>
-  <li>InnoDB后台线程每秒将数据持久化至硬盘</li>
-</ul>
-
-<p>所以，需要明确的是，当某个事务未提交(commit)时，该事务对物理数据页的修改也可能会持久化至redo log文件中。</p>
-
-<h4 id="13-lsn">1.3 LSN</h4>
-
-<p>在redo log中，还有一个非常重要的属性: LSN，Log Sequence Number，即日志序列号。接下来我们将会看到，LSN在数据恢复以及Group Commit中起到了决定性的作用。</p>
-
-<p>在InnoDB存储引擎中，LSN占用8个字节，且单调递增。LSN所表示的含义包括redo log的总量，checkpoint的位置以及数据页的版本。</p>
-
-<p>假设当前redo log的LSN为1000，事务T1写入了200字节的redo log，那么LSN将递增至1200。若事务T2写入了500字节的redo log，那么LSN又将变成1700。所以通过查看LSN的大小即可知道redo log的总量，单位为字节。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mysql&gt; show engine innodb status<span class="se">\G</span><span class="p">;</span>
-<span class="nt">---</span>
-LOG
-<span class="nt">---</span>
-Log sequence number 20598039739
-Log flushed up to   20598039739
-Pages flushed up to 20598039739
-Last checkpoint at  20598039730
-0 pending log flushes, 0 pending chkp writes
-10 log i/o<span class="s1">'s done, 0.00 log i/o'</span>s/second
-</code></pre></div></div>
-
-<p>如上所示，Log sequence number表示当前的LSN，Log flushed up to表示已经刷新到redo log文件的LSN。</p>
-
-<h3 id="2-binlog">2. binlog</h3>
-
-<p>binlog为MySQL层面的逻辑日志，用于记录对哪一行数据进行了哪些修改，不管使用何种存储引擎，都会有binlog的记录。redo log则是InnoDB存储引擎所特有的日志记录，并且其中记录的是对物理数据页的修改。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/logical-binlog.png" alt="" /></p>
-
-<p>关于binlog的更多内容将在后续的MySQL主从复制中描述。</p>
-
-<h3 id="3-事务执行过程">3. 事务执行过程</h3>
-
-<p>InnoDB存储引擎在提交事务时，为了保证原子性和持久性，将会采用”两阶段”提交的方式写入redo log和binlog。</p>
-
-<h4 id="31-一阶段">3.1 一阶段</h4>
-
-<p>首先，在MySQL中所有执行的SQL语句都会有一个全局递增且循环使用的query_id。当用户开启事务并执行语句后，MySQL将会把第一个语句的query_id分配给该事务，作为Xid的值。</p>
-
-<p>当用户执行<code class="highlighter-rouge">COMMIT</code>提交事务时，将redo log buffer的内容调用<code class="highlighter-rouge">write()</code>系统调用写入内核缓冲区，并调用<code class="highlighter-rouge">fsync()</code>系统调用确保数据写入至硬盘(至少是硬盘的缓冲区)，更新状态为prepare。</p>
-
-<h4 id="32-二阶段">3.2 二阶段</h4>
-
-<p>将产生的binlog调用<code class="highlighter-rouge">write()</code>系统调用写入内核缓冲区，并调用<code class="highlighter-rouge">fsync()</code>系统调用将数据持久化至硬盘，写入成功后事务即可被提交，并更新状态为commit。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/2PC.png" alt="" /></p>
-
-<p>当数据成功地写入到binlog以后，即可返回给用户事务提交成功。由于数据写入<code class="highlighter-rouge">.ibd</code>文件需要随机读写，所以将会由其它线程异步写入，以提高事务执行的效率。</p>
-
-<p>现在来看两阶段提交在数据库Crash的情况:</p>
-
-<ul>
-  <li>binlog有记录，但redo log状态为prepare: 此时表示在写入binlog数据库崩溃，需要根据binlog进行数据恢复</li>
-  <li>binlog有记录，redo log状态为commit: 事务正常提交，无需恢复</li>
-  <li>binlog无记录，redo log状态为prepare: 事务执行一半时崩溃，无需恢复</li>
-  <li>binlog无记录，redo log状态为commit: 在binlog持久化时崩溃，事务直接回滚</li>
-</ul>
-
-<p>可以看到，通过上述的两阶段提交方式能够保证不会产生脏事务，并且已成功提交的事务也能够在MySQL崩溃后重启恢复。</p>
-
-<p>当redo log和binlog均正确的写入数据以后，就可以返回<code class="highlighter-rouge">OK</code>给用户了。至于何时将用户的修改持久化至<code class="highlighter-rouge">.ibd</code>文件中，由MySQL后台线程决定。</p>
-
-<p>基于redo log和binlog的WAL(Write-Ahead Log)机制可以保证数据的原子性以及持久性，并且由于日志是顺序读写，所以事务的执行速度会快很多。</p>
-
-<h3 id="4-group-commit">4. Group Commit</h3>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/2PC.png" alt="" /></p>
-
-<p>从上图模型可以看到，每一个事务的提交，都会伴随着两次<code class="highlighter-rouge">write()</code>以及<code class="highlighter-rouge">fsync()</code>系统调用。对于<code class="highlighter-rouge">Write()</code>调用来说，仅仅只是将用户缓冲区的内容写入至内核缓冲区中，虽然会有用户态与内核态的切换，但是仍然要比<code class="highlighter-rouge">fsync()</code>要快。</p>
-
-<p>如果采用上述模型实现事务的话，如果有两万个并发事务执行，那么磁盘的IO负载将会达到四万，并且事务的执行效率将会非常之差。</p>
-
-<p>为了解决事务执行效率问题，MySQL引入了组提交(Group Commit)技术: 在事务提交时，尽可能多地向文件中写入数据。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/LSN-Commit.png" alt="" /></p>
-
-<p>如上图所示，共有3个事务并行执行，其中trx:1事务准备提交。按照之前的模型，将trx:1的redo log写入至磁盘中，并将binlog写入至磁盘中。</p>
-
-<p>而在Group Commit中，当trx:1准备提交时，将会刷新最大的LSN之前未刷新的所有redo log。在该示例中，trx:1准备刷新时，则会将LSN为1600之前的所有redo log一齐刷新至磁盘。原来需要6次系统调用，现在只需要2次。</p>
-
-<p>为了能够让redo log在每次写入时尽可能多的写入，MySQL将redo log调用<code class="highlighter-rouge">fsync()</code>的时机延迟，延迟至binlog调用<code class="highlighter-rouge">write()</code>之后:</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/DistributedSystem/MySQL-Replication/delay-fsync.png" alt="" /></p>
-
-<p>这样一来，binlog也能够组提交了，能够有效地减少IOPS的消耗。</p>
-
-<p>MySQL额外的提供了两个延迟参数来提高binlog的组提交效率:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 表示延迟多少微秒后才调用binlog的fsync()</span>
-binlog_group_commit_sync_delay
-
-<span class="c"># 表示累积了多少个binlog才调用binlog的fsync()</span>
-binlog_group_commit_sync_no_delay_count
-</code></pre></div></div>
-
-<p>这两个参数为”或”关系，即只要满足一个条件，就会调用<code class="highlighter-rouge">fsync()</code>。当磁盘IO出现性能瓶颈时，可根据实际负载来设置该值，从而降低磁盘IO负载，代价是会增加事务的响应时间。</p>
 
 	  ]]></description>
 	</item>

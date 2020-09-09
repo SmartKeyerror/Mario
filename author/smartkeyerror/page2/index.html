@@ -115,7 +115,7 @@
                     <span class="author-location icon-location">China</span>
                     <span class="author-link icon-link"><a href="https://smartkeyerror.com">https://smartkeyerror.com</a></span>
                     <!-- <span class="author-stats"><i class="icon-stats"></i> [[plural ../pagination.total empty='No posts' singular='% post' plural='% posts']]</span> -->
-                    <span class="author-stats"><i class="icon-stats"></i>49 posts</span>
+                    <span class="author-stats"><i class="icon-stats"></i>50 posts</span>
                 </div>
             
         
@@ -145,6 +145,39 @@
     <!--</div>-->
 
     <!-- This is the post loop - each post will be output using this markup -->
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/InnoDB-AD">InnoDB如何保证事务的原子性与持久性</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>在InnoDB存储引擎中，一个事务的执行将涉及到3个日志的数据写入: redo log，undo log以及binlog。其中redo log以及binlog主要实现事务的原子性和持久性，而undo log主要用于实现事务的隔离性。
+
+ <a class="read-more" href="/InnoDB-AD">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.jpg" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+            
+            <time class="post-date" datetime="2020-05-28">28 May 2020</time>
+        </footer>
+    </article>
     
     <article class="post">
         <header class="post-header">
@@ -440,39 +473,6 @@
                 
             
             <time class="post-date" datetime="2019-07-20">20 Jul 2019</time>
-        </footer>
-    </article>
-    
-    <article class="post">
-        <header class="post-header">
-            <h2 class="post-title"><a href="/B+Tree-and-B-Tree">那些有趣的数据结构与算法(04)--B-Tree与B+Tree</a></h2>
-        </header>
-        <section class="post-excerpt">
-            <p>树型结构由于其良好的递归特性， 高效的查询效率， 在软件系统设计中有着非常广泛的使用。 IO多路复用的epoll实现采用红黑树组织和管理sockfd， 以支持快速的增删改查； Golang中的Timer采用多叉堆实现； Java中的TreeMap以及TreeSet同样采用红黑树实现…而在MySQL中， 索引的构建同样采用树结构实现。
-
- <a class="read-more" href="/B+Tree-and-B-Tree">&raquo;</a></p>
-        </section>
-        <footer class="post-meta">
-            
-                
-
-                <img class="author-thumb" src="/assets/images/author.jpg" alt="Author image" nopin="nopin" />
-                <!-- author -->
-                <a href='/author/smartkeyerror'>smartkeyerror</a>
-
-                
-            
-
-            <!-- [[tags prefix=" on "]] -->
-            
-                on
-                
-                    
-                       <a href='/tag/数据结构'>数据结构</a>
-                    
-                
-            
-            <time class="post-date" datetime="2019-06-23">23 Jun 2019</time>
         </footer>
     </article>
     

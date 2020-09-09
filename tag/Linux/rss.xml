@@ -12,6 +12,122 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>Linux 阻塞与唤醒实现原理</title>
+	  <link>//Linux-Blocking</link>
+	  <author></author>
+	  <pubDate>2020-09-09T07:50:25+00:00</pubDate>
+	  <guid>//Linux-Blocking</guid>
+	  <description><![CDATA[
+	     <p>在前面的文件 I/O 文章中，我们有提到 Linux 文件 I/O 支持阻塞和非阻塞的数据读取方式，当采用阻塞方式进行 I/O 时，进程将会阻塞在<code class="highlighter-rouge">read()</code>或者<code class="highlighter-rouge">write()</code>系统调用上，直到文件可读或者是内核缓冲区可写。这些阻塞与唤醒的实现与内核调度紧密相关，Linux 内核使用等待队列和完成量来实现该功能。</p>
+<blockquote>
+  <p>注: 本篇文章所用Linux内核源码版本为v5.8</p>
+</blockquote>
+
+<!---more--->
+
+<h3 id="1-进程状态有限状态机">1. 进程状态有限状态机</h3>
+
+<p>进程并不总是可以立即运行的，一方面是 CPU 资源有限，另一方面则是进程时常需要等待外部事件的发生，例如 I/O 事件、定时器事件等。</p>
+
+<p>因此，对进程的状态进行分类就是一件非常有必要的事情，对于等待某事件发生的进程给予 CPU 资源是没有任何意义的，因为此时事件可能仍未发生。而对于正等待 CPU 资源的进程而言，在得到 CPU 之后即可立即执行。调度器为了尽可能最大地使用硬件资源，通常会将进程分为3个主要的状态: 运行、等待和睡眠。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/schedule/process-state.png" alt="" /></p>
+
+<p>处于运行状态的进程正在使用 CPU 等资源，从上图中可以看到，运行态的进程在执行完任务后结束，进入到结束状态。当 CPU 时间片到期之后，调度器选择其它进程执行，此时将进入等待状态。同时，当运行时的进程发起 I/O 操作，或者等待其它事件的发生时，将进入睡眠状态。</p>
+
+<p>处于等待状态的进程由于缺少 CPU 资源而被迫停止运行，只要调度器下次选中该进程即可立即执行，由等待状态转变为运行状态。</p>
+
+<p>处于睡眠状态的进程在等待外部事件的发生，例如 I/O 操作的数据抵达，创建的定时器到期等等，<strong>处于睡眠状态的进程永远不会被调度器进行选择并执行</strong>。当期望的事件到达后，进程由睡眠状态更改为等待状态，等待调度器的下一次选择。</p>
+
+<p>处于等待的进程将会被放置于就绪队列中（红黑树实现），而处于睡眠状态的进程则放置于等待队列（双链表实现）中。调度器的目光主要放在就绪队列上，从该队列中取出下一个将要执行的进程，而等待队列和就绪队列中的进程会因为事件的发生而进行相互转移。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/schedule/read-and-wait-queue.png" alt="" /></p>
+
+<p>在实际的内核实现中，进程的运行状态表示要比上文所述更加详细一些，进程状态定义于<code class="highlighter-rouge">include/linux/sched.h</code>:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">TASK_RUNNING</code>，可运行状态。此时进程并不一定正在运行，一旦得到调度器的调度即可立即运行。</li>
+  <li><code class="highlighter-rouge">TASK_INTERRUPTIBLE</code>，可中断睡眠状态。此时进程因为等待外部事件的发生而睡眠，此时可由信号或者是内核唤醒。</li>
+  <li><code class="highlighter-rouge">TASK_UNINTERRUPTIBLE</code>，不可中断睡眠状态。和<code class="highlighter-rouge">TASK_INTERRUPTIBLE</code>状态类似，等待外部事件发生的睡眠状态。不同的是改状态只能由内核亲自唤醒，不能由信号唤醒，通常用于进程必须等待某件工作完成，不能被 Kill。</li>
+</ul>
+
+<p>除了这三个核心进程状态以外，还有<code class="highlighter-rouge">__TASK_STOPPED</code>、<code class="highlighter-rouge">__TASK_TRACED</code>等状态，由于这些状态在本文中并不重要，所以略去。</p>
+
+<h3 id="2-等待队列">2. 等待队列</h3>
+
+<p>等待队列相关的源码位于<code class="highlighter-rouge">include/linux/wait.h</code>以及<code class="highlighter-rouge">kernel/sched/wait.c</code>文件中，头文件中定义了等待队列以及队列元素的基本数据结构，<code class="highlighter-rouge">wait.c</code>源文件则主要包含具体的方法实现。</p>
+
+<p>首先来看等待队列的基本结构，分为队列头和队列项:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* 等待队列头 */</span>
+<span class="k">struct</span> <span class="n">wait_queue_head</span> <span class="p">{</span>
+	<span class="n">spinlock_t</span>		<span class="n">lock</span><span class="p">;</span>       <span class="cm">/* 自旋锁 */</span>
+	<span class="k">struct</span> <span class="n">list_head</span>	<span class="n">head</span><span class="p">;</span>   <span class="cm">/* previous、next指针 */</span>
+<span class="p">};</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">wait_queue_head</span> <span class="n">wait_queue_head_t</span><span class="p">;</span>
+
+<span class="cm">/* 等待队列元素 */</span>
+<span class="k">struct</span> <span class="n">wait_queue_entry</span> <span class="p">{</span>
+	<span class="kt">unsigned</span> <span class="kt">int</span>		<span class="n">flags</span><span class="p">;</span>  <span class="cm">/* 标识位 */</span>
+	<span class="kt">void</span>			<span class="o">*</span><span class="k">private</span><span class="p">;</span>   <span class="cm">/* 通常指向等待进程 */</span>
+	<span class="n">wait_queue_func_t</span>	<span class="n">func</span><span class="p">;</span>   <span class="cm">/* 唤醒函数 */</span>
+	<span class="k">struct</span> <span class="n">list_head</span>	<span class="n">entry</span><span class="p">;</span>  <span class="cm">/* previous、next指针 */</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>在内核的链表实现中，绝大多数的链表均为循环双链表，等待队列也不例外。因为等待队列可能会在系统中断时进行修改，所以必须要添加互斥锁机制保护队列元素。</p>
+
+<p>等待队列元素的设计也非常简洁，除了双链表必要的前后指针以外，仅包含一个指向等待进程<code class="highlighter-rouge">task_struct</code>实例的指针，一个唤醒函数和一个标识位。</p>
+
+<p>唤醒函数通常由调度器实现，如<code class="highlighter-rouge">kernel/sched/core.c</code>中定义的<code class="highlighter-rouge">try_to_wake_up</code>方法，可以简单的认为唤醒函数就是将进程的状态由<code class="highlighter-rouge">TASK_INTERRUPTIBLE</code>或<code class="highlighter-rouge">TASK_UNINTERRUPTIBLE</code>修改为<code class="highlighter-rouge">TASK_RUNNING</code>，并将其加入至就绪队列中。</p>
+
+<p><code class="highlighter-rouge">wait.h</code>中提供了一系列与等待队列相关的宏定义供外部使用，例如<code class="highlighter-rouge">wait_event</code>，本质上是对等待队列的进一步封装:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#define wait_event(wq_head, condition)						\
+do {										\
+	might_sleep();								\
+	if (condition)								\
+		break;								\
+    </span><span class="cm">/* 这里将原有的__wait_event宏展开，使用___wait_event代替 */</span><span class="cp">     \
+	___wait_event(wq_head, condition, TASK_UNINTERRUPTIBLE, 0, 0, schedule())	\
+} while (0)
+</span></code></pre></div></div>
+
+<p>其中<code class="highlighter-rouge">wq_head</code>即<code class="highlighter-rouge">wait_queue_head</code>，<code class="highlighter-rouge">condition</code>则是一个C语言表达式，表示一个等待条件。宏定义的<code class="highlighter-rouge">wait_event</code>使得使用标准C表达式指定条件成为可能，如果使用函数实现的话，无法做到如宏实现的灵活性。注意到在调用<code class="highlighter-rouge">___wait_event</code>之前会首先检查一遍条件是否满足，避免进行无效的睡眠。</p>
+
+<p>在<code class="highlighter-rouge">___wait_event</code>宏定义中传入的进程状态为<code class="highlighter-rouge">TASK_UNINTERRUPTIBLE</code>，也就是说，<code class="highlighter-rouge">wait_event</code>实现的事件等待是不可中断的。当然，<code class="highlighter-rouge">wait.h</code>中同样提供了其它时间等待实现:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">wait_event_timeout</code>: 带有超时时间的不可中断事件等待</li>
+  <li><code class="highlighter-rouge">wait_event_interruptible</code>: 可中断的事件等待</li>
+  <li><code class="highlighter-rouge">wait_event_interruptible_timeout</code>: 带有超时时间的可中断事件等待</li>
+</ul>
+
+<p>最后再来看<code class="highlighter-rouge">___wait_event</code>实现，该方法将会把当前进程包装成<code class="highlighter-rouge">wait_queue_entry</code>对象，并发安全地放置于等待队列中，并且在实际的让出CPU资源、引发调度器重新调度之前会再一次的检查等待事件是否发生，避免无效睡眠。由于源代码中该方法宏定义实现符号较多，所以将原实现抽象成伪代码:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">___wait_event</span><span class="p">(</span><span class="n">wq_head</span><span class="p">,</span> <span class="n">condition</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">exclusive</span><span class="p">,</span> <span class="n">ret</span><span class="p">,</span> <span class="n">cmd</span><span class="p">)</span> <span class="p">{</span>
+    <span class="cm">/* 初始化队列元素 */</span>
+    <span class="n">init_wait_entry</span><span class="p">(...);</span>
+    
+    <span class="k">for</span> <span class="p">(;;)</span> <span class="p">{</span>
+        <span class="cm">/* 将队列元素插入至等待队列中(线程安全) */</span>
+        <span class="kt">long</span> <span class="n">__int</span> <span class="o">=</span> <span class="n">prepare_to_wait_event</span><span class="p">(</span><span class="o">&amp;</span><span class="n">wq_head</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">__wq_entry</span><span class="p">,</span> <span class="n">state</span><span class="p">);</span>
+        
+        <span class="cm">/* 检查事件条件是否满足 */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">condition</span><span class="p">)</span>
+            <span class="k">break</span><span class="p">;</span>
+            
+        <span class="cm">/* 触发调度器重新调度 */</span>
+        <span class="n">schedule</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>对于唤醒一个进程在前文中已经描述过了，通用方法为<code class="highlighter-rouge">wake_up()</code>，本质上会调用内核调度模块中的<code class="highlighter-rouge">try_to_wake_up()</code>来唤醒某个进程，唤醒的实质是将进程状态修改为<code class="highlighter-rouge">TASK_RUNNING</code>，从等待队列中移出并加入至就绪队列中。</p>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>Linux操作系统-文件I/O</title>
 	  <link>//Linux-IO</link>
 	  <author></author>
