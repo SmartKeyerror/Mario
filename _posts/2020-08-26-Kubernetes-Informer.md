@@ -34,7 +34,7 @@ Kubernetes 声明式API的核心就在于用户提交的YAML文件表示期望�
 
 既然客户端可以使用 ListAndWatch 机制来实时地同步 Kubernetes 中某类资源的状态，那么在 Kubernetes 内部，同样可以使用该机制从 APIServer 中接收资源的变化，从而建立本地缓存减轻 APIServer 与 Etcd 的负载，并且实现 Kubernetes 中的控制器模式。该内部组件称之为 Informer，中文译为通知器。
 
-![](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Kubernetes/Informer/informer.png?)
+![](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Kubernetes/Informer/informer-ar.png)
 
 首先，Reflector 包会和 APIServer 建立长连接，并使用 ListAndWatch 方法获取并监听某一个资源的变化。List 方法将会获取某个资源的所有实例(如ReplicaSet、Deployment等)，Watch 方法则监听资源对象的创建、更新以及删除事件，获取到的事件称之为一个增量(Delta)，该增量会被放进一个称之为 Delta FIFO Queue，即增量先进先出队列中。
 
