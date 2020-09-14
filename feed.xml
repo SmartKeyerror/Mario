@@ -41,9 +41,9 @@
     
       
       <item>
-        <title>Python虚拟机</title>
+        <title>Python 虚拟机</title>
         
-          <description>&lt;p&gt;我们常说Python一是门解释型语言，只需要敲下&lt;code class=&quot;highlighter-rouge&quot;&gt;python code.py&lt;/code&gt;就可以运行编写的代码，而无需使用类似于&lt;code class=&quot;highlighter-rouge&quot;&gt;javac&lt;/code&gt;或者&lt;code class=&quot;highlighter-rouge&quot;&gt;gcc&lt;/code&gt;进行编译。那么，Python解释器是真的一行一行读取Python源代码而后执行吗? 实际上，Python在执行程序时和Java、C#一样，都是先将源码进行编译生成字节码，然后由虚拟机进行执行，只不过Python解释器把这两步合二为一了而已。&lt;/p&gt;
+          <description>&lt;p&gt;我们常说 Python 一是门解释型语言，只需要敲下 &lt;code class=&quot;highlighter-rouge&quot;&gt;python code.py&lt;/code&gt; 就可以运行编写的代码，而无需使用类似于 &lt;code class=&quot;highlighter-rouge&quot;&gt;javac&lt;/code&gt; 或者 &lt;code class=&quot;highlighter-rouge&quot;&gt;gcc&lt;/code&gt; 进行编译。那么，Python 解释器是真的一行一行读取 Python 源代码而后执行吗? 实际上，Python 在执行程序时和 Java、C# 一样，都是先将源码进行编译生成字节码，然后由虚拟机进行执行，只不过 Python 解释器把这两步合二为一了而已。&lt;/p&gt;
 
 </description>
         
