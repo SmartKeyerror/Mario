@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>C指针与内存</title>
+        
+          <description>&lt;p&gt;C 语言指针真正精髓的地方在于&lt;strong&gt;指针可以进行加减法&lt;/strong&gt;，这一点极大的提升了程序的对指针使用的灵活性，同时也带来了不小的学习负担。正是因为 C 语言指针可运算，才奠定了如今 C 语言的地位。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Mon, 28 Sep 2020 07:50:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/c-pointers-and-memory</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/c-pointers-and-memory</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>Linux 阻塞与唤醒实现原理</title>
         
           <description>&lt;p&gt;在前面的文件 I/O 文章中，我们有提到 Linux 文件 I/O 支持阻塞和非阻塞的数据读取方式，当采用阻塞方式进行 I/O 时，进程将会阻塞在&lt;code class=&quot;highlighter-rouge&quot;&gt;read()&lt;/code&gt;或者&lt;code class=&quot;highlighter-rouge&quot;&gt;write()&lt;/code&gt;系统调用上，直到文件可读或者是内核缓冲区可写。这些阻塞与唤醒的实现与内核调度紧密相关，Linux 内核使用等待队列和完成量来实现该功能。&lt;/p&gt;
