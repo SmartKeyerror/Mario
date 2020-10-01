@@ -283,6 +283,55 @@ int main() {
 }
 ```
 
+#### 1.8 NULL 指针
+
+标准定义了 NULL 指针，它作为一个特殊的指针变量，表示**不指向任何东西**，当我们在定义一个指针变量，并且不知道该指针指向何处时，就应该将其初始化为 NULL。其次，当我们使用 `free` 函数释放堆内存时，也应该将指针指向为 NULL，防止出现内存访问错误。
+
+```cpp
+#include <stdlib.h>
+
+int main() {
+    char *s = NULL;
+
+    s = (char *)malloc(sizeof(char) * 5);
+    strcpy(s, "hello");
+
+    free(s);
+    s = NULL;
+
+    return 0;
+}
+```
+
+对 NULL 指针进行解引用是非法的，因为 NULL 指针从定义上来看不指向任何东西。因此，当我们对指针进行解引用时应该对其进行检查，能显著减少 DEBUG 的时间。
+
+#### 1.9 指针作为函数参数
+
+首先，C 语言函数调用中的参数使用**按值传递**，也就是说，函数会对传入的相关参数进行拷贝。**当使用指针作为函数参数时，实际拷贝的是指针中的地址**
+
+```cpp
+void change_name(char *name) {
+    name = "world";
+}
+
+int main() {
+    char name[] = {"hello"};
+    change_name(name);
+    printf("name is: %s", name);
+}
+```
+
+上述代码的输出结果为 `name is: hello`，而并非期望中的 `world`。这是因为在 `change_name` 函数中，我们仅仅只是更改了拷贝指针所指向的地址，并没有改变原指针的指向：
+
+```cpp
+void change_name(char *name) {
+    char *_name = name;
+    _name = "world";
+}
+```
+
+因此，**不要试图在一个函数中更改一个指针的指向，我们只能更改指针指向的值**。
+
 ### 2. 内存
 
 本节并不会介绍虚拟内存、MMU 以及 TLB 等内容，因为它们更贴近于操作系统。对于 C 程序语言而言，并不需要知道物理内存是个什么样子。
