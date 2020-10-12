@@ -132,7 +132,7 @@ for i in range(10):
     if product.storage > 0:
         result = Product.objects.filter(id=101, version=product.version)\
                  .update(storage=F("storage") - 1, version=F("version") + 1)
-        if result > 1:
+        if result > 0:
             return True
         continue
     else:
