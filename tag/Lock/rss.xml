@@ -137,7 +137,7 @@
     <span class="k">if</span> <span class="n">product</span><span class="o">.</span><span class="n">storage</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">Product</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="nb">filter</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">101</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="n">product</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>\
                  <span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">F</span><span class="p">(</span><span class="s">"storage"</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="n">F</span><span class="p">(</span><span class="s">"version"</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">result</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">result</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">True</span>
         <span class="k">continue</span>
     <span class="k">else</span><span class="p">:</span>
