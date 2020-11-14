@@ -12,6 +12,293 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>回溯与剪枝: 《明日边缘》or《源代码》</title>
+	  <link>//backtracking</link>
+	  <author></author>
+	  <pubDate>2020-11-13T07:50:25+00:00</pubDate>
+	  <guid>//backtracking</guid>
+	  <description><![CDATA[
+	     <p>回溯法在 wikipedia 中被解释成一种“暴力搜索法”，相较“暴力”一词我更喜欢称之为“枚举”，枚举一个空间中所有的搜索路径。</p>
+
+<!---more--->
+
+<p>回溯法采用试错的思想，逐步地解决一个问题，就好像我们小时候玩儿的走迷宫一样。我们从一个点出发，选择迷宫中的一条路向前行进，当遇到死胡同时再回到当初进行选择的地方，再往下走，直到将整个迷宫搜索完毕或者是找到一条通往终点的路径。</p>
+
+<p>人生是由多个选择所构成的，我们有时候会忍不住的去假设如果当初我们没有做那个选择现在会是怎么样。人生无法重来，但是回溯法却可以。</p>
+
+<p>在具体的回溯算法实现中，有两个非常重要的事物：已选择的路径和下一次能够进行选择的路径。这也非常贴近现实，毕竟我们自身的存在就可以认为是“已选择的路径”，立足于当下，我们能够做出的所有选择就是剩余的选择路径。</p>
+
+<p>回溯算法有一个非常通用的框架，具体表现为:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 其中 choices 表示我们能做出的选择，selected 表示已选择的路径
+</span><span class="kt">void</span> <span class="nf">backtracking</span><span class="p">(</span><span class="n">vecotr</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">choices</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">selected</span><span class="p">)</span> <span class="p">{</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">end</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>
+    
+    <span class="k">for</span> <span class="n">choice</span> <span class="n">in</span> <span class="n">choices</span> <span class="p">{</span>
+        <span class="c1">// 进行选择
+</span>        <span class="n">selected</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">choice</span><span class="p">);</span>
+        
+        <span class="c1">// 继续前行
+</span>        <span class="n">backtracking</span><span class="p">(</span><span class="n">choices</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+        
+        <span class="c1">// 撤销选择
+</span>        <span class="n">selectd</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>下面使用一道非常经典的排列问题来更加具体的描述回溯法，题目如下:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>给定一个没有重复数字的序列，返回其所有可能的全排列
+
+Example:
+    Input: nums <span class="o">=</span> <span class="o">[</span>1,2,3]
+    Output: <span class="o">[[</span>1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]
+</code></pre></div></div>
+
+<p>即求解给定数组中元素的所有排列，根据高中数学知识，n 个元素所有的排列个数为 n!，只不过题目需要输出所有的具体排列方式。</p>
+
+<p>思考方式也比较简单，以 <code class="highlighter-rouge">[1, 2, 3]</code> 的全排列为例。首先我们先固定第一个元素，来看剩下的元素有哪些排列方式，很明显地，只有两种: <code class="highlighter-rouge">[2, 3]</code> 和 <code class="highlighter-rouge">[3, 2]</code>，所以以 1 开始的全部排列为 <code class="highlighter-rouge">[1, 2, 3]</code>, <code class="highlighter-rouge">[1, 3, 2]</code>。接着我们固定第二个元素，来看剩下的 <code class="highlighter-rouge">[1, 3]</code> 有哪些排列方式，答案是 <code class="highlighter-rouge">[1, 3]</code> 和 <code class="highlighter-rouge">[3, 1]</code>，因此以 2 为起始的全部排列为 <code class="highlighter-rouge">[2, 1, 3]</code> 和 <code class="highlighter-rouge">[2, 3, 1]</code>。以此类推，直到输出数组最后一个元素的全排列，整个搜索过程结束。</p>
+
+<p>如果以一棵树来表示的话，就是下面的样子:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/permutation.png" alt="" /></p>
+
+<p>左图中描述了确切的选择过程，而右图中则描述了选择以及回溯(撤销选择)的过程。现在，我们可以使用代码来解决这个全排列问题了。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Solution</span> <span class="p">{</span>
+
+    <span class="c1">// 保存每一个排列结果
+</span>    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">result</span><span class="p">;</span>
+
+    <span class="c1">// 在每次的选择中，我们不能够再选择哪些已经选择过的元素了
+</span>    <span class="c1">// 所以我们使用一个数组来记录已经选择过的元素索引
+</span>    <span class="c1">// visted[i] = true 则表示第 i 个元素已经被选择
+</span>    <span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">visted</span><span class="p">;</span>
+
+    <span class="c1">// 其中 selected 表示我们已经选择过的路径
+</span>    <span class="kt">void</span> <span class="nf">backtracking</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">nums</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">selected</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">selected</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">==</span> <span class="n">nums</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
+            <span class="n">result</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">selected</span><span class="p">);</span>
+            <span class="k">return</span> <span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">nums</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            
+            <span class="k">if</span> <span class="p">(</span><span class="n">visted</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="k">continue</span><span class="p">;</span>
+            
+            <span class="c1">// 做出选择
+</span>            <span class="n">selected</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">nums</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+            <span class="n">visted</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+
+            <span class="n">backtracking</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>   <span class="c1">// 怀揣着当前选择进行下一次选择
+</span>
+            <span class="c1">// 撤销刚才的选择
+</span>            <span class="n">visted</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+            <span class="n">selected</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">;</span>
+    <span class="p">}</span>
+
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">permute</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">nums</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="n">assert</span><span class="p">(</span><span class="n">nums</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">);</span>
+
+        <span class="c1">// 在最开始，没有元素被访问过, 所以全部初始化为 false
+</span>        <span class="n">visted</span> <span class="o">=</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">(</span><span class="n">nums</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="nb">false</span><span class="p">);</span>
+
+        <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">selected</span><span class="p">;</span>
+        <span class="n">backtracking</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+
+        <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="1-组合问题">1. 组合问题</h3>
+
+<p>除了排列问题以外，组合问题是回溯法的另外一处后花园。对于排列而言，需要元素的排列顺序，例如 <code class="highlighter-rouge">[1, 2, 3]</code> 和 <code class="highlighter-rouge">[1, 3, 2]</code> 属于不同的排列。而组合问题则不关心元素的排列顺序，<code class="highlighter-rouge">[1, 2]</code> 和 <code class="highlighter-rouge">[2, 1]</code> 为同一个组合。</p>
+
+<p>在组合问题中，使用回溯法的整体框架与排列问题几乎一模一样，唯一有差别的就是我们<strong>如何定义剩余的可选路径</strong>。</p>
+
+<p>leetcode 中的 <a href="https://leetcode.com/problems/combinations/">77. Combinations</a> 就是一道非常经典的组合问题。</p>
+
+<blockquote>
+  <p>给定两个整数 n 和 k，返回 1 …n 中所有可能的 k 个数的组合</p>
+</blockquote>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/combination.png" alt="" /></p>
+
+<p>可以看到，组合问题和排列问题唯一的差别就在于当我们选择了某一个元素之后，在这之前的所有元素均不可被选择，这是因为前面的元素一定已经生成了对应的组合。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Solution</span> <span class="p">{</span>
+<span class="k">private</span><span class="o">:</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">result</span><span class="p">;</span>
+
+    <span class="c1">// 从 start...n 中求解组合问题, selected为已选择路径
+</span>    <span class="kt">void</span> <span class="nf">combination</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">,</span> <span class="kt">int</span> <span class="n">k</span><span class="p">,</span> <span class="kt">int</span> <span class="n">start</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">selected</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">selected</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">==</span> <span class="n">k</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">result</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">selected</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">start</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">n</span> <span class="o">-</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="n">selected</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">selected</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>                  <span class="c1">// 选择
+</span>            <span class="n">combination</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+            <span class="n">selected</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>                    <span class="c1">// 撤销选择
+</span>        <span class="p">}</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">combine</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">,</span> <span class="kt">int</span> <span class="n">k</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="n">assert</span><span class="p">(</span><span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">k</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">k</span> <span class="o">&lt;=</span> <span class="n">n</span><span class="p">);</span>
+
+        <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">selected</span><span class="p">;</span>
+        <span class="n">combination</span><span class="p">(</span><span class="n">n</span> <span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+
+        <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>注意到在 <code class="highlighter-rouge">for</code> 循环中我们并没有让 <code class="highlighter-rouge">i</code> 自增到 <code class="highlighter-rouge">n</code>，而是自增到 <code class="highlighter-rouge">n - (k - selected.size()) + 1</code>。这是因为当我们已经选择了 <code class="highlighter-rouge">selected.size()</code> 这么多个元素之后，还剩下 <code class="highlighter-rouge">k - selected.size()</code> 这么多个元素需要被选择。也就是说，在 <code class="highlighter-rouge">[i...n]</code> 之间必须要存在 <code class="highlighter-rouge">k - selected.size()</code> 这么多个元素，所以我们只需要自增到剩下的元素区间无法满足选取 <code class="highlighter-rouge">k - selected.size()</code> 这么多个元素数量即可。</p>
+
+<h3 id="3-剪枝">3. 剪枝</h3>
+
+<p>剪枝听起来是一个很高大上的技巧，但实际上剪枝的概念非常简单，就是让整个递归过程减少无效的计算。在上面的组合问题一解中，我们仅使变量 <code class="highlighter-rouge">i</code> 自增到 <code class="highlighter-rouge">n - (k - selected.size()) + 1</code>，剔除了许多无效的计算，这就是一种剪枝。</p>
+
+<p>一个比较经典的剪枝问题就是求拥有重复元素的全排列问题，在 <a href="https://leetcode.com/problems/permutations-ii/">47. Permutations II</a> 有具体描述。</p>
+
+<blockquote>
+  <p>Input: nums = [1,1,2]
+Output: [[1, 1, 2], [1, 2, 1], [2, 1, 1]]</p>
+</blockquote>
+
+<p>一种解决方案就是不管数组中有没有重复元素，按照原有的流程将所有的排列输出，然后再进行排序去重，这一定是一个可行解。但是，既然我们需要对结果进行排序，为什么不对原有的数组进行排序，然后在回溯的过程中进行去重呢?</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/047-permutations-II-Explain.png" alt="" /></p>
+
+<p>如上图所示，我们首先对原有数组进行排序。而后在每一次选择时都去判断当前元素是否和前一个元素相同，以及在相同的条件下，前一个元素是否被使用。若结果为 <code class="highlighter-rouge">true</code>，将跳过当前元素。</p>
+
+<p>因篇幅限制，这里不再贴源码，感兴趣的小伙伴可以移步:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/blob/master/leetcode/prune/047-Permutations-II.cpp</p>
+</blockquote>
+
+<p>同时，剪枝相关的话题整理在:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/tree/master/leetcode/prune</p>
+</blockquote>
+
+<h3 id="4-二维平面中的回溯">4. 二维平面中的回溯</h3>
+
+<p>在前面的问题中回溯都在一维数组中进行，在二维数组中回溯法同样有效，并且能够解决的问题也更加有趣。例如 N-皇后问题，求解数独，以及我们开篇就提到的迷宫问题。</p>
+
+<p>在 leetcode 中，关于二维平面中的回溯问题不是很多，以 <a href="https://leetcode.com/problems/word-search/">79. Word Search</a> 为例:</p>
+
+<blockquote>
+  <p>在一个 m * n 的字母板中，寻找是否存在某一个单词 word，字母和字母之间可以水平或者垂直连接。</p>
+</blockquote>
+
+<p>下面给出分析图示:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/search-string.png" alt="" /></p>
+
+<p>选择树，或者说决策树与排列、组合问题并没有什么不同，只不过选择的方向固定为上、下、左、右。同时我们的 <code class="highlighter-rouge">visited</code> 数组也需要设置成一个二维数组。</p>
+
+<p>题解:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/blob/master/leetcode/backtracking/079-Word-Search.cpp</p>
+</blockquote>
+
+<h3 id="5-flood-fill">5. Flood fill</h3>
+
+<p>Flood fill 算法又称为漫水填充算法，在扫雷游戏中用于计算需要被清除的区域。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/Recursive_Flood_Fill_4_%28aka%29.gif" /></p>
+
+<p>上图为 wikipedia 对 Flood fill 的 GIF 示例。其中白色部分我们需要对其进行着色，黑色部分为着色的边界，从中心点开始向下滴一滴墨水，墨水所散开的区域就是我们需要着色的区域。</p>
+
+<p>在 <a href="https://leetcode.com/problems/number-of-islands/">200. Number of Islands</a> 该题中我们就可以使用 Flood fill 算法来完成。相较于排列和组合问题有着明显的递归终止条件，Flood fill 算法则需要确保所有选择过的元素的 4 个方向上的元素均被访问并标记过，除非遇到边界。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/island.png" alt="" /></p>
+
+<p>题解:</p>
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/blob/master/leetcode/depth-first-search/200-Number-of-Islands.cpp</p>
+</blockquote>
+
+<p>不过，Flood fill 严格意义上来来说应该是一种深度优先遍历(DFS)算法，但是说是回溯法的一种也没太大毛病。</p>
+
+<h3 id="6-二叉树中的回溯">6. 二叉树中的回溯</h3>
+
+<p>有时候我们会默认为回溯法的选择路径是一棵多叉树，而忽略了最基本的情况: 二叉树。相较于二叉树的遍历，回溯在其中的应用并不是很多，一个比较典型的问题就是输出二叉树从根节点到所有叶子节点的路径，例如:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/binary-paths.png" alt="" /></p>
+
+<p>代码也非常简单:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">TreeNode</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">val</span><span class="p">;</span>
+    <span class="n">TreeNode</span> <span class="o">*</span><span class="n">left</span><span class="p">;</span>
+    <span class="n">TreeNode</span> <span class="o">*</span><span class="n">right</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">result</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="nf">treePaths</span><span class="p">(</span><span class="n">TreeNode</span> <span class="o">*</span><span class="n">root</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">selected</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">root</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">;</span>
+    
+    <span class="n">selected</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">val</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span> <span class="o">==</span> <span class="nb">nullptr</span> <span class="o">&amp;&amp;</span> <span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span> <span class="o">==</span> <span class="nb">nullptr</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">result</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">selected</span><span class="p">);</span>
+        <span class="n">selected</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+        <span class="k">return</span> <span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">treePaths</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+    <span class="n">treePaths</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+
+    <span class="n">selected</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>在 <a href="https://leetcode.com/problems/path-sum-ii/">Path Sum II</a>，<a href="https://leetcode.com/problems/sum-root-to-leaf-numbers/">Sum Root to Leaf Numbers</a>，<a href="https://leetcode.com/problems/smallest-string-starting-from-leaf/">Smallest String Starting From Leaf</a> 这些问题中都涉及到了二叉树的回溯。</p>
+
+<h3 id="7-小结">7. 小结</h3>
+
+<p>回溯法是一种相当实用的算法，思想也非常简单，许多问题都可以使用回溯的方式来“暴力”解决，其中就包括数独、图着色、N-Queens 等非常有意思的问题。在具体的实现过程中，可以使用剪枝这一技巧来提高算法的运行效率，除去多余的、重复的、不必要的计算。</p>
+
+<p>leetcode 关于回溯这一话题的全部题目:</p>
+
+<blockquote>
+  <p>https://leetcode.com/tag/backtracking/</p>
+</blockquote>
+
+<p>我个人对其中一些题目的解:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/tree/master/leetcode/backtracking
+https://github.com/SmartKeyerror/Snorlax/tree/master/leetcode/prune</p>
+</blockquote>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/forerver-maze.gif" alt="" /></p>
+
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>C指针与内存</title>
 	  <link>//c-pointers-and-memory</link>
 	  <author></author>
@@ -2136,78 +2423,6 @@ tcp        0      1 Zero:60558              media-router-fp1.:https LAST_ACK
   </tbody>
 </table>
 
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>InnoDB独特的LRU</title>
-	  <link>//InnoDB-LRU</link>
-	  <author></author>
-	  <pubDate>2020-06-09T18:06:25+00:00</pubDate>
-	  <guid>//InnoDB-LRU</guid>
-	  <description><![CDATA[
-	     <p>由于硬盘和内存的造价差异，一台主机实例的硬盘容量通常会远超于内存容量。对于数据库等应用而言，为了保证更快的查询效率，通常会将使用过的数据放在内存中进行加速读取。LRU算法经常用于数据的置换，但InnoDB的LRU却更加独特。</p>
-
-<!---more--->
-
-<h3 id="1-总览">1. 总览</h3>
-
-<p>InnoDB存储引擎是基于硬盘存储的，并且以页(page)的方式对数据记录进行管理。由于硬盘和CPU之间数据处理速度存在巨大差异，所以必须要使用内存来弥补两者之间的速度鸿沟。</p>
-
-<p>正如同操作系统在读取硬盘文件时会将其纳入内核缓冲区一样，InnoDB存储引擎也会为硬盘中的数据和索引建立位于用户空间的内存缓冲池。当数据库从硬盘读取数据时，首先将其放置于位于内存的缓冲池中，下一次读取相同的数据时，首先判断是否位于缓冲池中。若在，则直接返回，若不在，再从硬盘中进行读取。</p>
-
-<p>当修改数据页时，首先修改位于缓冲池中的数据页，InnoDB会寻找合适的时机将此修改持久化至硬盘中，该合适的时机通常由Checkpoint技术决定。</p>
-
-<p>在Linux操作系统中，位于内核的内核缓冲区就是为了提高系统的I/O效率而产生的，那么为什么InnoDB还要建立自己的缓冲区? 内核缓冲区的终端为硬盘，需要处理诸如页对齐、数据边界等和硬盘硬件相关的事宜，而InnoDB缓冲区则主要服务于应用，并不关心硬件细节，并且可由应用程序控制。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MySQL/InnoDB-Buffer/InnoDB-Buffer-Pool.png" alt="" /></p>
-
-<p>如上图所示，InnoDB缓冲池主要由数据页和索引页构成，两者占据了缓冲区的绝大部分空间。除此之外，undo页、插入缓冲以及自适应哈希索引等内容也位于缓冲池中。</p>
-
-<h3 id="2-数据页与索引页的lru">2. 数据页与索引页的LRU</h3>
-
-<p>数据页和索引页的目的在于缓存一部分的表数据和索引数据，其数据总量通常会超过缓冲池大小，所以缓冲池中应只缓冲那些经常使用的热点数据。InnoDB内存管理使用的是最近最少使用(Least Recently Used, LRU)算法。来淘汰最久未使用的数据。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MySQL/InnoDB-Buffer/normal-LRU.png" alt="" /></p>
-
-<p>在一般的LRU算法中，当链表中的某一个数据被读取时，将会将其放置于队首。当新增数据且链表已达最大数量时，将链表尾部的数据移除，并将新增的数据置于链表首部。</p>
-
-<p>但是，InnoDB并没有采用传统的LRU算法，而是对其进行了一些更能够适应自身行为的改进: 最近访问到的数据并不直接放到LRU列表的首部，而是放到LRU列表的midpoiont位置。在默认配置下，midpoint位于LRU列表的5/8处。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MySQL/InnoDB-Buffer/midpoint.png" alt="" /></p>
-
-<p>如上图所示，在midpoint之前的列表称之为new列表，或者使用Java中的GC术语: 新生代，在midpoint之后的列表称之为old列表，或者说，老年代。</p>
-
-<p>当new列表中的数据被访问时，直接将其放置于LRU列表的首部。当出现新的页面进入LRU时，将其放置于midpoint位置，<strong>此时该数据页将会位于old列表</strong>。</p>
-
-<p>当old列表中的数据被访问时，需要进行判断。如果当前页在old列表中存在时间超过了1秒，则将其移到列表首部。若存在时间小于1秒，则位置保持不变。该判断时间由<code class="highlighter-rouge">innodb_old_blocks_time</code>决定，默认为1000毫秒，即1秒。</p>
-
-<p>另外一点需要注意的是，InnoDB管理数据的最小单位是页(page)，而不是数据库中的某一行。即如果两条记录处于同一页，在两次间隔时间超过<code class="highlighter-rouge">innodb_old_blocks_time</code>的不同行记录的访问也会将该页置于LRU的首部。</p>
-
-<p>InnoDB如此设计的原因在于若使用朴素的LRU算法实现的，某些索引或者表扫描操作可能会将所有的索引页和数据页置换出去，而这些数据通常只是一次性使用的，热点数据被刷出之后，会严重的影响MySQL的性能。当采用midpoint实现后，至少能够保证5/8的数据都是热点数据，即使出现了大范围的表扫描和索引扫描。</p>
-
-<p>让我们来具体分析下对大表进行顺序扫描的过程:</p>
-
-<ol>
-  <li>当扫描开始时，InnoDB会一次性地取出16KB的一页数据，将其置于LRU 5/8的位置。</li>
-  <li>由于是顺序扫描，那么同一页将会被访问多次，但是访问的间隔一定不会超过默认的<code class="highlighter-rouge">innodb_old_blocks_time</code>，即1秒。所以该页并不会被置于LRU列表的首部，也就不会将真正的热点数据置换而出。</li>
-  <li>后续的数据扫描将会在下一页进行，重复上述过程。</li>
-</ol>
-
-<p>通过执行<code class="highlighter-rouge">show engine innodb status\G;</code>可以查看InnoDB缓冲池的各种指标，包括当前缓冲池的大小。此外还有一个非常重要的性能指标: 内存命中率。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mysql&gt; show engine innodb status<span class="se">\G</span><span class="p">;</span>
-Buffer pool hit rate 976 / 1000, young-making rate 0 / 1000 not 0 / 1000
-</code></pre></div></div>
-
-<p>其中Buffer pool hit rate即为缓冲池内存命中率，在一个线上服务中，如果要保证响应时间的话，命中率应不低于95%。 如果某台MySQL实例的hit rate低于此值的话，需要查看设置的缓冲池总大小，以及是否进行了频繁的大范围数据扫描导致LRU列表被污染。</p>
-
-<p>除了增加缓冲池的大小来提高效率以外，当遇到持续的热点问题时，即预估将来的热点数据不止63%，也可以调整midpoint的值来减少热点数据被刷出的概率:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># innodb_old_blocks_pct默认值为37%, 即5/8</span>
-mysql&gt; <span class="nb">set </span>global innodb_old_blocks_pct <span class="o">=</span> 20<span class="p">;</span>
-</code></pre></div></div>
 
 	  ]]></description>
 	</item>

@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>回溯与剪枝: 《明日边缘》or《源代码》</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+<!--    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">-->
+<!--    <style>.hljs { background: none; }</style>-->
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//backtracking" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="回溯与剪枝: 《明日边缘》or《源代码》" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//backtracking" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="回溯与剪枝: 《明日边缘》or《源代码》" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//backtracking" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "回溯与剪枝: 《明日边缘》or《源代码》",
+    "url": "https://smartkeyerror.com//backtracking",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">回溯与剪枝: 《明日边缘》or《源代码》</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2020-11-13">13 Nov 2020</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/algorithm'>algorithm</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>回溯法在 wikipedia 中被解释成一种“暴力搜索法”，相较“暴力”一词我更喜欢称之为“枚举”，枚举一个空间中所有的搜索路径。</p>
+
+<!---more--->
+
+<p>回溯法采用试错的思想，逐步地解决一个问题，就好像我们小时候玩儿的走迷宫一样。我们从一个点出发，选择迷宫中的一条路向前行进，当遇到死胡同时再回到当初进行选择的地方，再往下走，直到将整个迷宫搜索完毕或者是找到一条通往终点的路径。</p>
+
+<p>人生是由多个选择所构成的，我们有时候会忍不住的去假设如果当初我们没有做那个选择现在会是怎么样。人生无法重来，但是回溯法却可以。</p>
+
+<p>在具体的回溯算法实现中，有两个非常重要的事物：已选择的路径和下一次能够进行选择的路径。这也非常贴近现实，毕竟我们自身的存在就可以认为是“已选择的路径”，立足于当下，我们能够做出的所有选择就是剩余的选择路径。</p>
+
+<p>回溯算法有一个非常通用的框架，具体表现为:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 其中 choices 表示我们能做出的选择，selected 表示已选择的路径
+</span><span class="kt">void</span> <span class="nf">backtracking</span><span class="p">(</span><span class="n">vecotr</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">choices</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">selected</span><span class="p">)</span> <span class="p">{</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">end</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>
+    
+    <span class="k">for</span> <span class="n">choice</span> <span class="n">in</span> <span class="n">choices</span> <span class="p">{</span>
+        <span class="c1">// 进行选择
+</span>        <span class="n">selected</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">choice</span><span class="p">);</span>
+        
+        <span class="c1">// 继续前行
+</span>        <span class="n">backtracking</span><span class="p">(</span><span class="n">choices</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+        
+        <span class="c1">// 撤销选择
+</span>        <span class="n">selectd</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>下面使用一道非常经典的排列问题来更加具体的描述回溯法，题目如下:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>给定一个没有重复数字的序列，返回其所有可能的全排列
+
+Example:
+    Input: nums <span class="o">=</span> <span class="o">[</span>1,2,3]
+    Output: <span class="o">[[</span>1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]
+</code></pre></div></div>
+
+<p>即求解给定数组中元素的所有排列，根据高中数学知识，n 个元素所有的排列个数为 n!，只不过题目需要输出所有的具体排列方式。</p>
+
+<p>思考方式也比较简单，以 <code class="highlighter-rouge">[1, 2, 3]</code> 的全排列为例。首先我们先固定第一个元素，来看剩下的元素有哪些排列方式，很明显地，只有两种: <code class="highlighter-rouge">[2, 3]</code> 和 <code class="highlighter-rouge">[3, 2]</code>，所以以 1 开始的全部排列为 <code class="highlighter-rouge">[1, 2, 3]</code>, <code class="highlighter-rouge">[1, 3, 2]</code>。接着我们固定第二个元素，来看剩下的 <code class="highlighter-rouge">[1, 3]</code> 有哪些排列方式，答案是 <code class="highlighter-rouge">[1, 3]</code> 和 <code class="highlighter-rouge">[3, 1]</code>，因此以 2 为起始的全部排列为 <code class="highlighter-rouge">[2, 1, 3]</code> 和 <code class="highlighter-rouge">[2, 3, 1]</code>。以此类推，直到输出数组最后一个元素的全排列，整个搜索过程结束。</p>
+
+<p>如果以一棵树来表示的话，就是下面的样子:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/permutation.png" alt="" /></p>
+
+<p>左图中描述了确切的选择过程，而右图中则描述了选择以及回溯(撤销选择)的过程。现在，我们可以使用代码来解决这个全排列问题了。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Solution</span> <span class="p">{</span>
+
+    <span class="c1">// 保存每一个排列结果
+</span>    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">result</span><span class="p">;</span>
+
+    <span class="c1">// 在每次的选择中，我们不能够再选择哪些已经选择过的元素了
+</span>    <span class="c1">// 所以我们使用一个数组来记录已经选择过的元素索引
+</span>    <span class="c1">// visted[i] = true 则表示第 i 个元素已经被选择
+</span>    <span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">visted</span><span class="p">;</span>
+
+    <span class="c1">// 其中 selected 表示我们已经选择过的路径
+</span>    <span class="kt">void</span> <span class="nf">backtracking</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">nums</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">selected</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">selected</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">==</span> <span class="n">nums</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
+            <span class="n">result</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">selected</span><span class="p">);</span>
+            <span class="k">return</span> <span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">nums</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            
+            <span class="k">if</span> <span class="p">(</span><span class="n">visted</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="k">continue</span><span class="p">;</span>
+            
+            <span class="c1">// 做出选择
+</span>            <span class="n">selected</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">nums</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+            <span class="n">visted</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+
+            <span class="n">backtracking</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>   <span class="c1">// 怀揣着当前选择进行下一次选择
+</span>
+            <span class="c1">// 撤销刚才的选择
+</span>            <span class="n">visted</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+            <span class="n">selected</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">;</span>
+    <span class="p">}</span>
+
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">permute</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">nums</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="n">assert</span><span class="p">(</span><span class="n">nums</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">);</span>
+
+        <span class="c1">// 在最开始，没有元素被访问过, 所以全部初始化为 false
+</span>        <span class="n">visted</span> <span class="o">=</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">(</span><span class="n">nums</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="nb">false</span><span class="p">);</span>
+
+        <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">selected</span><span class="p">;</span>
+        <span class="n">backtracking</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+
+        <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="1-组合问题">1. 组合问题</h3>
+
+<p>除了排列问题以外，组合问题是回溯法的另外一处后花园。对于排列而言，需要元素的排列顺序，例如 <code class="highlighter-rouge">[1, 2, 3]</code> 和 <code class="highlighter-rouge">[1, 3, 2]</code> 属于不同的排列。而组合问题则不关心元素的排列顺序，<code class="highlighter-rouge">[1, 2]</code> 和 <code class="highlighter-rouge">[2, 1]</code> 为同一个组合。</p>
+
+<p>在组合问题中，使用回溯法的整体框架与排列问题几乎一模一样，唯一有差别的就是我们<strong>如何定义剩余的可选路径</strong>。</p>
+
+<p>leetcode 中的 <a href="https://leetcode.com/problems/combinations/">77. Combinations</a> 就是一道非常经典的组合问题。</p>
+
+<blockquote>
+  <p>给定两个整数 n 和 k，返回 1 …n 中所有可能的 k 个数的组合</p>
+</blockquote>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/combination.png" alt="" /></p>
+
+<p>可以看到，组合问题和排列问题唯一的差别就在于当我们选择了某一个元素之后，在这之前的所有元素均不可被选择，这是因为前面的元素一定已经生成了对应的组合。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Solution</span> <span class="p">{</span>
+<span class="k">private</span><span class="o">:</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">result</span><span class="p">;</span>
+
+    <span class="c1">// 从 start...n 中求解组合问题, selected为已选择路径
+</span>    <span class="kt">void</span> <span class="nf">combination</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">,</span> <span class="kt">int</span> <span class="n">k</span><span class="p">,</span> <span class="kt">int</span> <span class="n">start</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">selected</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">selected</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">==</span> <span class="n">k</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">result</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">selected</span><span class="p">);</span>
+            <span class="k">return</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">start</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">n</span> <span class="o">-</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="n">selected</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">selected</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>                  <span class="c1">// 选择
+</span>            <span class="n">combination</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+            <span class="n">selected</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>                    <span class="c1">// 撤销选择
+</span>        <span class="p">}</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">combine</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">,</span> <span class="kt">int</span> <span class="n">k</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="n">assert</span><span class="p">(</span><span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">k</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">k</span> <span class="o">&lt;=</span> <span class="n">n</span><span class="p">);</span>
+
+        <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">selected</span><span class="p">;</span>
+        <span class="n">combination</span><span class="p">(</span><span class="n">n</span> <span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+
+        <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>注意到在 <code class="highlighter-rouge">for</code> 循环中我们并没有让 <code class="highlighter-rouge">i</code> 自增到 <code class="highlighter-rouge">n</code>，而是自增到 <code class="highlighter-rouge">n - (k - selected.size()) + 1</code>。这是因为当我们已经选择了 <code class="highlighter-rouge">selected.size()</code> 这么多个元素之后，还剩下 <code class="highlighter-rouge">k - selected.size()</code> 这么多个元素需要被选择。也就是说，在 <code class="highlighter-rouge">[i...n]</code> 之间必须要存在 <code class="highlighter-rouge">k - selected.size()</code> 这么多个元素，所以我们只需要自增到剩下的元素区间无法满足选取 <code class="highlighter-rouge">k - selected.size()</code> 这么多个元素数量即可。</p>
+
+<h3 id="3-剪枝">3. 剪枝</h3>
+
+<p>剪枝听起来是一个很高大上的技巧，但实际上剪枝的概念非常简单，就是让整个递归过程减少无效的计算。在上面的组合问题一解中，我们仅使变量 <code class="highlighter-rouge">i</code> 自增到 <code class="highlighter-rouge">n - (k - selected.size()) + 1</code>，剔除了许多无效的计算，这就是一种剪枝。</p>
+
+<p>一个比较经典的剪枝问题就是求拥有重复元素的全排列问题，在 <a href="https://leetcode.com/problems/permutations-ii/">47. Permutations II</a> 有具体描述。</p>
+
+<blockquote>
+  <p>Input: nums = [1,1,2]
+Output: [[1, 1, 2], [1, 2, 1], [2, 1, 1]]</p>
+</blockquote>
+
+<p>一种解决方案就是不管数组中有没有重复元素，按照原有的流程将所有的排列输出，然后再进行排序去重，这一定是一个可行解。但是，既然我们需要对结果进行排序，为什么不对原有的数组进行排序，然后在回溯的过程中进行去重呢?</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/047-permutations-II-Explain.png" alt="" /></p>
+
+<p>如上图所示，我们首先对原有数组进行排序。而后在每一次选择时都去判断当前元素是否和前一个元素相同，以及在相同的条件下，前一个元素是否被使用。若结果为 <code class="highlighter-rouge">true</code>，将跳过当前元素。</p>
+
+<p>因篇幅限制，这里不再贴源码，感兴趣的小伙伴可以移步:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/blob/master/leetcode/prune/047-Permutations-II.cpp</p>
+</blockquote>
+
+<p>同时，剪枝相关的话题整理在:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/tree/master/leetcode/prune</p>
+</blockquote>
+
+<h3 id="4-二维平面中的回溯">4. 二维平面中的回溯</h3>
+
+<p>在前面的问题中回溯都在一维数组中进行，在二维数组中回溯法同样有效，并且能够解决的问题也更加有趣。例如 N-皇后问题，求解数独，以及我们开篇就提到的迷宫问题。</p>
+
+<p>在 leetcode 中，关于二维平面中的回溯问题不是很多，以 <a href="https://leetcode.com/problems/word-search/">79. Word Search</a> 为例:</p>
+
+<blockquote>
+  <p>在一个 m * n 的字母板中，寻找是否存在某一个单词 word，字母和字母之间可以水平或者垂直连接。</p>
+</blockquote>
+
+<p>下面给出分析图示:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/search-string.png" alt="" /></p>
+
+<p>选择树，或者说决策树与排列、组合问题并没有什么不同，只不过选择的方向固定为上、下、左、右。同时我们的 <code class="highlighter-rouge">visited</code> 数组也需要设置成一个二维数组。</p>
+
+<p>题解:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/blob/master/leetcode/backtracking/079-Word-Search.cpp</p>
+</blockquote>
+
+<h3 id="5-flood-fill">5. Flood fill</h3>
+
+<p>Flood fill 算法又称为漫水填充算法，在扫雷游戏中用于计算需要被清除的区域。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/Recursive_Flood_Fill_4_%28aka%29.gif" /></p>
+
+<p>上图为 wikipedia 对 Flood fill 的 GIF 示例。其中白色部分我们需要对其进行着色，黑色部分为着色的边界，从中心点开始向下滴一滴墨水，墨水所散开的区域就是我们需要着色的区域。</p>
+
+<p>在 <a href="https://leetcode.com/problems/number-of-islands/">200. Number of Islands</a> 该题中我们就可以使用 Flood fill 算法来完成。相较于排列和组合问题有着明显的递归终止条件，Flood fill 算法则需要确保所有选择过的元素的 4 个方向上的元素均被访问并标记过，除非遇到边界。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/island.png" alt="" /></p>
+
+<p>题解:</p>
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/blob/master/leetcode/depth-first-search/200-Number-of-Islands.cpp</p>
+</blockquote>
+
+<p>不过，Flood fill 严格意义上来来说应该是一种深度优先遍历(DFS)算法，但是说是回溯法的一种也没太大毛病。</p>
+
+<h3 id="6-二叉树中的回溯">6. 二叉树中的回溯</h3>
+
+<p>有时候我们会默认为回溯法的选择路径是一棵多叉树，而忽略了最基本的情况: 二叉树。相较于二叉树的遍历，回溯在其中的应用并不是很多，一个比较典型的问题就是输出二叉树从根节点到所有叶子节点的路径，例如:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/binary-paths.png" alt="" /></p>
+
+<p>代码也非常简单:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">TreeNode</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">val</span><span class="p">;</span>
+    <span class="n">TreeNode</span> <span class="o">*</span><span class="n">left</span><span class="p">;</span>
+    <span class="n">TreeNode</span> <span class="o">*</span><span class="n">right</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">result</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="nf">treePaths</span><span class="p">(</span><span class="n">TreeNode</span> <span class="o">*</span><span class="n">root</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">selected</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">root</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">;</span>
+    
+    <span class="n">selected</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">val</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span> <span class="o">==</span> <span class="nb">nullptr</span> <span class="o">&amp;&amp;</span> <span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span> <span class="o">==</span> <span class="nb">nullptr</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">result</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">selected</span><span class="p">);</span>
+        <span class="n">selected</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+        <span class="k">return</span> <span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">treePaths</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+    <span class="n">treePaths</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">,</span> <span class="n">selected</span><span class="p">);</span>
+
+    <span class="n">selected</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>在 <a href="https://leetcode.com/problems/path-sum-ii/">Path Sum II</a>，<a href="https://leetcode.com/problems/sum-root-to-leaf-numbers/">Sum Root to Leaf Numbers</a>，<a href="https://leetcode.com/problems/smallest-string-starting-from-leaf/">Smallest String Starting From Leaf</a> 这些问题中都涉及到了二叉树的回溯。</p>
+
+<h3 id="7-小结">7. 小结</h3>
+
+<p>回溯法是一种相当实用的算法，思想也非常简单，许多问题都可以使用回溯的方式来“暴力”解决，其中就包括数独、图着色、N-Queens 等非常有意思的问题。在具体的实现过程中，可以使用剪枝这一技巧来提高算法的运行效率，除去多余的、重复的、不必要的计算。</p>
+
+<p>leetcode 关于回溯这一话题的全部题目:</p>
+
+<blockquote>
+  <p>https://leetcode.com/tag/backtracking/</p>
+</blockquote>
+
+<p>我个人对其中一些题目的解:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/tree/master/leetcode/backtracking
+https://github.com/SmartKeyerror/Snorlax/tree/master/leetcode/prune</p>
+</blockquote>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/backtracing/forerver-maze.gif" alt="" /></p>
+
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.jpg)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=回溯与剪枝: 《明日边缘》or《源代码》&amp;url=https://smartkeyerror.combacktracking"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.combacktracking"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.combacktracking"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/c-pointers-and-memory">
+            <section class="post">
+                <h2>C指针与内存</h2>
+                <p>C 语言指针真正精髓的地方在于指针可以进行加减法，这一点极大的提升了程序的对指针使用的灵活性，同时也带来了不小的学习负担。正是因为 C 语言指针可运算，才奠定了如今 C 语言的地位。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2020</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdn.bootcss.com/highlight.js/10.1.2/styles/monokai-sublime.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="https://cdn.bootcdn.net/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-150652886-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

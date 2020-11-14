@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>回溯与剪枝: 《明日边缘》or《源代码》</title>
+        
+          <description>&lt;p&gt;回溯法在 wikipedia 中被解释成一种“暴力搜索法”，相较“暴力”一词我更喜欢称之为“枚举”，枚举一个空间中所有的搜索路径。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Fri, 13 Nov 2020 07:50:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/backtracking</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/backtracking</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>C指针与内存</title>
         
           <description>&lt;p&gt;C 语言指针真正精髓的地方在于&lt;strong&gt;指针可以进行加减法&lt;/strong&gt;，这一点极大的提升了程序的对指针使用的灵活性，同时也带来了不小的学习负担。正是因为 C 语言指针可运算，才奠定了如今 C 语言的地位。&lt;/p&gt;
