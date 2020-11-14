@@ -6,7 +6,7 @@
 
 ## 归档
 
-- 2020/11/13 [ 回溯与剪枝: 《明日边缘》or《源代码》](https://github.com/SmartKeyerror/Mario/blob/master/_posts/2020-11-13-backtracking.md)
+- 2020/11/13 [ 回溯与剪枝: 《明日边缘》or《源代码》](https://smartkeyerror.com/backtracking)
 - 2020/09/28 [C指针和内存](https://smartkeyerror.com/c-pointers-and-memory)
 - 2020/09/09 [Linux 阻塞与唤醒实现原理](https://smartkeyerror.com/Linux-Blocking)
 - 2020/08/26 [Kubernetes-Informer](https://smartkeyerror.com/Kubernetes-Informer)
