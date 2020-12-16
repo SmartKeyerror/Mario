@@ -126,6 +126,39 @@
     
     <article class="post">
         <header class="post-header">
+            <h2 class="post-title"><a href="/MySQL-physical-structure">MySQL物理存储方式</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>MySQL是基于磁盘进行数据存储的关系型数据库， 所有的数据、索引等数据均以磁盘文件的方式存储， 在有需要时载入内存读取。 为了加快数据查询的效率， 通常会在一些字段上添加索引， 但是许多文档都会告诉我们， 不要添加太多的索引， 索引不要太长， 使用数字或者空字符串来代替NULL值， 为什么会有这些建议? 这些建议又是否正确?  答案都能够从MySQL数据的物理存储方式中找到。
+
+ <a class="read-more" href="/MySQL-physical-structure">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.jpg" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+            
+            <time class="post-date" datetime="2019-08-15">15 Aug 2019</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
             <h2 class="post-title"><a href="/change-log-system-design">数据变更操作日志设计</a></h2>
         </header>
         <section class="post-excerpt">
@@ -426,39 +459,6 @@
                 
             
             <time class="post-date" datetime="2019-03-25">25 Mar 2019</time>
-        </footer>
-    </article>
-    
-    <article class="post">
-        <header class="post-header">
-            <h2 class="post-title"><a href="/Bitmap">那些有趣的数据结构与算法(02)--Bitmap</a></h2>
-        </header>
-        <section class="post-excerpt">
-            <p>在我刚接触Python这门开发语言时， 并没有想用它做Web后端开发， 而是拿来写爬虫。 第一个接触的爬虫框架就是Scrapy。 网络爬虫绕不开的一个话题就是URL去重问题。 在Scrapy原生框架下， 使用的是集合来对URL进行去重的。 集合本身采用哈希表实现， 是一种典型的以空间换时间的数据结构， 当URL数量极为庞大时， 使用这种策略的去重很有可能导致内存溢出而造成服务器宕机的问题。 此时， Bitmap走进了我的视线。
-
- <a class="read-more" href="/Bitmap">&raquo;</a></p>
-        </section>
-        <footer class="post-meta">
-            
-                
-
-                <img class="author-thumb" src="/assets/images/author.jpg" alt="Author image" nopin="nopin" />
-                <!-- author -->
-                <a href='/author/smartkeyerror'>smartkeyerror</a>
-
-                
-            
-
-            <!-- [[tags prefix=" on "]] -->
-            
-                on
-                
-                    
-                       <a href='/tag/数据结构'>数据结构</a>
-                    
-                
-            
-            <time class="post-date" datetime="2019-03-18">18 Mar 2019</time>
         </footer>
     </article>
     

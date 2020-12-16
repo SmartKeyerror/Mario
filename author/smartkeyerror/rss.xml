@@ -12,6 +12,320 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>二叉树与递归: DP、回溯、DFS、BFS，一个通用的算法框架</title>
+	  <link>//binary-tree-and-recursive</link>
+	  <author></author>
+	  <pubDate>2020-12-15T15:50:25+00:00</pubDate>
+	  <guid>//binary-tree-and-recursive</guid>
+	  <description><![CDATA[
+	     <p>二叉树问题在算法领域是一个非常非常重要的话题，”遍历”这一 API 在非线性数据结构中有着举足轻重的地位，可以说 80% 的算法问题都是遍历问题。</p>
+
+<!---more--->
+
+<p>对于一棵二叉树的遍历，相信只要了解过二叉树的程序员都能够用递归的方式写出其前序遍历、中序遍历和后序遍历:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">TreeNode</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">val</span><span class="p">;</span>
+    <span class="n">TreeNode</span> <span class="o">*</span><span class="n">left</span><span class="p">;</span>
+    <span class="n">TreeNode</span> <span class="o">*</span><span class="n">right</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kt">void</span> <span class="nf">traversal</span><span class="p">(</span><span class="n">TreeNode</span> <span class="o">*</span><span class="n">root</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">root</span> <span class="o">==</span> <span class="nb">nullptr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">;</span>
+
+    <span class="c1">// 前序遍历
+</span>    <span class="n">traversal</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">);</span>
+    <span class="c1">// 中序遍历
+</span>    <span class="n">traversal</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">);</span>
+    <span class="c1">// 后序遍历
+</span><span class="p">}</span>
+</code></pre></div></div>
+
+<p>我们可以使用“递归”这一神奇的机制非常轻松的完成二叉树的深度优先遍历。那么，如果使用递归，又该如何实现呢? 此时，我们就需要借助“栈”这一数据结构来完成。</p>
+
+<p>由于我们在最开始的时候只有根节点，但是深度优先遍历却要求我们最先访问最底层的节点(中序和后序遍历)，并且还需要记录下沿途访问过的节点。而栈是一种先进后出的数据结构，和二叉树的深度优先遍历简直就是天生一对。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/tree/1606099448258.png" alt="" /></p>
+
+<p>上图描述了使用栈实现的中序遍历过程，实际上，递归实现的中序遍历中，操作系统所创建栈帧和销毁栈帧的过程与之完全相同。具体的节点入栈和出栈细节上图已经给出，不再赘述，下面是实现过程:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">inorderTraversal</span><span class="p">(</span><span class="n">TreeNode</span><span class="o">*</span> <span class="n">root</span><span class="p">)</span> <span class="p">{</span>
+    
+    <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">result</span><span class="p">;</span>
+    <span class="n">stack</span><span class="o">&lt;</span><span class="n">TreeNode</span> <span class="o">*&gt;</span> <span class="n">depthStack</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">root</span> <span class="o">==</span> <span class="nb">nullptr</span><span class="p">)</span> <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+
+    <span class="n">TreeNode</span> <span class="o">*</span><span class="n">curRoot</span> <span class="o">=</span> <span class="n">root</span><span class="p">;</span>
+    <span class="n">depthStack</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">curRoot</span><span class="p">);</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">depthStack</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        
+        <span class="k">while</span> <span class="p">(</span><span class="n">curRoot</span><span class="o">-&gt;</span><span class="n">left</span> <span class="o">!=</span> <span class="nb">nullptr</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">depthStack</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">curRoot</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">);</span>
+            <span class="n">curRoot</span> <span class="o">=</span> <span class="n">curRoot</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">TreeNode</span> <span class="o">*</span><span class="n">current</span> <span class="o">=</span> <span class="n">depthStack</span><span class="p">.</span><span class="n">top</span><span class="p">();</span>
+        <span class="n">result</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">current</span><span class="o">-&gt;</span><span class="n">val</span><span class="p">);</span>
+        <span class="n">depthStack</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">current</span><span class="o">-&gt;</span><span class="n">right</span> <span class="o">!=</span> <span class="nb">nullptr</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">depthStack</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">current</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">);</span>
+            <span class="n">curRoot</span> <span class="o">=</span> <span class="n">current</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>之所以要使用栈来实现二叉树的中序遍历，是因为通过这个过程我们能够对二叉树的深度遍历过程更进一步地熟悉，从而进一步理解递归实现的深度优先遍历执行过程。</p>
+
+<p>自顶向下的DP问题、回溯问题，甚至是归并排序问题，其实都是二叉树以及多叉树的遍历问题。以最经典的小青蛙跳台阶问题为例，当我们不使用记忆化搜索和递推来实现时，它是这个样子的:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">climbStairs</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">n</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">climbStairs</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">climbStairs</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">2</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>我们对上面的代码进行稍许的修改:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">climbStairs</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">n</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">left</span> <span class="o">=</span> <span class="n">climbStairs</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+    <span class="kt">int</span> <span class="n">right</span> <span class="o">=</span> <span class="n">climbStairs</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">2</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">left</span> <span class="o">+</span> <span class="n">right</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>可以看到，这个过程实际上就是一棵二叉树的后序遍历。当然，小青蛙跳台阶问题本质上就是斐波那契数列问题，也就是说，自顶向下地求解斐波那切数列其实也是二叉树的后序遍历。</p>
+
+<p>再来看 leetcode 上 <a href="https://leetcode.com/problems/word-break/">139. Word Break</a> 这道 DP 问题，通过分析，我们可以得到这样的一棵树:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/tree/1606101980186.png" alt="" /></p>
+
+<p>本质上就是一棵多叉树求解路径的问题，同样是一个深度优先遍历问题。</p>
+
+<p>最后来看回溯问题中较为经典问题，求解全排列问题: <a href="https://leetcode.com/problems/permutations/">46. Permutations</a>。我们能够轻易地画出求解问题的过程和思路:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/tree/1606102283314.png" alt="" /></p>
+
+<p>这还是一个多叉树深度优先遍历问题，将多叉树的每一条“路径”塞到结果中，就可以得到某一个数组的全排列。</p>
+
+<p><strong>这些看似不同的问题中都隐藏了一个相同的问题: 二叉树与多叉树的深度优先遍历问题。</strong></p>
+
+<h3 id="1-简单地二叉树遍历问题">1. 简单地二叉树遍历问题</h3>
+
+<p>首先来看 <a href="https://leetcode.com/problems/kth-smallest-element-in-a-bst/">230. Kth Smallest Element in a BST</a> 这个问题，给定一棵二分搜索树(Binary Search Tree, BST)，求该树中第 k 小的元素。对于一棵 BST 而言，其中序遍历结果就是一个从小到大排序完成的数组。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/tree/1606111554881.png" alt="" /></p>
+
+<p>也就是说，中序遍历结果的第一个元素就是第 1 小的元素，第二个元素就是第 2 小的元素，以此类推，第 k 个元素就是第 k 小的元素:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Solution</span> <span class="p">{</span>
+<span class="k">private</span><span class="o">:</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">result</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="nf">inorder</span><span class="p">(</span><span class="n">TreeNode</span><span class="o">*</span> <span class="n">root</span><span class="p">,</span> <span class="kt">int</span> <span class="n">k</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">root</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>
+        
+        <span class="n">inorder</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">,</span> <span class="n">k</span><span class="p">);</span>
+        
+        <span class="c1">// 中序遍历访问节点
+</span>        <span class="n">result</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">val</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">==</span> <span class="n">k</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>
+        
+        <span class="n">inorder</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">,</span> <span class="n">k</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="kt">int</span> <span class="n">kthSmallest</span><span class="p">(</span><span class="n">TreeNode</span><span class="o">*</span> <span class="n">root</span><span class="p">,</span> <span class="kt">int</span> <span class="n">k</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">midorder_dfs</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">k</span><span class="p">);</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="n">k</span><span class="o">-</span><span class="mi">1</span><span class="p">];</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p><a href="https://leetcode.com/problems/invert-binary-tree/">226. Invert Binary Tree</a>，反转一棵二叉树，使得所有节点的左子节点变成右子节点，右子节点变成左子节点。据说是 Max Howell 未能加入 Google 的直接原因，不过这我是不相信的，个人更倾向于认为是 Max Howell 和 Google 在面试的内容产生了分歧: 反转二叉树有个锤子用? 能反转二叉树的人就能写出 Homebrew 了?</p>
+
+<p>从题目描述中可以看到，需要反转某个节点的左、右子节点，那么必然地，我们得访问到左、右子节点，然后才能对其进行操作，所以这是一个后序遍历的问题。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">TreeNode</span><span class="o">*</span> <span class="n">invertTree</span><span class="p">(</span><span class="k">struct</span> <span class="n">TreeNode</span><span class="o">*</span> <span class="n">root</span><span class="p">){</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">root</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span> <span class="o">=</span> <span class="n">invertTree</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">);</span>
+    <span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span> <span class="o">=</span> <span class="n">invertTree</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">);</span>
+
+    <span class="k">struct</span> <span class="n">TreeNode</span> <span class="o">*</span><span class="n">temp</span> <span class="o">=</span> <span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">;</span>
+    <span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span> <span class="o">=</span> <span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">;</span>
+    <span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span> <span class="o">=</span> <span class="n">temp</span><span class="p">;</span>
+    
+    <span class="k">return</span> <span class="n">root</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><a href="https://leetcode.com/problems/flatten-binary-tree-to-linked-list/">114. Flatten Binary Tree to Linked List</a>，题目要求将一棵二叉树展开成一个链表形式的树，如下所示:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:
+    1
+   / <span class="se">\</span>
+  2   5
+ / <span class="se">\ </span>  <span class="se">\</span>
+3   4   6
+
+Output: 
+1
+ <span class="se">\</span>
+  2
+   <span class="se">\</span>
+    3
+     <span class="se">\</span>
+      4
+       <span class="se">\</span>
+        5
+         <span class="se">\</span>
+          6
+</code></pre></div></div>
+
+<p>从结果上来看，是二叉树前序遍历所得到的结果，但是我们并不能使用前序遍历的方式来完成。这道题本质上和上面那道反转二叉树是一样的: 使用后序遍历的方式首先处理左、右子节点，再将结果返回给根节点。</p>
+
+<p>首先使用临时变量来保存右子节点，然后断开当前节点与右子节点的连接，将左子节点套在右子节点上，再然后把使用临时变量存储的右子节点套在新的右子节点的最后一个右子节点上。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">flatten</span><span class="p">(</span><span class="n">TreeNode</span><span class="o">*</span> <span class="n">root</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">root</span> <span class="o">==</span> <span class="nb">nullptr</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span> <span class="o">!=</span> <span class="nb">nullptr</span><span class="p">)</span>
+        <span class="n">flatten</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">);</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span> <span class="o">!=</span> <span class="nb">nullptr</span><span class="p">)</span>
+        <span class="n">flatten</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">);</span>
+    
+    <span class="n">TreeNode</span> <span class="o">*</span><span class="n">temp</span> <span class="o">=</span> <span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">;</span>
+    
+    <span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span> <span class="o">=</span> <span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">;</span>
+    <span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+
+    <span class="c1">// 找到新的右子节点的最后一个右子节点
+</span>    <span class="k">while</span> <span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span> <span class="o">!=</span> <span class="nb">nullptr</span><span class="p">)</span>
+        <span class="n">root</span> <span class="o">=</span> <span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">;</span>
+    
+    <span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span> <span class="o">=</span> <span class="n">temp</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="2-通过-dfs-结果恢复二叉树">2. 通过 DFS 结果恢复二叉树</h3>
+
+<ul>
+  <li><a href="https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/">105. Construct Binary Tree from Preorder and Inorder Traversal</a></li>
+  <li><a href="https://leetcode.com/problems/construct-binary-tree-from-inorder-and-postorder-traversal/">106. Construct Binary Tree from Inorder and Postorder Traversal</a></li>
+  <li><a href="https://leetcode.com/problems/construct-binary-tree-from-preorder-and-postorder-traversal/">889. Construct Binary Tree from Preorder and Postorder Traversal</a></li>
+</ul>
+
+<p>上面的问题都是从 DFS 的结果中恢复一棵二叉树，不过通过前序遍历和后序遍历的结果所恢复的二叉树可能有多个，因为无法确切的计算出左子树和右子树到底有多少个元素。</p>
+
+<p>以前序遍历和中序遍历结果恢复一棵二叉树为例，对于前序遍历结果而言，数组的第一个元素一定是根节点，根据该根节点我们就可以在中序遍历结果中找到哪些是左子树节点，哪些是右子树节点了。递归地执行这个过程，就能够构建出原有二叉树，如下图所示:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/tree/1606118277976.png" alt="" /></p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Solution</span> <span class="p">{</span>
+<span class="k">private</span><span class="o">:</span>
+    <span class="n">TreeNode</span> <span class="o">*</span><span class="n">traverse</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">preorder</span><span class="p">,</span> <span class="kt">int</span> <span class="n">preLeft</span><span class="p">,</span> <span class="kt">int</span> <span class="n">preRight</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">inorder</span><span class="p">,</span> <span class="kt">int</span> <span class="n">inLeft</span><span class="p">,</span> <span class="kt">int</span> <span class="n">inRight</span><span class="p">,</span> <span class="n">unordered_map</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">inHashmap</span><span class="p">)</span> <span class="p">{</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="n">preLeft</span> <span class="o">&gt;</span> <span class="n">preRight</span> <span class="o">||</span> <span class="n">inLeft</span> <span class="o">&gt;</span> <span class="n">inRight</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">nullptr</span><span class="p">;</span>
+        
+        <span class="n">TreeNode</span> <span class="o">*</span><span class="n">root</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TreeNode</span><span class="p">(</span><span class="n">preorder</span><span class="p">[</span><span class="n">preLeft</span><span class="p">]);</span>
+        
+        <span class="kt">int</span> <span class="n">inRootIndex</span> <span class="o">=</span> <span class="n">inHashmap</span><span class="p">[</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">val</span><span class="p">];</span>
+        <span class="kt">int</span> <span class="n">leftNums</span> <span class="o">=</span> <span class="n">inRootIndex</span> <span class="o">-</span> <span class="n">inLeft</span><span class="p">;</span>
+
+        <span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span> <span class="o">=</span> <span class="n">traverse</span><span class="p">(</span><span class="n">preorder</span><span class="p">,</span> <span class="n">preLeft</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">preLeft</span> <span class="o">+</span> <span class="n">leftNums</span><span class="p">,</span> <span class="n">inorder</span><span class="p">,</span> <span class="n">inLeft</span><span class="p">,</span> <span class="n">inRootIndex</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">inHashmap</span><span class="p">);</span>
+        <span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span> <span class="o">=</span> <span class="n">traverse</span><span class="p">(</span><span class="n">preorder</span><span class="p">,</span> <span class="n">preLeft</span> <span class="o">+</span> <span class="n">leftNums</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">preRight</span><span class="p">,</span> <span class="n">inorder</span><span class="p">,</span> <span class="n">inRootIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">inRight</span><span class="p">,</span> <span class="n">inHashmap</span><span class="p">);</span>
+
+        <span class="k">return</span> <span class="n">root</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">TreeNode</span><span class="o">*</span> <span class="n">buildTree</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">preorder</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">inorder</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="n">unordered_map</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">inHashmap</span><span class="p">;</span>
+
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">inorder</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+            <span class="n">inHashmap</span><span class="p">[</span><span class="n">inorder</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+        
+        <span class="k">return</span> <span class="n">traverse</span><span class="p">(</span><span class="n">preorder</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">preorder</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">inorder</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">inorder</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">inHashmap</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>可以看到，恢复一棵二叉树的过程仍然是一个二叉树的遍历过程，很明显地，这是一个前序遍历过程。</p>
+
+<h3 id="3-二叉树路径和问题">3. 二叉树路径和问题</h3>
+
+<p>关于二叉树的路径和，例如求从根节点到叶子节点的最大加权路径和(<a href="https://leetcode.com/problems/path-sum/">112. Path Sum</a>)，输出所有根节点到叶子节点的路径(<a href="https://leetcode.com/problems/path-sum-ii/">113. Path Sum II</a>)等问题既可以认为是一个二叉树遍历问题，也可以认为是回溯问题，故不再赘述，可参考:</p>
+
+<blockquote>
+  <p><a href="https://github.com/SmartKeyerror/Snorlax/blob/master/algorithm/backtracking/backtracking.md#6-%E4%BA%8C%E5%8F%89%E6%A0%91%E4%B8%AD%E7%9A%84%E5%9B%9E%E6%BA%AF">二叉树中的回溯</a></p>
+</blockquote>
+
+<h3 id="4-二叉树层序遍历问题">4. 二叉树层序遍历问题</h3>
+
+<p>相较于二叉树的深度优先遍历问题，二叉树的层序遍历要简单许多。二叉树的层序遍历又称之为广度优先遍历、宽度优先遍历，此时我们需要借助队列这一先进先出数据结构完成。当然，用栈也能够完成，只是不够直观而已，反正就是需要一个额外的空间进行节点存储。</p>
+
+<p>层序遍历问题并不复杂，所以只给出 leetcode 上关于层序遍历一些问题:</p>
+
+<ul>
+  <li><a href="https://leetcode.com/problems/binary-tree-level-order-traversal/">102. Binary Tree Level Order Traversal</a></li>
+  <li><a href="https://leetcode.com/problems/binary-tree-zigzag-level-order-traversal/">103. Binary Tree Zigzag Level Order Traversal</a></li>
+  <li><a href="https://leetcode.com/problems/binary-tree-level-order-traversal-ii/">107. Binary Tree Level Order Traversal II</a></li>
+  <li><a href="https://leetcode.com/problems/populating-next-right-pointers-in-each-node/">116. Populating Next Right Pointers in Each Node</a></li>
+  <li><a href="https://leetcode.com/problems/populating-next-right-pointers-in-each-node-ii/">117. Populating Next Right Pointers in Each Node II</a></li>
+  <li><a href="https://leetcode.com/problems/find-largest-value-in-each-tree-row/">515. Find Largest Value in Each Tree Row</a></li>
+</ul>
+
+<h3 id="4-小结">4. 小结</h3>
+
+<p>对于二叉树的深度优先遍历，我们可以有这样的框架:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">traversal</span><span class="p">(</span><span class="n">TreeNode</span> <span class="o">*</span><span class="n">root</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">root</span> <span class="o">==</span> <span class="nb">nullptr</span><span class="p">)</span> <span class="k">return</span> <span class="p">;</span>
+    <span class="c1">// 前序遍历
+</span>    <span class="n">traversal</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">left</span><span class="p">);</span>
+    <span class="c1">// 中序遍历
+</span>    <span class="n">traversal</span><span class="p">(</span><span class="n">root</span><span class="o">-&gt;</span><span class="n">right</span><span class="p">);</span>
+    <span class="c1">// 后序遍历
+</span><span class="p">}</span>
+</code></pre></div></div>
+
+<p>对于多叉树的遍历深度优先遍历，同样地:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">traversal</span><span class="p">(</span><span class="n">TreeNode</span> <span class="o">*</span><span class="n">root</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">child</span><span class="o">:</span> <span class="n">TreeNode</span><span class="o">-&gt;</span><span class="n">childs</span><span class="p">)</span>
+        <span class="n">traversal</span><span class="p">(</span><span class="n">child</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>这个通用的框架能够为我们解决自顶向下的 DP 问题，回溯问题，递归等问题提供一个方向，我们只需要理清问题中的一些细节之后，就可以使用这一“模板”进行解决。</p>
+
+<p>leetcode 关于二叉树这一话题的全部题目:</p>
+
+<blockquote>
+  <p>https://leetcode.com/tag/tree/</p>
+</blockquote>
+
+<p>我个人对其中一些题目的解:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/tree/master/leetcode/tree
+https://github.com/SmartKeyerror/Snorlax/tree/master/leetcode/binary-search-tree</p>
+</blockquote>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>回溯与剪枝: 《明日边缘》or《源代码》</title>
 	  <link>//backtracking</link>
 	  <author></author>
@@ -2280,149 +2594,6 @@ smartkeyerror@Zero:~<span class="nv">$ </span><span class="nb">cat</span> /proc/
 <h3 id="4-小结">4. 小结</h3>
 
 <p>综上，客户端如果在处理MySQL发送的大量数据时，应该尽可能地将其暂存在本地的某个缓冲区中，而后应用程序想怎么处理、以何种速度处理都没问题，避免让MySQL产生过多的长事务。</p>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>TCP有限状态机</title>
-	  <link>//TCP-Finite-State-Machine</link>
-	  <author></author>
-	  <pubDate>2020-06-09T18:06:25+00:00</pubDate>
-	  <guid>//TCP-Finite-State-Machine</guid>
-	  <description><![CDATA[
-	     <p>相较于Linux进程状态的变迁，TCP的状态变迁则会复杂许多，当然这与TCP本身的实现有关。当线上的Web服务或者是基于TCP连接的服务出现了时断时续的网络状况时，往往需要通过<code class="highlighter-rouge">tcpdump</code>以及TCP连接的状态进行问题定位。同时，这一复杂的有限状态机设计也能够为业务的设计提供指导性的帮助。</p>
-
-<!---more--->
-
-<h3 id="1-tcp连接的建立">1. TCP连接的建立</h3>
-
-<p>TCP连接本质上是两个进程的某些属性的状态值，在TCP连接的建立和断开过程中，实际是状态的变更。连接的建立需要经过三次握手，确认连接的双方能够正确应答，同时进行<code class="highlighter-rouge">MSS</code>、<code class="highlighter-rouge">Win</code>等信息的交换。</p>
-
-<p>TCP协议是可靠传输协议，所以存在TCP序列号以及确认机制。序列号是指当前传输方向上数据报第一个字节的逻辑偏移，由于TCP连接是双向的，所以连接的双方都会有各自的序列号，记为Sequence Number，简写为Seq。</p>
-
-<p>确认机制则由位于TCP报文段中大小为1bit的ACK确认位以及确认序号实现。当一方收到了Seq为$s$、Len为$l$的报文后，需要向对方确认已经收到了该报文。确认的方式是设置ACK确认位，并且将确认序号设置为$s+l$，表示下一次想要接收的数据字节序列号。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Network/TCP-Status/TCP-build.png" alt="" /></p>
-
-<p>如上图所示，TCP连接的建立需要进行三次握手，其中的细节不再赘述。当客户端使用SYN发起连接时，其状态将会由<code class="highlighter-rouge">CLOSED</code>变迁为<code class="highlighter-rouge">SYN_SENT</code>，表示进程主动地打开了一个连接，并等待对端回应以此完成连接的建立。</p>
-
-<p>当服务端收到来自客户端带有SYN控制位的数据包时，将回复带有SYN以及ACK控制位的数据包，并将状态置为<code class="highlighter-rouge">SYN_RECV</code>，等待对端发送的ACK数据包以建立连接。</p>
-
-<p>客户端收到服务端的报文以后，将连接状态改变为<code class="highlighter-rouge"> ESTABLISHED</code>，表示与对端TCP节点间的连接建立完成，可以正式地传输数据了。同样地，服务端收到对端的ACK确认包以后，也会将状态改变为<code class="highlighter-rouge">ESTABLISHED</code>，两者的连接正式建立。</p>
-
-<p>在连接建立时，只有在确认对方能够正确应答(SYN发送且收到ACK应答)时才会进入<code class="highlighter-rouge">ESTABLISHED</code>状态。</p>
-
-<h3 id="2-tcp连接的拆除">2. TCP连接的拆除</h3>
-
-<p>TCP连接的建立相对来说比较简单，其状态变迁也相对较少，而连接的拆除则远比连接的建立复杂的多。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Network/TCP-Status/TCP-disconnect.png" alt="" /></p>
-
-<p>发起连接断开的一段称为主动断开方，那么另一端则称为被动断开方。主动断开方执行<code class="highlighter-rouge">close()</code>系统调用，断开TCP连接，此时主动方将发送设置了FIN控制位的报文，并进入<code class="highlighter-rouge">FIN_WAIT_1</code>阶段，等待对方对该FIN包的应答。</p>
-
-<p>当被动断开方收到FIN包以后，立即回送该FIN的确认包，并进入到<code class="highlighter-rouge">CLOSE_WAIT</code>阶段，<strong>主要的工作就是等待上层应用主动调用<code class="highlighter-rouge">close</code>方法关闭连接</strong>，在该阶段中上层应用任何的<code class="highlighter-rouge">read()</code>系统调用都将返回0，表示文件结尾。当应用层调用了<code class="highlighter-rouge">close()</code>系统调用之后，被动断开方将发送FIN结束包。</p>
-
-<p>主动断开方收到FIN包以后，同样地回送ACK确认报文，并进入<code class="highlighter-rouge">TIME_WAIT</code>阶段，此时将固定的等待2倍MSL时间，MSL为报文的最大生存时间，Linux中默认的MSL时间为60S，那么主动断开方将等待120S后彻底关闭TCP连接。</p>
-
-<p>被动断开方在收到ACK确认包以后，释放内核资源，完全关闭TCP连接。</p>
-
-<h4 id="21-close_wait">2.1 CLOSE_WAIT</h4>
-
-<p><code class="highlighter-rouge">CLOSE_WAIT</code>状态只有在被动断开方才会出现，其过程的长短并不由内核控制，必须等待上层应用程序主动调用<code class="highlighter-rouge">close()</code>系统调用，才会从此状态变迁为<code class="highlighter-rouge">LAST_ACK</code>状态。所以，由于此阶段需要应用程序的主动参与，该阶段也是最容易出现问题的阶段。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Network/TCP-Status/CLOSE_WAIT.png" alt="" /></p>
-
-<p>当服务器出现了大量的、长时间的<code class="highlighter-rouge">CLOSE_WAIT</code>状态的连接，就需要判断是否是应用程序存在BUG，导致TCP连接未主动地关闭。或者是锁争抢过于激烈，又或是CPU资源不足导致应用程序没有额外的CPU对连接进行处理。</p>
-
-<h4 id="22-time_wait">2.2 TIME_WAIT</h4>
-
-<p><code class="highlighter-rouge">TIME_WAIT</code>阶段往往会被开发者所误解当做是优化的对象，因为该阶段的超时时间为2倍的MSL，开发人员认为该值过大，通常会将其减少至15S或者更短。但是，<code class="highlighter-rouge">TIME_WAIT</code>阶段的存在主要目的在于实现连接的可靠终止，以及让原有报文段在网络中过期失效，不会发送给新的连接。</p>
-
-<h5 id="221-连接的可靠终止">2.2.1 连接的可靠终止</h5>
-
-<p>在TCP四次挥手的过程中，首次发送FIN报文和最后一次发送ACK报文的都是主动断开方，被动断开方被”夹在中间”。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/Network/TCP-Status/NOT-TIME-WAIT.png" alt="" /></p>
-
-<p>如上图所示，假设没有<code class="highlighter-rouge">TIME_WAIT</code>阶段，并且主动断开方的最后一个ACK在网络中丢失。被动断开方迟迟等不到自己FIN包的ACK，当达到最大超时时间时将重传FIN包(此时无法触发快速重传)。但是，由于此时主动断开方的状态已经是<code class="highlighter-rouge">CLOSED</code>，即当前连接并不存在，则会返回一个RST，而该RST则会被视为错误。</p>
-
-<h5 id="222-确保老的重复的报文在网络中过期失效">2.2.2 确保老的重复的报文在网络中过期失效</h5>
-
-<p>TCP的重传算法可能会导致生成重复的报文，并且根据路由的不同选择，这些重复的报文可能会在连接终止之后到达。</p>
-
-<p>假设主动断开方在发送最后一个ACK包以后立即进入<code class="highlighter-rouge">CLOSED</code>状态，并且在该段又新建了一个与之前一样的连接(IP地址和端口号相同)，那么此连接就是原来连接的化身。在这种情况下，TCP必须确保上一次连接中老的重复报文不会在新的连接中被当成合法数据接收。当有TCP结点处于<code class="highlighter-rouge">TIME_WAIT</code>状态时是无法通过该结点创建新的连接的，这样就阻止了新连接的建立。</p>
-
-<p>当一条连接处于<code class="highlighter-rouge">TIME_WAIT</code>阶段时，其向内核申请的端口号并不会得到释放。如果系统中同时存在大量的处于<code class="highlighter-rouge">TIME_WAIT</code>阶段的连接的话，可能无法再建立新的连接: 端口号资源不够。所以某些并发量较高的应用程序会选择缩短<code class="highlighter-rouge">TIME_WAIT</code>的时间，已获得更高的并发量。</p>
-
-<p>但是，当系统因为<code class="highlighter-rouge">TIME_WAIT</code>而无法建立新的连接时，表示当前节点的资源已经吃紧，最好的办法是增加机器，而不是缩短<code class="highlighter-rouge">TIME_WAIT</code>的时间。</p>
-
-<h3 id="3-使用netstat查看套接字状态">3. 使用netstat查看套接字状态</h3>
-
-<p><code class="highlighter-rouge">netstat</code>可以显示出系统中Internet和UNIX域套接字的状态，当服务器出现网络问题时，可首先用此命令获取基本情况。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smartkeyerror@Zero:~<span class="nv">$ </span>netstat 
-Active Internet connections <span class="o">(</span>w/o servers<span class="o">)</span>
-Proto Recv-Q Send-Q Local Address           Foreign Address         State      
-tcp        0      0 localhost:33406         localhost:7890          TIME_WAIT  
-tcp        0      0 Zero:56626              183.61.83.4:https       ESTABLISHED
-tcp        0      0 localhost:33528         localhost:7890          ESTABLISHED
-tcp        0      0 Zero:54438              119.147.134.30:https    TIME_WAIT  
-tcp        0      0 Zero:32856              220.181.107.131:https   ESTABLISHED
-tcp        0      1 Zero:60558              media-router-fp1.:https LAST_ACK
-</code></pre></div></div>
-
-<ul>
-  <li>proto: 表示套接字所使用的协议，例如tcp、udp和unix。</li>
-  <li>Recv-Q: 表示套接字接收缓冲区中还未被本地应用读取的字节数。对于UDP套接字
-来说，该字段不只包含数据，还包含UDP首部及其他元数据所占的字节。</li>
-  <li>Send-Q: 表示套接字发送缓冲区中排队等待发送的字节数。</li>
-  <li>Local Address: 本地套接字所绑定的地址，格式为IP+端口号。</li>
-  <li>Foreign Address: 对端套接字所绑定的地址。</li>
-  <li>State: 套接字所处的状态。</li>
-</ul>
-
-<p>通常来说我们并不关心UNIX域套接字的相关信息，所以可以使用<code class="highlighter-rouge">--tcp</code>进行过滤，得到的结果仅包含TCP套接字的相关信息。还有一些其他有用的选项:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>选项</th>
-      <th>描述</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>-a</td>
-      <td>显示所有套接字的信息，保证正在监听(LISTEN)的套接字</td>
-    </tr>
-    <tr>
-      <td>-c</td>
-      <td>每隔一秒钟刷新显示套接字信息</td>
-    </tr>
-    <tr>
-      <td>-l</td>
-      <td>仅显示正在监听的套接字信息</td>
-    </tr>
-    <tr>
-      <td>-p</td>
-      <td>显示进程 ID 号以及套接字所归属的程序名称</td>
-    </tr>
-    <tr>
-      <td>–tcp</td>
-      <td>显示 Internet域TCP(流)套接字的信息</td>
-    </tr>
-    <tr>
-      <td>–udp</td>
-      <td>显示 Internet域UDP(数据报)套接字的信息</td>
-    </tr>
-    <tr>
-      <td>–unix</td>
-      <td>显示 UNIX 域套接字的信息</td>
-    </tr>
-  </tbody>
-</table>
-
 
 	  ]]></description>
 	</item>
