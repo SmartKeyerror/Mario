@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>动态规划(01)——从斐波那契到硬币找零</title>
+        
+          <description>&lt;p&gt;动态规划是算法中一个非常有趣的 Topic，由于其具有非常强的灵活性，所以在面试时也会被经常提及到。动态规划问题我更喜欢称之为递推，因为其本质就是利用“历史数据”进行下一步的推导。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Wed, 23 Dec 2020 15:50:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/dp(01)</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/dp(01)</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>二叉树与递归: DP、回溯、DFS、BFS，一个通用的算法框架</title>
         
           <description>&lt;p&gt;二叉树问题在算法领域是一个非常非常重要的话题，”遍历”这一 API 在非线性数据结构中有着举足轻重的地位，可以说 80% 的算法问题都是遍历问题。&lt;/p&gt;

@@ -126,6 +126,39 @@
     
     <article class="post">
         <header class="post-header">
+            <h2 class="post-title"><a href="/MySQL-Sending-Data">MySQL向客户端发送数据，客户端不接收会发生什么?</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>MySQL服务端在发送数据时，为了减少数据在用户空间和内核空间的复制次数，往往会使用缓冲区对数据进行缓冲。那么，如果客户端在接收大量数据时，选择不接收，或者处理非常慢的时候，会影响MySQL的正常运行吗?
+
+ <a class="read-more" href="/MySQL-Sending-Data">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.jpg" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+            
+            <time class="post-date" datetime="2020-06-17">17 Jun 2020</time>
+        </footer>
+    </article>
+    
+    <article class="post">
+        <header class="post-header">
             <h2 class="post-title"><a href="/TCP-Finite-State-Machine">TCP有限状态机</a></h2>
         </header>
         <section class="post-excerpt">
@@ -418,39 +451,6 @@
                 
             
             <time class="post-date" datetime="2019-09-18">18 Sep 2019</time>
-        </footer>
-    </article>
-    
-    <article class="post">
-        <header class="post-header">
-            <h2 class="post-title"><a href="/MySQL-union-index-and-cover-index">MySQL中的联合索引与覆盖索引</a></h2>
-        </header>
-        <section class="post-excerpt">
-            <p>在上一篇文章中， 通过解析InnoDB存储引擎的.ibd数据存储文件得到了数据与索引的真实组织方式: 数据通过聚集索引在逻辑上连续存放， 二级索引保存数据主键ID(Row ID)， 多棵B+Tree组合起来提供高效的索引数据查询。 除辅助索引(二级索引)外， 联合索引与覆盖索引在日常中也会经常用到。
-
- <a class="read-more" href="/MySQL-union-index-and-cover-index">&raquo;</a></p>
-        </section>
-        <footer class="post-meta">
-            
-                
-
-                <img class="author-thumb" src="/assets/images/author.jpg" alt="Author image" nopin="nopin" />
-                <!-- author -->
-                <a href='/author/smartkeyerror'>smartkeyerror</a>
-
-                
-            
-
-            <!-- [[tags prefix=" on "]] -->
-            
-                on
-                
-                    
-                       <a href='/tag/MySQL'>MySQL</a>
-                    
-                
-            
-            <time class="post-date" datetime="2019-09-01">01 Sep 2019</time>
         </footer>
     </article>
     
