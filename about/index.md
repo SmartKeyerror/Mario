@@ -15,3 +15,6 @@ current: about
 
 - 博客项目地址: [Mario](https://github.com/SmartKeyerror/Mario)
 - Email: smartkeyerror@gmail.com
+- 绿微信，欢迎交流 :-D
+
+![ | center](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/SmartKeyerror.jpg)
