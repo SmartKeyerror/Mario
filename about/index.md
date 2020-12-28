@@ -17,4 +17,4 @@ current: about
 - Email: smartkeyerror@gmail.com
 - 绿微信，欢迎交流 :-D
 
-![ | center](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/SmartKeyerror.jpg)
+![](https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/SmartKeyerror.jpg)
