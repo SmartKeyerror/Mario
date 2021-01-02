@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Page Meta -->
+    <title>BFS与图论问题建模</title>
+    <meta name="description" content="Keep coding, Keep curiosity" />
+
+    <!-- Mobile Meta -->
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Brand icon -->
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" >
+
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/screen.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/syntax.css" />
+
+    <!-- highlight.js -->
+<!--    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/styles/default.min.css">-->
+<!--    <style>.hljs { background: none; }</style>-->
+
+    <!-- Ghost outputs important style and meta data with this tag -->
+        <link rel="canonical" href="https://smartkeyerror.com//BFS" />
+    <meta name="referrer" content="origin" />
+    <link rel="next" href="/page2/" />
+
+    <meta property="og:site_name" content="知其然, 知其所以然" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="BFS与图论问题建模" />
+    <meta property="og:description" content="Keep coding, Keep curiosity" />
+    <meta property="og:url" content="https://smartkeyerror.com//BFS" />
+    <meta property="og:image" content="/assets/images/cover1.jpg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="BFS与图论问题建模" />
+    <meta name="twitter:description" content="Keep coding, Keep curiosity" />
+    <meta name="twitter:url" content="https://smartkeyerror.com//BFS" />
+    <meta name="twitter:image:src" content="/assets/images/cover1.jpg" />
+
+    <script type="application/ld+json">
+{
+    "@context": "http://schema.org",
+    "@type": "Website",
+    "publisher": "知其然, 知其所以然",
+    "name": "BFS与图论问题建模",
+    "url": "https://smartkeyerror.com//BFS",
+    "image": "/assets/images/cover1.jpg",
+    "description": "Keep coding, Keep curiosity"
+}
+    </script>
+
+    <meta name="generator" content="Jekyll 3.0.0" />
+    <link rel="alternate" type="application/rss+xml" title="知其然, 知其所以然" href="/feed.xml" />
+
+
+</head>
+<body class="home-template nav-closed">
+
+    <!-- The blog navigation links -->
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+        <span class="hidden">Close</span>
+    </a>
+    <ul>
+        <li class="nav-home " role="presentation"><a href="/">Home</a></li>
+        <li class="nav-archives " role="presentation"><a href="/archives">Archives</a></li>
+        <li class="nav-about " role="presentation"><a href="/about">About</a></li>
+    </ul>
+<!--    <a class="subscribe-button icon-feed" href="/feed.xml">Subscribe</a>-->
+</div>
+<span class="nav-cover"></span>
+
+
+    <div class="site-wrapper">
+
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The comment above "< default" means - insert everything in this file into -->
+    <!-- the [body] of the default.hbs template, which contains our header/footer. -->
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<header class="main-header post-head no-cover">
+    <nav class="main-nav  clearfix">
+        
+        
+            <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+        
+    </nav>
+</header>
+
+<main class="content" role="main">
+
+    <article class="post tag-fiction">
+
+        <header class="post-header">
+            <h1 class="post-title">BFS与图论问题建模</h1>
+            <section class="post-meta">
+            <!-- <a href='/'></a> -->
+
+            
+                
+                    <a href='/author/smartkeyerror'>smartkeyerror</a>
+                
+            
+            <time class="post-date" datetime="2021-01-01">01 Jan 2021</time>
+                <!-- [[tags prefix=" on "]] -->
+                
+                on
+                
+                    
+                       <a href='/tag/algorithm'>algorithm</a>
+                    
+                
+                
+            </section>
+        </header>
+
+        <section class="post-content">
+
+            <p>在 DP 问题中我们将会着重的关注状态转移方程，同样地，在使用 BFS 对某些问题进行图论模型建模时，我们同样会关注状态转移。</p>
+
+<!---more--->
+
+<p>BFS（Breadth-first Search），即广度优先遍历，在二叉树相关领域的题目中可能会经常碰到，Leetcode 中也有非常多关于二叉树层序遍历的问题，例如</p>
+
+<ul>
+  <li><a href="https://leetcode.com/problems/binary-tree-right-side-view/">199. Binary Tree Right Side View</a></li>
+  <li><a href="https://leetcode.com/problems/binary-tree-level-order-traversal/">102. Binary Tree Level Order Traversal</a></li>
+  <li><a href="https://leetcode.com/problems/find-bottom-left-tree-value/">513. Find Bottom Left Tree Value</a></li>
+  <li><a href="https://leetcode.com/problems/find-largest-value-in-each-tree-row/">515. Find Largest Value in Each Tree Row</a></li>
+  <li>……</li>
+</ul>
+
+<p>这些问题都可以借助队列这一数据结构使用层序遍历的方式解决。但是，这些问题并没有揭示 BFS 的一个非常重要的特性: <strong>无权图最短路径求解方式</strong>。假定给你一棵二叉树，二叉树中部分节点中有专门“刀人”的邪恶机器人，再给定一个终止节点，问在该二叉树中是否存在一条从根节点到终止节点的最短路径。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/bfs/1609296538426.png" alt="Alt text" /></p>
+
+<p>如上图所示，起点和终点使用绿色进行标识，我们也能够非常轻松的找到一条能到达终止节点的路径。在一棵二叉树中，只要能找到一条路径，那么它一定就是最短路径，因为再也没有其它路径能够到达该节点了。但是，一旦我们将这棵二叉树添加几条边，将其转换成一张图的话，事情就变得微妙了起来:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/bfs/1609297337905.png" alt="Alt text" /></p>
+
+<p>如上图所示，我们可以找到 3 条从根节点到终止节点的最短路径，也就是无权图的最短路径。那么为什么 BFS 就天然地能够解决无权图最短路径问题呢? 这是因为 BFS 的遍历过程中，是一层一层的进行遍历的，就像剥洋葱一样。当我们遍历到某一层找到了终止节点时，那么其余的最短路径一定在这一层，而不是下一层。这就好比我们下楼梯找东西，我们明明在第 4 层就找到了我们想要的，那么绝对不会再去第 3 层寻找。</p>
+
+<h3 id="1-bfs-的基本框架">1. BFS 的基本框架</h3>
+
+<p>相较于二叉树的层序遍历而言，图的 BFS 没有什么太大的区别，都需要借助队列这一数据结构实现，只不过因为图的 BFS 过程中可能会出现对节点重复访问的问题，所以我们需要添加一个 <code class="highlighter-rouge">visited</code> 数组，来帮助我们标记哪些已经遍历过的节点，从而避免重复访问:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">bfs</span><span class="p">(</span><span class="kt">int</span> <span class="n">src</span><span class="p">,</span> <span class="kt">int</span> <span class="n">dst</span><span class="p">)</span> <span class="p">{</span>
+	<span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">visited</span><span class="p">;</span>
+	<span class="n">queue</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">levelQueue</span><span class="p">;</span>
+
+	<span class="n">visited</span><span class="p">[</span><span class="n">src</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+	<span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">src</span><span class="p">);</span>
+
+	<span class="k">while</span><span class="p">(</span><span class="o">!</span><span class="n">levelQueue</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+		<span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">levelQueue</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+
+        <span class="c1">// 非常实用的小技巧，取出每一层的数据
+</span>		<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">size</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+			<span class="kt">int</span> <span class="n">current</span> <span class="o">=</span> <span class="n">levelQueue</span><span class="p">.</span><span class="n">front</span><span class="p">();</span>
+			<span class="n">levelQueue</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+
+			<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">neighbor</span><span class="o">:</span> <span class="n">neighbors</span><span class="p">(</span><span class="n">current</span><span class="p">))</span> <span class="p">{</span>
+				<span class="k">if</span> <span class="p">(</span><span class="n">visited</span><span class="p">[</span><span class="n">neighbor</span><span class="p">])</span> <span class="k">continue</span><span class="p">;</span>
+				<span class="n">visited</span><span class="p">[</span><span class="n">neighbor</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+				<span class="c1">// do something for child
+</span>				<span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">child</span><span class="p">);</span>
+			<span class="p">}</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>在上面的伪代码中，<code class="highlighter-rouge">visited</code> 数组使用 <code class="highlighter-rouge">bool</code> 型表示，我们同样也可以使用 <code class="highlighter-rouge">int</code> 来表示。例如 <code class="highlighter-rouge">-1</code> 则表示当前节点未曾访问过，大于 <code class="highlighter-rouge">-1</code> 则表示当前节点距离 <code class="highlighter-rouge">src</code> 节点的距离。如此一来我们不仅使用 <code class="highlighter-rouge">visited</code> 表示了节点是否被访问，同时也记录了每一个节点到 <code class="highlighter-rouge">src</code> 节点的距离，一举两得。</p>
+
+<h3 id="2-直白的-bfs-问题">2. 直白的 BFS 问题</h3>
+
+<p>在文章开头所陈列的 Leetcode 上关于二叉树的 BFS 问题，个人更倾向于将其归类为“直白的 BFS 问题”，从题目描述中我们就能够很轻易的看出需要使用 BFS 进行求解。</p>
+
+<p>例如 <a href="https://leetcode.com/problems/shortest-path-in-binary-matrix/">1091. Shortest Path in Binary Matrix</a>，求仅包含 <code class="highlighter-rouge">0</code> 和 <code class="highlighter-rouge">1</code> 的二维矩阵中从左上角到右下角的最短路径距离，其中 <code class="highlighter-rouge">1</code> 表示障碍物，<code class="highlighter-rouge">0</code> 表示可行路径。这道题乍一看和 <a href="https://leetcode.com/problems/unique-paths-ii/">63. Unique Paths II</a> 非常之类似，但是和 63 号问题不同的是，1091 号问题里面的“Robot”有 8 个前进方向，并且使用 DP 求解的时间复杂度必然是 O(n^2)，而使用 BFS 求解则只需 O(V+E) 的时间复杂度，其中 V 为顶点个数，E 为边的个数。BFS 的过程如下图所示:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/bfs/1609303685314.png" alt="Alt text" /></p>
+
+<p>求解过程如下:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Solution</span> <span class="p">{</span>
+<span class="k">private</span><span class="o">:</span>
+    <span class="kt">int</span> <span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">;</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">delta</span> <span class="o">=</span>  <span class="p">{{</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">},</span> <span class="p">{</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">},</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">}};</span> 
+    <span class="kt">bool</span> <span class="nf">inGrid</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">m</span> <span class="o">&amp;&amp;</span> <span class="n">y</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">y</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="kt">int</span> <span class="n">shortestPathBinaryMatrix</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;&amp;</span> <span class="n">grid</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">grid</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">n</span> <span class="o">=</span> <span class="n">grid</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">size</span><span class="p">();</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">||</span> <span class="n">grid</span><span class="p">[</span><span class="n">m</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">m</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+
+        <span class="n">queue</span><span class="o">&lt;</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">levelQueue</span><span class="p">;</span>
+        <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">visited</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">));</span>
+
+        <span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">make_pair</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+        <span class="n">visited</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+        <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">levelQueue</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+            <span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">current</span> <span class="o">=</span> <span class="n">levelQueue</span><span class="p">.</span><span class="n">front</span><span class="p">();</span>
+            <span class="n">levelQueue</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+
+            <span class="kt">int</span> <span class="n">startx</span> <span class="o">=</span> <span class="n">current</span><span class="p">.</span><span class="n">first</span><span class="p">,</span> <span class="n">starty</span> <span class="o">=</span> <span class="n">current</span><span class="p">.</span><span class="n">second</span><span class="p">;</span>
+            <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+                <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="n">startx</span> <span class="o">+</span> <span class="n">delta</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">y</span> <span class="o">=</span> <span class="n">starty</span> <span class="o">+</span> <span class="n">delta</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">];</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">inGrid</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">grid</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">y</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">visited</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">y</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">make_pair</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">));</span>
+                    <span class="n">visited</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="n">visited</span><span class="p">[</span><span class="n">startx</span><span class="p">][</span><span class="n">starty</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">x</span> <span class="o">==</span> <span class="n">m</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">y</span> <span class="o">==</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="n">visited</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">y</span><span class="p">];</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="3-图论模型建模状态转移">3. 图论模型建模——状态转移</h3>
+
+<p>在 DP 领域中，有一个非常重要的概念: 状态转移方程，当我们面对一个 DP 问题的时候，只要找到了状态转移方程，基本上我们就认为已经解出了这个问题。在图论建模过程中，也存在状态转移这么个东西，只不过没有状态转移方程。</p>
+
+<p><a href="https://leetcode.com/problems/open-the-lock/">752. Open the Lock</a> 要求我们求打开初始化状态为 <code class="highlighter-rouge">"0000"</code> 的密码锁，并且每次只能对 4 位密码锁中的一位往前拨或者是往后拨，同时存在一组 <code class="highlighter-rouge">deadends</code>，当我们的密码锁被拨到这些数字组合时，该密码锁将再也不能打开，求打开该密码锁所需最少的操作次数。</p>
+
+<p>可以看到，这道题目就只是给了我们一个初始状态和一组“死亡数字”，既没有能够在 8 方向上移动的 Robot，也没有邻接矩阵、邻接表等能够代表图的东西。但是我们知道初始状态和结束状态，假设 <code class="highlighter-rouge">target</code> 为 <code class="highlighter-rouge">"1234"</code>，那么我们就需要找到一条“路径”，从 <code class="highlighter-rouge">"0000"</code> 到 <code class="highlighter-rouge">"1234"</code>，并且在该路径上不包含死亡数字。</p>
+
+<p>对于 <code class="highlighter-rouge">"0000"</code> 来说，我们第一次的操作有 8 种选择: 选择哪一位，以及往前拨还是往后拨，如此一来，我们就可以得到:</p>
+
+<ul>
+  <li>往前拨: <code class="highlighter-rouge">"1000"</code>，<code class="highlighter-rouge">"0100"</code>, <code class="highlighter-rouge">"0010"</code>，<code class="highlighter-rouge">"0001"</code></li>
+  <li>往后拨: <code class="highlighter-rouge">"9000"</code>，<code class="highlighter-rouge">"0900"</code>，<code class="highlighter-rouge">"0090"</code>，<code class="highlighter-rouge">"0009"</code></li>
+</ul>
+
+<p>这样的一共 8 种状态，而得到的这 8 种状态每一种又可以得到 8 种状态，只不过 <code class="highlighter-rouge">"0000"</code> 需要从中剔除，所以是 7 种。如此一来我们就得到了一张图。为什么不是多叉树呢? 因为 <code class="highlighter-rouge">"0000"</code> 能到 <code class="highlighter-rouge">"1000"</code>，<code class="highlighter-rouge">"1000"</code> 也能到达 <code class="highlighter-rouge">"0000"</code>。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/bfs/1609314215174.png" alt="Alt text" /></p>
+
+<p><strong>这其实就是自身状态的表达，每一个状态（例如<code class="highlighter-rouge">"1000"</code>、<code class="highlighter-rouge">"0009"</code>）都是图中的一个顶点，从初始的状态一步一步地到达另外一个状态。本质上仍然可以看做是“Robot千辛万苦寻找家人”的问题</strong>。</p>
+
+<p>题解可参考:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/blob/master/leetcode/bfs/752-Open-the-Lock.cpp</p>
+</blockquote>
+
+<p>我们再来看另外一个智力问题:</p>
+
+<blockquote>
+  <p>有两个水桶，一个容量为 9 升，另一个容量为 4 升，如何操作能得到 6 升水?</p>
+</blockquote>
+
+<p>依然使用状态转移对这个问题进行建模，我们有两个桶，所以初始状态可以表示为 <code class="highlighter-rouge">"00"</code>，最终我们要得到 6 升水，那么结束状态可以表示为 <code class="highlighter-rouge">"6x"</code> 或者是 <code class="highlighter-rouge">"x6"</code>，<code class="highlighter-rouge">x</code> 表示另一个桶有多少水我们并不关心，只要有一个桶里面有 6 升水就好了。</p>
+
+<p>我们可以像上面那道打开密码锁一样，使用字符串的方式来表示状态，但是我们也可以使用 <code class="highlighter-rouge">int</code> 来表示。对于两个桶，使用 <code class="highlighter-rouge">x</code> 表示 9 升桶所容纳的水，<code class="highlighter-rouge">y</code> 则表示 4 升桶所容纳的水，那么状态即为 <code class="highlighter-rouge">10x + y</code>，一个用十位表示，另一个则用个位表示。如果有 3 个桶 <code class="highlighter-rouge">x</code>、<code class="highlighter-rouge">y</code>、<code class="highlighter-rouge">z</code> 的话，那么就可以使用 <code class="highlighter-rouge">100x+10y+z</code> 来进行表示。现在来看状态是如何转移的，假设当前两个桶的水量为 <code class="highlighter-rouge">x</code>、<code class="highlighter-rouge">y</code>。</p>
+
+<p>最简单的两种操作就是将其中一个桶装满，或者是将其中一个桶中的水倒掉，那么状态可以表示为:</p>
+
+<ul>
+  <li>装满其中一个桶: <code class="highlighter-rouge">9 * 10 + y</code>（装满 9 升桶），<code class="highlighter-rouge">10x + 4</code>（装满 4 升桶）</li>
+  <li>倒掉其中一个桶: <code class="highlighter-rouge">0 * 10 + y</code>（倒掉 9 升桶），<code class="highlighter-rouge">10x + 0</code>（倒掉 4 升桶）</li>
+</ul>
+
+<p>另外一个操作就是将一个桶的水倒向另外一个桶内，情况稍微复杂一些:</p>
+
+<ul>
+  <li>将 9 升桶的水倒进 4 升桶: <code class="highlighter-rouge">10 * (9 - min(x, 4 - y)) + (y + min(x, 4 - y))</code></li>
+  <li>将 4 升桶的水倒进 9 升桶: <code class="highlighter-rouge">10 * (x + min(y, 9 - x)) + (y - min(y, 9 - x))</code></li>
+</ul>
+
+<p>正如同状态转移方程之于 DP 问题一样，当我们找到全部的状态转移之后，就已经建立了 BFS 的图论模型，剩下的就只是按部就班的使用 BFS 求解即可。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">bucketPuzzle</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">queue</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">levelQueue</span><span class="p">;</span>
+
+    <span class="c1">// 使用 hashmap 判定是否访问过, value 为操作次数
+</span>    <span class="n">unordered_map</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">visited</span><span class="p">;</span>     
+
+    <span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">visited</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">levelQueue</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">current</span> <span class="o">=</span> <span class="n">levelQueue</span><span class="p">.</span><span class="n">front</span><span class="p">();</span>
+        <span class="n">levelQueue</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+
+        <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="n">current</span> <span class="o">/</span> <span class="mi">10</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">current</span> <span class="o">%</span> <span class="mi">10</span><span class="p">;</span>
+
+        <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">nextStatuses</span><span class="p">;</span>
+
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">9</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="n">y</span><span class="p">);</span>
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="mi">4</span><span class="p">);</span>
+
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">0</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="n">y</span><span class="p">);</span>
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="mi">0</span><span class="p">);</span>
+
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="p">(</span><span class="mi">9</span> <span class="o">-</span> <span class="n">min</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">4</span> <span class="o">-</span> <span class="n">y</span><span class="p">))</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">+</span> <span class="n">min</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">4</span> <span class="o">-</span> <span class="n">y</span><span class="p">)));</span>
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">min</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="mi">9</span> <span class="o">-</span> <span class="n">x</span><span class="p">))</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">min</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="mi">9</span> <span class="o">-</span> <span class="n">x</span><span class="p">)));</span>
+
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">next</span><span class="o">:</span> <span class="n">nextStatuses</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">visited</span><span class="p">.</span><span class="n">count</span><span class="p">(</span><span class="n">next</span><span class="p">))</span> <span class="p">{</span>
+                <span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">next</span><span class="p">);</span>
+                <span class="n">visited</span><span class="p">[</span><span class="n">next</span><span class="p">]</span> <span class="o">=</span> <span class="n">visited</span><span class="p">[</span><span class="n">current</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+
+                <span class="k">if</span> <span class="p">(</span><span class="n">next</span> <span class="o">/</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">6</span> <span class="o">||</span> <span class="n">next</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">6</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">visited</span><span class="p">[</span><span class="n">next</span><span class="p">];</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>如果需要输出详细的操作过程的话，添加一个 <code class="highlighter-rouge">previous</code> 数组即可，在数组中记录当前状态是从哪个状态而来的，而后遍历该数组逆序输出即可。</p>
+
+<p>完整代码可参考:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/blob/master/leetcode/bfs/BucketPuzzle.cpp</p>
+</blockquote>
+
+<h3 id="4-小结">4. 小结</h3>
+
+<p>BFS 由于天然地存在“无权图最短路径问题求解”这一特性，被广泛地应用在经典人工智能和搜索领域，包括我们所描述的水桶问题、打开密码锁问题，以及未提及的其它经典人工智能问题，本质上就是路径的搜索。</p>
+
+<p>很多时候，可能我们并不能一眼看出某一个题目需要使用图论模型进行建模，而后使用 BFS 进行处理。但是一般来说，当题目中出现“最短”、“最少”、“最近”等关键词时，我们就可能需要考虑是否能够建立状态转移的模型，从而使用 BFS 进行求解。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/bfs/Sliding-Puzzle.gif" alt="" /></p>
+
+
+        </section>
+
+        <footer class="post-footer">
+
+            <!-- Everything inside the #author tags pulls data from the author -->
+            <!-- #author-->
+            
+                
+                    
+                        <figure class="author-image">
+                            <a class="img" href="/author/smartkeyerror" style="background-image: url(/assets/images/author.jpg)"><span class="hidden">smartkeyerror's Picture</span></a>
+                        </figure>
+                    
+
+                    <section class="author">
+                        <h4><a href="/author/smartkeyerror">smartkeyerror</a></h4>
+
+                        
+                            <p> 日拱一卒，功不唐捐</p>
+                        
+                        <div class="author-meta">
+                            <span class="author-location icon-location"> China</span>
+                            <span class="author-link icon-link"><a href="https://smartkeyerror.com"> https://smartkeyerror.com</a></span>
+                        </div>
+                    </section>
+
+                    <!-- /author  -->
+
+                    <section class="share">
+                        <h4>Share this post</h4>
+                        <a class="icon-twitter" href="http://twitter.com/share?text=BFS与图论问题建模&amp;url=https://smartkeyerror.comBFS"
+                            onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+                            <span class="hidden">Twitter</span>
+                        </a>
+                        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://smartkeyerror.comBFS"
+                            onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+                            <span class="hidden">Facebook</span>
+                        </a>
+                        <a class="icon-google-plus" href="https://plus.google.com/share?url=https://smartkeyerror.comBFS"
+                           onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+                            <span class="hidden">Google+</span>
+                        </a>
+                    </section>
+                
+            
+
+            <!-- Add Disqus Comments -->
+            
+
+        </footer>
+
+    </article>
+
+</main>
+
+<aside class="read-next">
+
+    <!-- [[! next_post ]] -->
+    
+    <!-- [[! /next_post ]] -->
+    <!-- [[! prev_post ]] -->
+    
+        <a class="read-next-story prev no-cover" href="/dp(01)">
+            <section class="post">
+                <h2>动态规划(01)——从斐波那契到硬币找零</h2>
+                <p>动态规划是算法中一个非常有趣的 Topic，由于其具有非常强的灵活性，所以在面试时也会被经常提及到。动态规划问题我更喜欢称之为递推，因为其本质就是利用“历史数据”进行下一步的推导。
+
+</p>
+            </section>
+        </a>
+    
+    <!-- [[! /prev_post ]] -->
+</aside>
+
+<!-- /post -->
+
+
+        <!-- The tiny footer at the very bottom -->
+        <footer class="site-footer clearfix">
+          <section class="copyright"><a href="/">知其然, 知其所以然</a> &copy; 2021</section>
+          <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> using <a href="https://github.com/jekyller/jasper">Jasper</a></section>
+        </footer>
+    </div>
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdn.bootcss.com/highlight.js/10.1.2/styles/monokai-sublime.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <!-- jQuery needs to come before `` so that jQuery can be used in code injection -->
+    <script type="text/javascript" src="https://cdn.bootcdn.net/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+    <!-- Ghost outputs important scripts and data with this tag -->
+    <!--  -->
+    <!-- Add Google Analytics  -->
+        <!-- Google Analytics Tracking code -->
+     <script>
+	    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	    ga('create', 'UA-150652886-1', 'auto');
+	    ga('send', 'pageview');
+
+     </script>
+    <!-- Fitvids makes video embeds responsive and awesome -->
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <!-- The main JavaScript file for Casper -->
+    <script type="text/javascript" src="/assets/js/index.js"></script>
+
+</body>
+</html>

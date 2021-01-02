@@ -12,6 +12,230 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>BFS与图论问题建模</title>
+	  <link>//BFS</link>
+	  <author></author>
+	  <pubDate>2021-01-01T08:50:25+00:00</pubDate>
+	  <guid>//BFS</guid>
+	  <description><![CDATA[
+	     <p>在 DP 问题中我们将会着重的关注状态转移方程，同样地，在使用 BFS 对某些问题进行图论模型建模时，我们同样会关注状态转移。</p>
+
+<!---more--->
+
+<p>BFS（Breadth-first Search），即广度优先遍历，在二叉树相关领域的题目中可能会经常碰到，Leetcode 中也有非常多关于二叉树层序遍历的问题，例如</p>
+
+<ul>
+  <li><a href="https://leetcode.com/problems/binary-tree-right-side-view/">199. Binary Tree Right Side View</a></li>
+  <li><a href="https://leetcode.com/problems/binary-tree-level-order-traversal/">102. Binary Tree Level Order Traversal</a></li>
+  <li><a href="https://leetcode.com/problems/find-bottom-left-tree-value/">513. Find Bottom Left Tree Value</a></li>
+  <li><a href="https://leetcode.com/problems/find-largest-value-in-each-tree-row/">515. Find Largest Value in Each Tree Row</a></li>
+  <li>……</li>
+</ul>
+
+<p>这些问题都可以借助队列这一数据结构使用层序遍历的方式解决。但是，这些问题并没有揭示 BFS 的一个非常重要的特性: <strong>无权图最短路径求解方式</strong>。假定给你一棵二叉树，二叉树中部分节点中有专门“刀人”的邪恶机器人，再给定一个终止节点，问在该二叉树中是否存在一条从根节点到终止节点的最短路径。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/bfs/1609296538426.png" alt="Alt text" /></p>
+
+<p>如上图所示，起点和终点使用绿色进行标识，我们也能够非常轻松的找到一条能到达终止节点的路径。在一棵二叉树中，只要能找到一条路径，那么它一定就是最短路径，因为再也没有其它路径能够到达该节点了。但是，一旦我们将这棵二叉树添加几条边，将其转换成一张图的话，事情就变得微妙了起来:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/bfs/1609297337905.png" alt="Alt text" /></p>
+
+<p>如上图所示，我们可以找到 3 条从根节点到终止节点的最短路径，也就是无权图的最短路径。那么为什么 BFS 就天然地能够解决无权图最短路径问题呢? 这是因为 BFS 的遍历过程中，是一层一层的进行遍历的，就像剥洋葱一样。当我们遍历到某一层找到了终止节点时，那么其余的最短路径一定在这一层，而不是下一层。这就好比我们下楼梯找东西，我们明明在第 4 层就找到了我们想要的，那么绝对不会再去第 3 层寻找。</p>
+
+<h3 id="1-bfs-的基本框架">1. BFS 的基本框架</h3>
+
+<p>相较于二叉树的层序遍历而言，图的 BFS 没有什么太大的区别，都需要借助队列这一数据结构实现，只不过因为图的 BFS 过程中可能会出现对节点重复访问的问题，所以我们需要添加一个 <code class="highlighter-rouge">visited</code> 数组，来帮助我们标记哪些已经遍历过的节点，从而避免重复访问:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">bfs</span><span class="p">(</span><span class="kt">int</span> <span class="n">src</span><span class="p">,</span> <span class="kt">int</span> <span class="n">dst</span><span class="p">)</span> <span class="p">{</span>
+	<span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">visited</span><span class="p">;</span>
+	<span class="n">queue</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">levelQueue</span><span class="p">;</span>
+
+	<span class="n">visited</span><span class="p">[</span><span class="n">src</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+	<span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">src</span><span class="p">);</span>
+
+	<span class="k">while</span><span class="p">(</span><span class="o">!</span><span class="n">levelQueue</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+		<span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">levelQueue</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+
+        <span class="c1">// 非常实用的小技巧，取出每一层的数据
+</span>		<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">size</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+			<span class="kt">int</span> <span class="n">current</span> <span class="o">=</span> <span class="n">levelQueue</span><span class="p">.</span><span class="n">front</span><span class="p">();</span>
+			<span class="n">levelQueue</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+
+			<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">neighbor</span><span class="o">:</span> <span class="n">neighbors</span><span class="p">(</span><span class="n">current</span><span class="p">))</span> <span class="p">{</span>
+				<span class="k">if</span> <span class="p">(</span><span class="n">visited</span><span class="p">[</span><span class="n">neighbor</span><span class="p">])</span> <span class="k">continue</span><span class="p">;</span>
+				<span class="n">visited</span><span class="p">[</span><span class="n">neighbor</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+				<span class="c1">// do something for child
+</span>				<span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">child</span><span class="p">);</span>
+			<span class="p">}</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>在上面的伪代码中，<code class="highlighter-rouge">visited</code> 数组使用 <code class="highlighter-rouge">bool</code> 型表示，我们同样也可以使用 <code class="highlighter-rouge">int</code> 来表示。例如 <code class="highlighter-rouge">-1</code> 则表示当前节点未曾访问过，大于 <code class="highlighter-rouge">-1</code> 则表示当前节点距离 <code class="highlighter-rouge">src</code> 节点的距离。如此一来我们不仅使用 <code class="highlighter-rouge">visited</code> 表示了节点是否被访问，同时也记录了每一个节点到 <code class="highlighter-rouge">src</code> 节点的距离，一举两得。</p>
+
+<h3 id="2-直白的-bfs-问题">2. 直白的 BFS 问题</h3>
+
+<p>在文章开头所陈列的 Leetcode 上关于二叉树的 BFS 问题，个人更倾向于将其归类为“直白的 BFS 问题”，从题目描述中我们就能够很轻易的看出需要使用 BFS 进行求解。</p>
+
+<p>例如 <a href="https://leetcode.com/problems/shortest-path-in-binary-matrix/">1091. Shortest Path in Binary Matrix</a>，求仅包含 <code class="highlighter-rouge">0</code> 和 <code class="highlighter-rouge">1</code> 的二维矩阵中从左上角到右下角的最短路径距离，其中 <code class="highlighter-rouge">1</code> 表示障碍物，<code class="highlighter-rouge">0</code> 表示可行路径。这道题乍一看和 <a href="https://leetcode.com/problems/unique-paths-ii/">63. Unique Paths II</a> 非常之类似，但是和 63 号问题不同的是，1091 号问题里面的“Robot”有 8 个前进方向，并且使用 DP 求解的时间复杂度必然是 O(n^2)，而使用 BFS 求解则只需 O(V+E) 的时间复杂度，其中 V 为顶点个数，E 为边的个数。BFS 的过程如下图所示:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/bfs/1609303685314.png" alt="Alt text" /></p>
+
+<p>求解过程如下:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Solution</span> <span class="p">{</span>
+<span class="k">private</span><span class="o">:</span>
+    <span class="kt">int</span> <span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">;</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">delta</span> <span class="o">=</span>  <span class="p">{{</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">},</span> <span class="p">{</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">},</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">}};</span> 
+    <span class="kt">bool</span> <span class="nf">inGrid</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">m</span> <span class="o">&amp;&amp;</span> <span class="n">y</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">y</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="kt">int</span> <span class="n">shortestPathBinaryMatrix</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;&amp;</span> <span class="n">grid</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">grid</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">n</span> <span class="o">=</span> <span class="n">grid</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">size</span><span class="p">();</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">||</span> <span class="n">grid</span><span class="p">[</span><span class="n">m</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">m</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+
+        <span class="n">queue</span><span class="o">&lt;</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">levelQueue</span><span class="p">;</span>
+        <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span> <span class="n">visited</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">));</span>
+
+        <span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">make_pair</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+        <span class="n">visited</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+        <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">levelQueue</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+            <span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">current</span> <span class="o">=</span> <span class="n">levelQueue</span><span class="p">.</span><span class="n">front</span><span class="p">();</span>
+            <span class="n">levelQueue</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+
+            <span class="kt">int</span> <span class="n">startx</span> <span class="o">=</span> <span class="n">current</span><span class="p">.</span><span class="n">first</span><span class="p">,</span> <span class="n">starty</span> <span class="o">=</span> <span class="n">current</span><span class="p">.</span><span class="n">second</span><span class="p">;</span>
+            <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+                <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="n">startx</span> <span class="o">+</span> <span class="n">delta</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">y</span> <span class="o">=</span> <span class="n">starty</span> <span class="o">+</span> <span class="n">delta</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">];</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">inGrid</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">grid</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">y</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">visited</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">y</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">make_pair</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">));</span>
+                    <span class="n">visited</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="n">visited</span><span class="p">[</span><span class="n">startx</span><span class="p">][</span><span class="n">starty</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">x</span> <span class="o">==</span> <span class="n">m</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">y</span> <span class="o">==</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="n">visited</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">y</span><span class="p">];</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h3 id="3-图论模型建模状态转移">3. 图论模型建模——状态转移</h3>
+
+<p>在 DP 领域中，有一个非常重要的概念: 状态转移方程，当我们面对一个 DP 问题的时候，只要找到了状态转移方程，基本上我们就认为已经解出了这个问题。在图论建模过程中，也存在状态转移这么个东西，只不过没有状态转移方程。</p>
+
+<p><a href="https://leetcode.com/problems/open-the-lock/">752. Open the Lock</a> 要求我们求打开初始化状态为 <code class="highlighter-rouge">"0000"</code> 的密码锁，并且每次只能对 4 位密码锁中的一位往前拨或者是往后拨，同时存在一组 <code class="highlighter-rouge">deadends</code>，当我们的密码锁被拨到这些数字组合时，该密码锁将再也不能打开，求打开该密码锁所需最少的操作次数。</p>
+
+<p>可以看到，这道题目就只是给了我们一个初始状态和一组“死亡数字”，既没有能够在 8 方向上移动的 Robot，也没有邻接矩阵、邻接表等能够代表图的东西。但是我们知道初始状态和结束状态，假设 <code class="highlighter-rouge">target</code> 为 <code class="highlighter-rouge">"1234"</code>，那么我们就需要找到一条“路径”，从 <code class="highlighter-rouge">"0000"</code> 到 <code class="highlighter-rouge">"1234"</code>，并且在该路径上不包含死亡数字。</p>
+
+<p>对于 <code class="highlighter-rouge">"0000"</code> 来说，我们第一次的操作有 8 种选择: 选择哪一位，以及往前拨还是往后拨，如此一来，我们就可以得到:</p>
+
+<ul>
+  <li>往前拨: <code class="highlighter-rouge">"1000"</code>，<code class="highlighter-rouge">"0100"</code>, <code class="highlighter-rouge">"0010"</code>，<code class="highlighter-rouge">"0001"</code></li>
+  <li>往后拨: <code class="highlighter-rouge">"9000"</code>，<code class="highlighter-rouge">"0900"</code>，<code class="highlighter-rouge">"0090"</code>，<code class="highlighter-rouge">"0009"</code></li>
+</ul>
+
+<p>这样的一共 8 种状态，而得到的这 8 种状态每一种又可以得到 8 种状态，只不过 <code class="highlighter-rouge">"0000"</code> 需要从中剔除，所以是 7 种。如此一来我们就得到了一张图。为什么不是多叉树呢? 因为 <code class="highlighter-rouge">"0000"</code> 能到 <code class="highlighter-rouge">"1000"</code>，<code class="highlighter-rouge">"1000"</code> 也能到达 <code class="highlighter-rouge">"0000"</code>。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/bfs/1609314215174.png" alt="Alt text" /></p>
+
+<p><strong>这其实就是自身状态的表达，每一个状态（例如<code class="highlighter-rouge">"1000"</code>、<code class="highlighter-rouge">"0009"</code>）都是图中的一个顶点，从初始的状态一步一步地到达另外一个状态。本质上仍然可以看做是“Robot千辛万苦寻找家人”的问题</strong>。</p>
+
+<p>题解可参考:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/blob/master/leetcode/bfs/752-Open-the-Lock.cpp</p>
+</blockquote>
+
+<p>我们再来看另外一个智力问题:</p>
+
+<blockquote>
+  <p>有两个水桶，一个容量为 9 升，另一个容量为 4 升，如何操作能得到 6 升水?</p>
+</blockquote>
+
+<p>依然使用状态转移对这个问题进行建模，我们有两个桶，所以初始状态可以表示为 <code class="highlighter-rouge">"00"</code>，最终我们要得到 6 升水，那么结束状态可以表示为 <code class="highlighter-rouge">"6x"</code> 或者是 <code class="highlighter-rouge">"x6"</code>，<code class="highlighter-rouge">x</code> 表示另一个桶有多少水我们并不关心，只要有一个桶里面有 6 升水就好了。</p>
+
+<p>我们可以像上面那道打开密码锁一样，使用字符串的方式来表示状态，但是我们也可以使用 <code class="highlighter-rouge">int</code> 来表示。对于两个桶，使用 <code class="highlighter-rouge">x</code> 表示 9 升桶所容纳的水，<code class="highlighter-rouge">y</code> 则表示 4 升桶所容纳的水，那么状态即为 <code class="highlighter-rouge">10x + y</code>，一个用十位表示，另一个则用个位表示。如果有 3 个桶 <code class="highlighter-rouge">x</code>、<code class="highlighter-rouge">y</code>、<code class="highlighter-rouge">z</code> 的话，那么就可以使用 <code class="highlighter-rouge">100x+10y+z</code> 来进行表示。现在来看状态是如何转移的，假设当前两个桶的水量为 <code class="highlighter-rouge">x</code>、<code class="highlighter-rouge">y</code>。</p>
+
+<p>最简单的两种操作就是将其中一个桶装满，或者是将其中一个桶中的水倒掉，那么状态可以表示为:</p>
+
+<ul>
+  <li>装满其中一个桶: <code class="highlighter-rouge">9 * 10 + y</code>（装满 9 升桶），<code class="highlighter-rouge">10x + 4</code>（装满 4 升桶）</li>
+  <li>倒掉其中一个桶: <code class="highlighter-rouge">0 * 10 + y</code>（倒掉 9 升桶），<code class="highlighter-rouge">10x + 0</code>（倒掉 4 升桶）</li>
+</ul>
+
+<p>另外一个操作就是将一个桶的水倒向另外一个桶内，情况稍微复杂一些:</p>
+
+<ul>
+  <li>将 9 升桶的水倒进 4 升桶: <code class="highlighter-rouge">10 * (9 - min(x, 4 - y)) + (y + min(x, 4 - y))</code></li>
+  <li>将 4 升桶的水倒进 9 升桶: <code class="highlighter-rouge">10 * (x + min(y, 9 - x)) + (y - min(y, 9 - x))</code></li>
+</ul>
+
+<p>正如同状态转移方程之于 DP 问题一样，当我们找到全部的状态转移之后，就已经建立了 BFS 的图论模型，剩下的就只是按部就班的使用 BFS 求解即可。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">bucketPuzzle</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">queue</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">levelQueue</span><span class="p">;</span>
+
+    <span class="c1">// 使用 hashmap 判定是否访问过, value 为操作次数
+</span>    <span class="n">unordered_map</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">visited</span><span class="p">;</span>     
+
+    <span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">visited</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">levelQueue</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">current</span> <span class="o">=</span> <span class="n">levelQueue</span><span class="p">.</span><span class="n">front</span><span class="p">();</span>
+        <span class="n">levelQueue</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+
+        <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="n">current</span> <span class="o">/</span> <span class="mi">10</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">current</span> <span class="o">%</span> <span class="mi">10</span><span class="p">;</span>
+
+        <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">nextStatuses</span><span class="p">;</span>
+
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">9</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="n">y</span><span class="p">);</span>
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="mi">4</span><span class="p">);</span>
+
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">0</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="n">y</span><span class="p">);</span>
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="mi">0</span><span class="p">);</span>
+
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="p">(</span><span class="mi">9</span> <span class="o">-</span> <span class="n">min</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">4</span> <span class="o">-</span> <span class="n">y</span><span class="p">))</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">+</span> <span class="n">min</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">4</span> <span class="o">-</span> <span class="n">y</span><span class="p">)));</span>
+        <span class="n">nextStatuses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">min</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="mi">9</span> <span class="o">-</span> <span class="n">x</span><span class="p">))</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">min</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="mi">9</span> <span class="o">-</span> <span class="n">x</span><span class="p">)));</span>
+
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">next</span><span class="o">:</span> <span class="n">nextStatuses</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">visited</span><span class="p">.</span><span class="n">count</span><span class="p">(</span><span class="n">next</span><span class="p">))</span> <span class="p">{</span>
+                <span class="n">levelQueue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">next</span><span class="p">);</span>
+                <span class="n">visited</span><span class="p">[</span><span class="n">next</span><span class="p">]</span> <span class="o">=</span> <span class="n">visited</span><span class="p">[</span><span class="n">current</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+
+                <span class="k">if</span> <span class="p">(</span><span class="n">next</span> <span class="o">/</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">6</span> <span class="o">||</span> <span class="n">next</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">6</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">visited</span><span class="p">[</span><span class="n">next</span><span class="p">];</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>如果需要输出详细的操作过程的话，添加一个 <code class="highlighter-rouge">previous</code> 数组即可，在数组中记录当前状态是从哪个状态而来的，而后遍历该数组逆序输出即可。</p>
+
+<p>完整代码可参考:</p>
+
+<blockquote>
+  <p>https://github.com/SmartKeyerror/Snorlax/blob/master/leetcode/bfs/BucketPuzzle.cpp</p>
+</blockquote>
+
+<h3 id="4-小结">4. 小结</h3>
+
+<p>BFS 由于天然地存在“无权图最短路径问题求解”这一特性，被广泛地应用在经典人工智能和搜索领域，包括我们所描述的水桶问题、打开密码锁问题，以及未提及的其它经典人工智能问题，本质上就是路径的搜索。</p>
+
+<p>很多时候，可能我们并不能一眼看出某一个题目需要使用图论模型进行建模，而后使用 BFS 进行处理。但是一般来说，当题目中出现“最短”、“最少”、“最近”等关键词时，我们就可能需要考虑是否能够建立状态转移的模型，从而使用 BFS 进行求解。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/bfs/Sliding-Puzzle.gif" alt="" /></p>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>动态规划(01)——从斐波那契到硬币找零</title>
 	  <link>//dp(01)</link>
 	  <author></author>
@@ -2443,322 +2667,6 @@ Host: example.com
   <li><a href="https://tools.ietf.org/html/rfc7540">https://tools.ietf.org/html/rfc7540</a></li>
   <li><a href="https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn">https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn</a></li>
 </ul>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>揭开Python元类(metaclass)神秘的面纱</title>
-	  <link>//Python-metaclass</link>
-	  <author></author>
-	  <pubDate>2020-07-13T10:06:25+00:00</pubDate>
-	  <guid>//Python-metaclass</guid>
-	  <description><![CDATA[
-	     <p>Python语言的<code class="highlighter-rouge">metaclass</code>特性一直是初学者的”噩梦”，当初博主在学习元类时也是一头雾水，但是一旦真正的理解了什么是”动态语言”之后，元类就不再神秘与难以理解了。Python这门动态语言最大的特性就是不需要一个类的字节码就能够在运行时创建出一个类，这是理解元类最为关键的信息。</p>
-
-<!---more--->
-
-<h3 id="1-基础知识汇总">1. 基础知识汇总</h3>
-
-<h4 id="11-stackoverflow">1.1 stackoverflow</h4>
-
-<p>首先，强烈推荐阅读stackoverflow上关于<code class="highlighter-rouge">metaclass</code>的回答，作者并没有使用什么高级词汇，就算英语稀烂也能看的懂。</p>
-
-<blockquote>
-  <p>https://stackoverflow.com/a/6581949/12523821</p>
-</blockquote>
-
-<h4 id="12-类属性和实例属性">1.2 类属性和实例属性</h4>
-
-<p>类属性表示绑定在一个类上的属性，而实例属性则是绑定在不同实例上的属性，类属性只有一份，而实例属性则可以有多份。当实例属性和类属性重名，并通过实例获取该属性时，会返回实例属性，而不是类属性。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Hugo</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="bp">None</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
-
-<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
-    <span class="n">Hugo</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">"smart"</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">Hugo</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>      <span class="c"># "smart"</span>
-
-    <span class="n">hugo</span> <span class="o">=</span> <span class="n">Hugo</span><span class="p">(</span><span class="s">"raven"</span><span class="p">)</span>  
-    <span class="k">print</span><span class="p">(</span><span class="n">hugo</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>      <span class="c"># "raven"</span>
-
-    <span class="k">print</span><span class="p">(</span><span class="n">Hugo</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>      <span class="c"># "smart"</span>
-</code></pre></div></div>
-
-<h4 id="13-__new__方法和__init__方法">1.3 <code class="highlighter-rouge">__new__</code>方法和<code class="highlighter-rouge">__init__</code>方法</h4>
-
-<p>在Python中，实际创建对象的过程是由<code class="highlighter-rouge">__new__</code>方法控制的，该方法接收class对象(cls)。而<code class="highlighter-rouge">__init__</code>方法则是在<code class="highlighter-rouge">__new__</code>方法所创建的对象实例上，进行属性的赋值或者其它操作，所以接收实例对象(self)。</p>
-
-<p>当想要控制创建对象的过程时，应该使用<code class="highlighter-rouge">__new__</code>方法，例如常用的单例模式，而不是使用<code class="highlighter-rouge">__init__</code>方法:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Lock</span>
-
-<span class="k">class</span> <span class="nc">SingletonClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="n">instance</span> <span class="o">=</span> <span class="bp">None</span>
-    <span class="n">lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
-    
-    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">cls</span><span class="o">.</span><span class="n">instance</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">instance</span>
-        <span class="k">with</span> <span class="n">cls</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
-            <span class="c"># double check</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">cls</span><span class="o">.</span><span class="n">instance</span><span class="p">:</span>
-                <span class="n">cls</span><span class="o">.</span><span class="n">instance</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">instance</span>
-</code></pre></div></div>
-
-<h4 id="14-mro">1.4 MRO</h4>
-
-<p>Python是通过MRO列表来实现类的继承的，MRO列表的构造由C3线性化算法实现。实际上，类的继承层级关系最终会表现成包含所有基类的线性顺序表。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Parent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">print</span><span class="p">(</span><span class="s">"Parent init"</span><span class="p">)</span>
-
-<span class="k">class</span> <span class="nc">Children</span><span class="p">(</span><span class="n">Parent</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">Children</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
-        <span class="k">print</span><span class="p">(</span><span class="s">"Children init"</span><span class="p">)</span>
-
-<span class="k">class</span> <span class="nc">Grandchildren</span><span class="p">(</span><span class="n">Children</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">Grandchildren</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
-        <span class="k">print</span><span class="p">(</span><span class="s">"Grandchildren init"</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">Grandchildren</span><span class="o">.</span><span class="n">__mro__</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>运行结果为:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">(</span>
-    &lt;class <span class="s1">'__main__.Grandchildren'</span><span class="o">&gt;</span>, 
-    &lt;class <span class="s1">'__main__.Children'</span><span class="o">&gt;</span>, 
-    &lt;class <span class="s1">'__main__.Parent'</span><span class="o">&gt;</span>, 
-    &lt;class <span class="s1">'object'</span><span class="o">&gt;</span>
-<span class="o">)</span>
-</code></pre></div></div>
-
-<p>其顺序与继承顺序刚好相反，也就是说，通过类的<code class="highlighter-rouge">__mro__</code>属性即可找到该类的所有父类，包括<code class="highlighter-rouge">object</code>类。</p>
-
-<p>Python同时也提供了内建的反射函数，来返回某个类的MRO列表:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">getmro</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">__mro__</span>
-</code></pre></div></div>
-
-<h3 id="2-metaclass">2. metaclass</h3>
-
-<p>我们已经知道了<code class="highlighter-rouge">metaclass</code>是创建一个类的工具，通过<code class="highlighter-rouge">metaclass</code>能够更加灵活地动态地创建一个类，其中一个非常重要的结果就是能够获取到”子类”的全部信息，例如类属性、类方法等。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
-    
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">print</span><span class="p">(</span><span class="n">f</span><span class="s">"get class field: {name}===&gt;{value}"</span><span class="p">)</span>
-            
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
-
-<span class="k">class</span> <span class="nc">Hugo</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">HugoMetaclass</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s">"smart"</span>
-    <span class="n">gender</span> <span class="o">=</span> <span class="s">"male"</span>
-</code></pre></div></div>
-
-<p>运行上述代码将会打印出<code class="highlighter-rouge">Hugo</code>类的所有属性信息:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>get class field: <span class="nv">__module__</span><span class="o">===&gt;</span>__main__
-get class field: <span class="nv">__qualname__</span><span class="o">===&gt;</span>Hugo
-get class field: <span class="nv">name</span><span class="o">===&gt;</span>smart
-get class field: <span class="nv">gender</span><span class="o">===&gt;</span>male
-</code></pre></div></div>
-
-<p>其中<code class="highlighter-rouge">__module__</code>和<code class="highlighter-rouge">__qualname__</code>为内部属性，而<code class="highlighter-rouge">name</code>和<code class="highlighter-rouge">gender</code>则是用户自定义的类属性。可以看到，在<code class="highlighter-rouge">HugoMetaclass。__new__</code>方法中，完全能够获取到<code class="highlighter-rouge">Hugo</code>类的相关类属性，那么更进一步地来说，不管用户定义了什么样的类属性，都可以使用<code class="highlighter-rouge">metaclass</code>在创建该类之前获取到该类的所有属性。这就为诸如ORM、表单验证等基础服务提供了构建的基础。</p>
-
-<h4 id="21-metaclass的应用">2.1 metaclass的应用</h4>
-
-<p><code class="highlighter-rouge">type</code>的<code class="highlighter-rouge">__new__</code>方法接收4个参数，分别为类对象，类名称，父类元组以及类属性。这四个参数中最为关键的就是父类元组和类属性，通常项目中使用<code class="highlighter-rouge">metaclass</code>时也是和这两个参数频繁打交道。</p>
-
-<h5 id="211-父类元组">2.1.1 父类元组</h5>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
-        <span class="k">print</span><span class="p">(</span><span class="n">bases</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
-
-<span class="k">class</span> <span class="nc">Hugo</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">HugoMetaclass</span><span class="p">):</span>
-    <span class="k">pass</span>
-
-<span class="k">class</span> <span class="nc">HugoChild</span><span class="p">(</span><span class="n">Hugo</span><span class="p">):</span>
-    <span class="k">pass</span>
-</code></pre></div></div>
-
-<p>运行后将得到以下结果:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">()</span>
-<span class="o">(</span>&lt;class <span class="s1">'__main__.Hugo'</span><span class="o">&gt;</span>,<span class="o">)</span>
-</code></pre></div></div>
-
-<p>一共需要创建两个类: <code class="highlighter-rouge">Hugo</code>和<code class="highlighter-rouge">HugoChild</code>，<code class="highlighter-rouge">Hugo</code>类直接使用<code class="highlighter-rouge">HugoMetaclass</code>创建，所以其父类元组为空。而<code class="highlighter-rouge">HugoChild</code>直接继承自<code class="highlighter-rouge">Hugo</code>，所以其父类为<code class="highlighter-rouge">Hugo</code>。所以，可以通过<code class="highlighter-rouge">bases</code>参数来判断当前创建的类是否需要进行处理。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
-    
-        <span class="n">parents</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bases</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">HugoMetaclass</span><span class="p">)]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">parents</span><span class="p">:</span>
-            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
-
-        <span class="c"># 这里所创建的类都是Hugo的子类, 而不是Hugo类</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
-</code></pre></div></div>
-
-<h5 id="212-类属性">2.1.2 类属性</h5>
-
-<p>类属性是”子类”中最为重要的数据，可以说元类的最终目的就是为了根据类属性创建出一个模板，将该模板数据保存在类中。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
-
-        <span class="n">parents</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bases</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">HugoMetaclass</span><span class="p">)]</span>
-
-        <span class="c"># 对Hugo类不做任何处理</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">parents</span><span class="p">:</span>
-            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
-
-        <span class="n">klass</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
-
-        <span class="c"># 保存attrs中所有的int类型数据</span>
-        <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-                <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-
-        <span class="k">return</span> <span class="n">klass</span>
-        
-<span class="k">class</span> <span class="nc">Hugo</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">HugoMetaclass</span><span class="p">):</span>
-    <span class="k">pass</span>
-
-<span class="k">class</span> <span class="nc">HugoChild</span><span class="p">(</span><span class="n">Hugo</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s">"smart"</span>
-    <span class="n">age</span> <span class="o">=</span> <span class="mi">24</span>
-
-<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">HugoChild</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>上面创建了一个<code class="highlighter-rouge">int</code>类型的”模板”，并保存在了<code class="highlighter-rouge">declared_fields</code>这个字典中。注意不要将<code class="highlighter-rouge">declared_fields</code>挂到<code class="highlighter-rouge">mcs</code>上，<code class="highlighter-rouge">mcs</code>就是<code class="highlighter-rouge">HugoMetaclass</code>，变量绑定到<code class="highlighter-rouge">mcs</code>上会丢失一些信息，导致程序出现BUG。</p>
-
-<p>那么如果<code class="highlighter-rouge">HugoChild</code>又有子类呢? 上述方式是否能够将<code class="highlighter-rouge">HugoChild</code>和其子类的属性一起获取到呢?</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoChild</span><span class="p">(</span><span class="n">Hugo</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s">"smart"</span>
-    <span class="n">age</span> <span class="o">=</span> <span class="mi">24</span>
-
-<span class="k">class</span> <span class="nc">HugoGrandChild</span><span class="p">(</span><span class="n">HugoChild</span><span class="p">):</span>
-    <span class="n">height</span> <span class="o">=</span> <span class="mi">180</span>
-
-<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">Hugo</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">HugoChild</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">HugoGrandChild</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>这时候会发现，这三个类的<code class="highlighter-rouge">declared_fields</code>结果都是<code class="highlighter-rouge">{'height': 180}</code>，<code class="highlighter-rouge">age</code>字段丢失了。原因也很简单，在创建<code class="highlighter-rouge">HugoGrandChild</code>类时，<code class="highlighter-rouge">declared_fields</code>被重新声明成了空字典，所以<code class="highlighter-rouge">HugoChild</code>中的类属性就会丢失。那么有没有什么办法能够得到完整版呢? 这就需要用到上面所提到的MRO列表了。</p>
-
-<p>我们可以通过MRO列表，来获取到<code class="highlighter-rouge">HugoGrandChild</code>的所有父类，而后逐一的遍历找出类型为<code class="highlighter-rouge">int</code>的类属性，保存在<code class="highlighter-rouge">declared_fields</code>这个字典中。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
-
-        <span class="n">parents</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bases</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">HugoMetaclass</span><span class="p">)]</span>
-
-        <span class="c"># 对Hugo类不做任何处理</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">parents</span><span class="p">:</span>
-            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
-
-        <span class="c"># 保存attrs中所有的int类型数据</span>
-        <span class="n">klass</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
-
-        <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-                <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-
-        <span class="c"># 遍历__mro__列表并找出类型为`int`的类属性, 保存在字典中</span>
-        <span class="k">for</span> <span class="n">parent</span> <span class="ow">in</span> <span class="n">klass</span><span class="o">.</span><span class="n">__mro__</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="s">'declared_fields'</span><span class="p">,</span> <span class="n">parent</span><span class="o">.</span><span class="n">__dict__</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-                    <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-
-        <span class="k">return</span> <span class="n">klass</span>
-
-<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">HugoChild</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">HugoGrandChild</span><span class="o">.</span><span class="n">declared_fields</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>其运行结果为:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">{</span><span class="s1">'age'</span>: 24<span class="o">}</span>
-<span class="o">{</span><span class="s1">'height'</span>: 180, <span class="s1">'age'</span>: 24<span class="o">}</span>
-</code></pre></div></div>
-
-<p>如此一来，<code class="highlighter-rouge">HugoGrandChild</code>在继承了<code class="highlighter-rouge">HugoChild</code>之后，也能够获取到其中的相关字段，并且父类不会受到子类的影响。</p>
-
-<p>上述代码中存在一些重复的代码片段，将其抽离出来，使代码结构更加清晰:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">is_instance_or_subclass</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">class_</span><span class="p">):</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">class_</span><span class="p">)</span>
-    <span class="k">except</span> <span class="nb">TypeError</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">class_</span><span class="p">)</span>
-
-<span class="k">def</span> <span class="nf">_get_fields</span><span class="p">(</span><span class="n">attrs</span><span class="p">,</span> <span class="n">field_class</span><span class="p">):</span>
-    <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">(</span><span class="n">field_name</span><span class="p">,</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field_name</span><span class="p">))</span>
-        <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_value</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
-        <span class="k">if</span> <span class="n">is_instance_or_subclass</span><span class="p">(</span><span class="n">field_value</span><span class="p">,</span> <span class="n">field_class</span><span class="p">)</span>
-    <span class="p">]</span>
-    <span class="k">return</span> <span class="n">fields</span>
-
-<span class="k">def</span> <span class="nf">_get_fields_by_mro</span><span class="p">(</span><span class="n">klass</span><span class="p">,</span> <span class="n">field_class</span><span class="p">):</span>
-    <span class="n">mro</span> <span class="o">=</span> <span class="n">klass</span><span class="o">.</span><span class="n">__mro__</span>
-    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span>
-        <span class="p">(</span>
-            <span class="n">_get_fields</span><span class="p">(</span>
-                <span class="nb">getattr</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s">'declared_fields'</span><span class="p">,</span> <span class="n">base</span><span class="o">.</span><span class="n">__dict__</span><span class="p">),</span>
-                <span class="n">field_class</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">mro</span><span class="p">[:</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="p">),</span>
-        <span class="p">[],</span>
-    <span class="p">)</span>
-
-<span class="k">class</span> <span class="nc">HugoMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
-
-        <span class="n">parents</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bases</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">HugoMetaclass</span><span class="p">)]</span>
-
-        <span class="c"># 对Hugo类不做任何处理</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">parents</span><span class="p">:</span>
-            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
-
-        <span class="c"># 保存attrs中所有的int类型数据</span>
-        <span class="n">klass</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
-
-        <span class="n">class_fields</span> <span class="o">=</span> <span class="n">_get_fields</span><span class="p">(</span><span class="n">attrs</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
-        <span class="n">inherited_fields</span> <span class="o">=</span> <span class="n">_get_fields_by_mro</span><span class="p">(</span><span class="n">klass</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
-        <span class="n">klass</span><span class="o">.</span><span class="n">declared_fields</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">class_fields</span> <span class="o">+</span> <span class="n">inherited_fields</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">klass</span>
-</code></pre></div></div>
-
-<h3 id="3-小结">3. 小结</h3>
-
-<p><code class="highlighter-rouge">metaclass</code>并不神秘，得益于Python是动态语言，可以在运行时动态地创建一个类的特性，我们能够在事前去创建一些有用的”模板”，在运行时将模板和数据有机的结合起来，最终呈现出宛如魔术般的效果。</p>
 
 	  ]]></description>
 	</item>

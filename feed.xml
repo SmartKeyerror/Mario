@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>BFS与图论问题建模</title>
+        
+          <description>&lt;p&gt;在 DP 问题中我们将会着重的关注状态转移方程，同样地，在使用 BFS 对某些问题进行图论模型建模时，我们同样会关注状态转移。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Fri, 01 Jan 2021 08:50:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/BFS</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/BFS</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>动态规划(01)——从斐波那契到硬币找零</title>
         
           <description>&lt;p&gt;动态规划是算法中一个非常有趣的 Topic，由于其具有非常强的灵活性，所以在面试时也会被经常提及到。动态规划问题我更喜欢称之为递推，因为其本质就是利用“历史数据”进行下一步的推导。&lt;/p&gt;

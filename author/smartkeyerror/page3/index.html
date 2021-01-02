@@ -115,7 +115,7 @@
                     <span class="author-location icon-location">China</span>
                     <span class="author-link icon-link"><a href="https://smartkeyerror.com">https://smartkeyerror.com</a></span>
                     <!-- <span class="author-stats"><i class="icon-stats"></i> [[plural ../pagination.total empty='No posts' singular='% post' plural='% posts']]</span> -->
-                    <span class="author-stats"><i class="icon-stats"></i>54 posts</span>
+                    <span class="author-stats"><i class="icon-stats"></i>55 posts</span>
                 </div>
             
         
@@ -145,6 +145,39 @@
     <!--</div>-->
 
     <!-- This is the post loop - each post will be output using this markup -->
+    
+    <article class="post">
+        <header class="post-header">
+            <h2 class="post-title"><a href="/MySQL-Pessimistic-Lock">MySQL中的悲观锁与常见的死锁场景</a></h2>
+        </header>
+        <section class="post-excerpt">
+            <p>在MySQL中， 锁机制是并发条件下保护数据一致性与稳定性的一个非常重要的机制， 并且事务的实现也依赖于于锁机制。 其锁定的数据不单包括数据行记录， 同时也包括缓冲池中的LRU列表数据、日志数据等。 悲观锁(FOR UPDATE)则是日常开发中使用最多的一种锁， 但是， 由于事务隔离级别的多样性导致了悲观锁在使用时常常会有不同的表现， 死锁在程序员稍不注意时就会发生。
+
+ <a class="read-more" href="/MySQL-Pessimistic-Lock">&raquo;</a></p>
+        </section>
+        <footer class="post-meta">
+            
+                
+
+                <img class="author-thumb" src="/assets/images/author.jpg" alt="Author image" nopin="nopin" />
+                <!-- author -->
+                <a href='/author/smartkeyerror'>smartkeyerror</a>
+
+                
+            
+
+            <!-- [[tags prefix=" on "]] -->
+            
+                on
+                
+                    
+                       <a href='/tag/MySQL'>MySQL</a>
+                    
+                
+            
+            <time class="post-date" datetime="2019-09-18">18 Sep 2019</time>
+        </footer>
+    </article>
     
     <article class="post">
         <header class="post-header">
@@ -448,39 +481,6 @@
                 
             
             <time class="post-date" datetime="2019-04-01">01 Apr 2019</time>
-        </footer>
-    </article>
-    
-    <article class="post">
-        <header class="post-header">
-            <h2 class="post-title"><a href="/Flask-Web">一文理解Flask Web开发</a></h2>
-        </header>
-        <section class="post-excerpt">
-            <p>Flask作为Python语言中最为轻量的Web框架， 由于其核心内容的简洁以及良好的可拓展性， 一直受到广泛的开发者所喜爱。 对比于Django， Flask并没有”我给你的就是最好的， 别管那么多， 拿着用就好”的思想， 而是让开发者自己做出选择， 自己设计开发一个组件， 或者挑选一个你喜欢的第三方库。
-
- <a class="read-more" href="/Flask-Web">&raquo;</a></p>
-        </section>
-        <footer class="post-meta">
-            
-                
-
-                <img class="author-thumb" src="/assets/images/author.jpg" alt="Author image" nopin="nopin" />
-                <!-- author -->
-                <a href='/author/smartkeyerror'>smartkeyerror</a>
-
-                
-            
-
-            <!-- [[tags prefix=" on "]] -->
-            
-                on
-                
-                    
-                       <a href='/tag/Python'>Python</a>
-                    
-                
-            
-            <time class="post-date" datetime="2019-03-31">31 Mar 2019</time>
         </footer>
     </article>
     
