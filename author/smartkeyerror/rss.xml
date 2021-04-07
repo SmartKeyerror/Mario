@@ -12,6 +12,307 @@
    <atom:link href="rss" rel="self" type="application/rss+xml" />
    
 	<item>
+	  <title>Coin Change——自顶向下思考，自底向上实现</title>
+	  <link>//Coin-Change</link>
+	  <author></author>
+	  <pubDate>2021-04-06T08:50:25+00:00</pubDate>
+	  <guid>//Coin-Change</guid>
+	  <description><![CDATA[
+	     <p><a href="https://leetcode.com/problems/coin-change/">Coin Change</a> 是一道动态规划问题中一道非常经典的题目，这是因为只要对原有的 Coin Change 问题稍加修改，就可以得到更复杂的动态规划问题，甚至是回溯问题。</p>
+
+<!---more--->
+
+<h3 id="1-无限硬币">1. 无限硬币</h3>
+
+<h4 id="11-存在型动态规划">1.1 存在型动态规划</h4>
+
+<p>首先来看最简单的问题:</p>
+
+<blockquote>
+  <p>给定不同面额的硬币 coins 和一个总金额 amount，每一种硬币的数量是无限的，这些硬币能否组合成 amount? 若能组合，返回 true，否则返回 false。</p>
+</blockquote>
+
+<p>类似于上面的问题，诸如求是否有某条路径/某个解决方案到达目标的问题，都可以被称之为存在型动态规划。再来看原问题，因为每一种面额的硬币数量是无限的，所以我们不知道能够组合成 amount 的方案中到底一共有多少个硬币。<strong>也就是说，这个问题与硬币数量无关，只和硬币的面额有关。</strong></p>
+
+<p>绝大部分的 DP 问题都是“自顶向下思考，自底向上实现”的。什么意思呢? 相较于第一枚硬币而言，我们更关注组成 amount 的最后一枚硬币，也就是拼成完整拼图的最后一块儿。假设硬币面额为 <code class="highlighter-rouge">[2, 3, 5]</code>，amount 为 11，并且组成 amount 的最后一枚硬币面额为 <code class="highlighter-rouge">K</code>。那么如果我们知道了 <code class="highlighter-rouge">amount-K</code> 能不能被 coins 拼出来，也就知道了整个问题的答案。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/coin-change/1615207097202.png" alt="Alt text" /></p>
+
+<p>在最后一枚硬币面额为 <code class="highlighter-rouge">K</code> 的情况下，如果我们能拼出 <code class="highlighter-rouge">amount-K</code> 的话，那么再加上最后一枚硬币 <code class="highlighter-rouge">K</code>，总金额刚好为 amount，结果为 true。反之，如果我们不能拼出 <code class="highlighter-rouge">amount-K</code> 的话，结果为 false。可以看到，本来题目是要求能不能拼出 amount，但是现在需要知道能不能拼出 <code class="highlighter-rouge">amount-K</code>，这就是一个规模更小的问题，也就是子问题。代码实现如下:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">bool</span> <span class="nf">solution</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">coins</span><span class="p">,</span> <span class="kt">int</span> <span class="n">amount</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">dp</span><span class="p">(</span><span class="n">amount</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">false</span><span class="p">);</span>
+
+    <span class="c1">// 当总金额为 0 时我们一个硬币都不选，所以为 true
+</span>    <span class="n">dp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+
+    <span class="c1">// 计算金额为 1、2、3...amount 能否由 coins 拼出，sub 即为子金额
+</span>    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">sub</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">sub</span> <span class="o">&lt;=</span> <span class="n">amount</span><span class="p">;</span> <span class="n">sub</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 每一枚硬币都作为最后一枚硬币，看能不能拼出 sub - coin 
+</span>        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">coin</span> <span class="o">:</span> <span class="n">coins</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 简单的来看，sub - coin 必须大于等于 0，才能作为数组下标
+</span>            <span class="k">if</span> <span class="p">(</span><span class="n">sub</span> <span class="o">&gt;=</span> <span class="n">coin</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="p">]</span> <span class="o">=</span> <span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="p">]</span> <span class="o">||</span> <span class="n">dp</span><span class="p">[</span><span class="n">sub</span> <span class="o">-</span> <span class="n">coin</span><span class="p">];</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">dp</span><span class="p">[</span><span class="n">amount</span><span class="p">];</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h4 id="12-最值型动态规划">1.2 最值型动态规划</h4>
+
+<p>接下来看最值型的动态规划问题，仍然是硬币找零，这次使用 LeetCode 上的原题: <a href="https://leetcode.com/problems/coin-change/">322. Coin Change</a>，问题描述如下:</p>
+
+<blockquote>
+  <p>给定不同面额的硬币 coins 和一个总金额 amount，你可以认为每种硬币的数量是无限的。写一个函数来计算可以凑成总金额所需的最少的硬币个数。如果没有任何一种硬币组合能组成总金额，返回 -1。</p>
+</blockquote>
+
+<p>这个问题在第一个问题之上难度增加了一点点，问凑成 amount 需要的最少硬币数，硬币仍然是无限供应。同样的，由于硬币是无限供应的，所以我们不能考虑硬币数量，而是要考虑最后一个硬币的情况。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/coin-change/1615207194641.png" alt="Alt text" /></p>
+
+<p>仍然假设最后一枚硬币面额为 <code class="highlighter-rouge">K</code>，那么现在如果我们知道了凑成 <code class="highlighter-rouge">amount-K</code> 所需要的最少硬币数的话，也就知道了当最后一枚硬币为 <code class="highlighter-rouge">K</code> 时凑出 amount 所需要的最少硬币数。这同样是一个规模更小的问题，也就是子问题。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">solution</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">coins</span><span class="p">,</span> <span class="kt">int</span> <span class="n">amount</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">dp</span><span class="p">(</span><span class="n">amount</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">INT_MAX</span><span class="p">);</span>
+
+    <span class="c1">// 当金额为 0 时一枚硬币都不需要，所以 dp[0] = 0
+</span>    <span class="n">dp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">sub</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">sub</span> <span class="o">&lt;=</span> <span class="n">amount</span><span class="p">;</span> <span class="n">sub</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">coin</span> <span class="o">:</span> <span class="n">coins</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">sub</span> <span class="o">&gt;=</span> <span class="n">coin</span> <span class="o">&amp;&amp;</span> <span class="n">dp</span><span class="p">[</span><span class="n">sub</span> <span class="o">-</span> <span class="n">coin</span><span class="p">]</span> <span class="o">!=</span> <span class="n">INT_MAX</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="p">]</span> <span class="o">=</span> <span class="n">min</span><span class="p">(</span><span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="p">],</span> <span class="n">dp</span><span class="p">[</span><span class="n">sub</span> <span class="o">-</span> <span class="n">coin</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">dp</span><span class="p">[</span><span class="n">amount</span><span class="p">]</span> <span class="o">==</span> <span class="n">INT_MAX</span> <span class="o">?</span> <span class="o">-</span><span class="mi">1</span> <span class="o">:</span> <span class="n">dp</span><span class="p">[</span><span class="n">amount</span><span class="p">];</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h4 id="13-组合数型动态规划">1.3 组合数型动态规划</h4>
+
+<p>组合数型的动态规划通常需要求达成某一个目标的所有方案数，比如说凑够 amount 一共有多少种凑法。这类问题的关键点不在于状态转移方程如何思考，而是在于明确到底是组合数还是排列数。</p>
+
+<p>例如 <code class="highlighter-rouge">1 + 2 + 1</code> 和 <code class="highlighter-rouge">1 + 1 + 2</code> 到底是算一种组合方式，还是两种。有的题目会明确告知是计算排列数还是组合数，有的题目则会在 Example 中通过具体的案例告诉我们到底是组合还是排列。</p>
+
+<p>首先来看排列问题，因为 <code class="highlighter-rouge">1 + 2 + 1</code> 和 <code class="highlighter-rouge">1 + 1 + 2</code> 是两种不同的方式，所以这和<strong>最后一个硬币到底是谁有关系</strong>。假如最后一个硬币面值为 1、且 amount = 4 的排列方式有 3 种，最后一个硬币面值为 2、且 amount = 4 的排列方式有 2 种，加起来一共 5 种。此时我们就可以说当 <code class="highlighter-rouge">coins = [1, 2]</code> 且 amount 为 4 时总的方案数为 5。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/coin-change/1615297442917.png" alt="Alt text" /></p>
+
+<p>所以说，排列问题仍然是让每一枚硬币都作为 Last Coin，然后看 <code class="highlighter-rouge">amount-K</code> 有多少种凑法，实现如下:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">solution</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">coins</span><span class="p">,</span> <span class="kt">int</span> <span class="n">amount</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">dp</span><span class="p">(</span><span class="n">amount</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="c1">// 哪个硬币都不要，也是一种排列方式
+</span>    <span class="n">dp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">sub</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">sub</span> <span class="o">&lt;=</span> <span class="n">amount</span><span class="p">;</span> <span class="n">sub</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 每一种不同面额的硬币作为 Last Coin 计算方案数
+</span>        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">coin</span> <span class="o">:</span> <span class="n">coins</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">sub</span> <span class="o">&gt;=</span> <span class="n">coin</span><span class="p">)</span>
+                <span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="p">]</span> <span class="o">+=</span> <span class="n">dp</span><span class="p">[</span><span class="n">sub</span> <span class="o">-</span> <span class="n">coin</span><span class="p">];</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">dp</span><span class="p">[</span><span class="n">amount</span><span class="p">];</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>LeetCode 中的 <a href="https://leetcode.com/problems/combination-sum-iv/">377. Combination Sum IV</a> 其实就是一道求排列总方案的 Coin Change 问题。题干中并没有直接的使用 “permutation” 一词，而是在 Example 中说明了该题其实是一道排列型问题。</p>
+
+<p>再来看组合问题，也就是 <code class="highlighter-rouge">1 + 1 + 2</code> 和 <code class="highlighter-rouge">2 + 1 + 1</code> 属于同一种凑法，所以<strong>只和金额有关系，谁是最后一个硬币 Who Care。</strong>那么此时我们就需要金额作为最后一块儿拼图，硬币面值作为已有的拼图。也就是说，我们计算的是当我们只有面额为 <code class="highlighter-rouge">[1]</code> 的硬币时凑成 amount 的方案数，只有面额为 <code class="highlighter-rouge">[1, 2]</code> 时凑成 amount 的方案数，只有面额为 <code class="highlighter-rouge">[1, 2, ...]</code> 的硬币凑成 amount 的方案数。实现如下:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">solution</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">coins</span><span class="p">,</span> <span class="kt">int</span> <span class="n">amount</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">dp</span><span class="p">(</span><span class="n">amount</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="c1">// 同样的，哪个硬币都不选，也是一种组合方式
+</span>    <span class="n">dp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">coin</span> <span class="o">:</span> <span class="n">coins</span><span class="p">){</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">sub</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">sub</span> <span class="o">&lt;=</span> <span class="n">amount</span><span class="p">;</span> <span class="n">sub</span><span class="o">++</span><span class="p">){</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">sub</span> <span class="o">&gt;=</span> <span class="n">coin</span><span class="p">)</span>
+                <span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="p">]</span> <span class="o">+=</span> <span class="n">dp</span><span class="p">[</span><span class="n">sub</span> <span class="o">-</span> <span class="n">coin</span><span class="p">];</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">dp</span><span class="p">[</span><span class="n">amount</span><span class="p">];</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="2-有限硬币">2. 有限硬币</h3>
+
+<p>对于无限硬币的 DP 问题来说，当我们假设最后一枚硬币为 K 时，凑齐 <code class="highlighter-rouge">amount-K</code> 时依然可以使用最后一枚硬币的面值，所以在计算子问题时对于硬币是怎么排列的，使用过了哪些硬币完全可以忽略。但是，当每一种面额的硬币均只有一枚时，情况将截然不同。当我们以 K 作为最后一枚硬币时，前面的 <code class="highlighter-rouge">target-K</code> 将不能再使用该枚硬币，也就是说，我们需要关心使用了哪些硬币。</p>
+
+<h4 id="21-存在型动态规划">2.1 存在型动态规划</h4>
+
+<blockquote>
+  <p>给定不同面额的硬币 coins 和一个总金额 amount，每一种硬币只能使用一次，这些硬币能否组合成 amount? 若能组合，返回 true，否则返回 false。</p>
+</blockquote>
+
+<p>前面提到过，当我们失去“无限硬币”这个外挂以后，我们便不能将子问题定义成“能否拼出<code class="highlighter-rouge">amount-K</code>”了，因为在计算 <code class="highlighter-rouge">amount-K</code> 时完全有可能将最后一枚面额为 K 的硬币也算进去，但实际上面额为 K 的硬币可能只有一枚。</p>
+
+<p>对于 coins 中的每一枚硬币，状态其实只有两种: <strong>选择该枚硬币和不选该枚硬币</strong>。也就是对于最后一枚 K 来说，我可以选择这一枚硬币，然后看前 n-1 枚硬币能不能拼出 <code class="highlighter-rouge">amount-K</code>出来。或者说我们不选择该枚硬币，那么就得看前 n-1 枚硬币能不能拼出 amount 了。</p>
+
+<p>本来我们是要求 coins 这 n 枚硬币能否拼出 amount，现在我们从 coins 的最后一枚硬币出发，得到了一个“二分选择”，也就是看<strong>前 n-1 枚硬币能不能拼出 <code class="highlighter-rouge">amount-K</code> 或者是拼出 amount</strong>。如果这两种情况都是 false 的话，那么整个问题就是无解的，也就是应该返回 false。这样我们就得到了一个规模更小的问题（n 枚硬币变成了 n-1 枚硬币），也就是子问题。</p>
+
+<p>这其实就是 0-1 背包的核心思想: 选还是不选，这是一个问题。</p>
+
+<p>好了，我们使用“前 n-1 枚硬币能否…”这样的方式来杜绝我们对同一枚硬币的重复选取，所以说硬币的数量也将作为我们的状态，当然，还有 amount。所以，我们使用 <code class="highlighter-rouge">dp[i][sub]</code> 来表示<strong>前 i 枚</strong>硬币能否凑出金额 sub。实现如下:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">bool</span> <span class="nf">solution</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">coins</span><span class="p">,</span> <span class="kt">int</span> <span class="n">amount</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">n</span> <span class="o">=</span> <span class="n">coins</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;&gt;</span> <span class="n">dp</span><span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">(</span><span class="n">amount</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">false</span><span class="p">));</span>
+
+    <span class="c1">// 前 0 枚硬币当然可以组成金额 0，因为一枚硬币都没有
+</span>    <span class="n">dp</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">sub</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">sub</span> <span class="o">&lt;=</span> <span class="n">amount</span><span class="p">;</span> <span class="n">sub</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 前 i 枚硬币的最后一枚硬币为 i-1，面额为 coins[i-1]
+</span>            <span class="kt">int</span> <span class="n">lastCoin</span> <span class="o">=</span> <span class="n">coins</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">];</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">sub</span> <span class="o">&gt;=</span> <span class="n">lastCoin</span><span class="p">)</span>
+                <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">sub</span><span class="p">]</span> <span class="o">=</span> <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">sub</span><span class="p">]</span> <span class="o">||</span> <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">sub</span><span class="o">-</span><span class="n">lastCoin</span><span class="p">];</span>
+            <span class="k">else</span>
+                <span class="c1">// 当最后一枚硬币的面值比金额还要大时候，我们肯定不能选择该枚硬币
+</span>                <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">sub</span><span class="p">]</span> <span class="o">=</span> <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">sub</span><span class="p">];</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">dp</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="n">amount</span><span class="p">];</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>在继续往下之前我们先来看一个 DP 问题非常重要的组成: 空间优化。当我们需要使用二维数组才能解决问题时，第一个反应就是能不能使用一维数组进行优化。如下面这条核心语句:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">sub</span><span class="p">]</span> <span class="o">=</span> <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">sub</span><span class="p">]</span> <span class="o">||</span> <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">sub</span><span class="o">-</span><span class="n">lastCoin</span><span class="p">];</span>
+</code></pre></div></div>
+
+<p>如果将 <code class="highlighter-rouge">dp[i][sub]</code> 想象成一个二维矩阵的话，第 i 行只与第 i-1 行有关系，那么我们完全可以只使用 2 行来进行<strong>滚动更新</strong>。比如说我们可以用第一行来计算当 i 为奇数时的情况，第二行来计算当 i 为偶数的情况，如下图所示:</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/coin-change/1615295914672.png" alt="Alt text" /></p>
+
+<p>我们只需要将原来的 <code class="highlighter-rouge">dp[i]</code> 换成 <code class="highlighter-rouge">dp[i%2]</code> ，将 <code class="highlighter-rouge">dp[i-1]</code> 换成 <code class="highlighter-rouge">dp[(i-1)%2]</code> 即可，其它的逻辑照抄，就能实现只使用两行空间完成计算。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">bool</span> <span class="nf">solution</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">coins</span><span class="p">,</span> <span class="kt">int</span> <span class="n">amount</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">n</span> <span class="o">=</span> <span class="n">coins</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;&gt;</span> <span class="n">dp</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">(</span><span class="n">amount</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">false</span><span class="p">));</span>
+
+    <span class="n">dp</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">sub</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">sub</span> <span class="o">&lt;=</span> <span class="n">amount</span><span class="p">;</span> <span class="n">sub</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kt">int</span> <span class="n">lastCoin</span> <span class="o">=</span> <span class="n">coins</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">];</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">sub</span> <span class="o">&gt;=</span> <span class="n">lastCoin</span><span class="p">)</span>
+                <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="mi">2</span><span class="p">][</span><span class="n">sub</span><span class="p">]</span> <span class="o">=</span> <span class="n">dp</span><span class="p">[(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">%</span><span class="mi">2</span><span class="p">][</span><span class="n">sub</span><span class="p">]</span> <span class="o">||</span> <span class="n">dp</span><span class="p">[(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">%</span><span class="mi">2</span><span class="p">][</span><span class="n">sub</span><span class="o">-</span><span class="n">lastCoin</span><span class="p">];</span>
+            <span class="k">else</span>
+                <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="mi">2</span><span class="p">][</span><span class="n">sub</span><span class="p">]</span> <span class="o">=</span> <span class="n">dp</span><span class="p">[(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">%</span><span class="mi">2</span><span class="p">][</span><span class="n">sub</span><span class="p">];</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">dp</span><span class="p">[</span><span class="n">n</span><span class="o">%</span><span class="mi">2</span><span class="p">][</span><span class="n">amount</span><span class="p">];</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>更丧心病狂一些，我们也可以只使用一行空间来进行覆盖更新，将这个一维数组分成新值和旧值，当利用完旧值计算好了新值以后，用新值直接覆盖掉旧值，俗称过河拆桥。</p>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/coin-change/1615296379763.png" alt="Alt text" /></p>
+
+<p>如上图所示，在二维空间中 <code class="highlighter-rouge">dp[i][sub]</code> 的值依赖于其正上方的值以及其左上方的值。所以说，当我们使用一维数组进行覆盖更新时，<code class="highlighter-rouge">sub</code> 需要从右向左遍历，这样一来 <code class="highlighter-rouge">dp[i-1][j]</code> 和 <code class="highlighter-rouge">dp[i-1][j-lastCoin]</code> 的值才不会被新值所覆盖。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">bool</span> <span class="nf">solution</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">coins</span><span class="p">,</span> <span class="kt">int</span> <span class="n">amount</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">n</span> <span class="o">=</span> <span class="n">coins</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">dp</span><span class="p">(</span><span class="n">amount</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">false</span><span class="p">);</span>
+
+    <span class="n">dp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 覆盖更新必须从右向左，因为左边儿的值还得用到呢
+</span>        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">sub</span> <span class="o">=</span> <span class="n">amount</span><span class="p">;</span> <span class="n">sub</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">sub</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kt">int</span> <span class="n">lastCoin</span> <span class="o">=</span> <span class="n">coins</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">];</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">sub</span> <span class="o">&gt;=</span> <span class="n">lastCoin</span><span class="p">)</span>
+                <span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="p">]</span> <span class="o">=</span> <span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="p">]</span> <span class="o">||</span> <span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="o">-</span><span class="n">lastCoin</span><span class="p">];</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">dp</span><span class="p">[</span><span class="n">amount</span><span class="p">];</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Leetcode 中 <a href="https://leetcode.com/problems/partition-equal-subset-sum/">416. Partition Equal Subset Sum</a> 就是一道有限硬币的存在型问题。只不过题目描述的比较隐晦，问一个数组能不能被分成两个元素和相等的子集，其实就是在问一个数组能不能找到一个子集，使其和为 sum(nums) / 2。</p>
+
+<p>值得一提的是，动态规划并不适用于所有的存在性硬币问题，这和我们需要解决问题的数据规模，准确的来说，和 amount 以及 coins 的分布相关。当 amount 较小时，例如 5000、100000，由于 C++ 底层对于 <code class="highlighter-rouge">vector&lt;bool&gt;</code> 进行特殊的内存分配管理，使得我们开大小为 10 万的 <code class="highlighter-rouge">vector&lt;bool&gt;</code> 代价不是很高。</p>
+
+<p>但是，一旦 amount 的值变得巨大，例如 10^9，并且 coins 的取值范围跨度非常之大，例如 <code class="highlighter-rouge">[1, 2, 45256, 2014896]</code>，这个时候不应该使用动态规划的思想来求解存在型问题，而应该使用回溯+剪枝的方式实现。<a href="https://leetcode.com/problems/check-if-number-is-a-sum-of-powers-of-three/">1780. Check if Number is a Sum of Powers of Three</a>，这道题目就是一个典型，amount 的取值达到了 10^7（原题目为 n，可以看作是 amount）。但是 coins 的数量却很少，因为 3^20 其实就已经远超出了 amount 的范围。</p>
+
+<p>关于这道问题的题解可参考:</p>
+
+<blockquote>
+  <p><a href="https://github.com/SmartKeyerror/Snorlax/blob/master/leetcode/backtracking/1780-Check-if-Number-is-a-Sum-of-Powers-of-Three.cpp">1780-Check-if-Number-is-a-Sum-of-Powers-of-Three.cpp</a></p>
+</blockquote>
+
+<h4 id="22-最值型动态规划">2.2 最值型动态规划</h4>
+
+<blockquote>
+  <p>给定不同面额的硬币 coins 和一个总金额 amount，每一种硬币只能使用一次，组合成 amount 最少需要几枚硬币? 如果没有任何一种硬币组合能组成总金额，返回 -1。</p>
+</blockquote>
+
+<p>分析过程和存在型动态规划一样，由于每一种面额的硬币只能使用一次，所以硬币的数量需要考虑在内。设 <code class="highlighter-rouge">dp[i][sub]</code> 表示<strong>前 i 枚</strong>硬币凑成金额 sub 所需要的最少硬币数，要么是前 i-1 枚硬币凑成 sub，要么是前 i-1 枚硬币凑出了 <code class="highlighter-rouge">sub-coins[i-1]</code> ，再加上最后一枚硬币凑成了 sub。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">sub</span><span class="p">]</span> <span class="o">=</span> <span class="n">min</span><span class="p">(</span><span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">sub</span><span class="p">],</span> <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">sub</span><span class="o">-</span><span class="n">coins</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>优化过程类似，首先我们使用二维数组求解，然后用滚动数组将空间优化至两行，进而使用一维数组进行覆盖更新，优化后代码如下:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">solution</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span> <span class="n">coins</span><span class="p">,</span> <span class="kt">int</span> <span class="n">amount</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">n</span> <span class="o">=</span> <span class="n">coins</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+    <span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">dp</span><span class="p">(</span><span class="n">amount</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">INT_MAX</span><span class="p">);</span>
+
+    <span class="n">dp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">sub</span> <span class="o">=</span> <span class="n">amount</span><span class="p">;</span> <span class="n">sub</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">sub</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kt">int</span> <span class="n">lastCoin</span> <span class="o">=</span> <span class="n">coins</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">];</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">sub</span> <span class="o">&gt;=</span> <span class="n">lastCoin</span> <span class="o">&amp;&amp;</span> <span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="o">-</span><span class="n">lastCoin</span><span class="p">]</span> <span class="o">!=</span> <span class="n">INT_MAX</span><span class="p">)</span>
+                <span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="p">]</span> <span class="o">=</span> <span class="n">min</span><span class="p">(</span><span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="p">],</span> <span class="n">dp</span><span class="p">[</span><span class="n">sub</span><span class="o">-</span><span class="n">lastCoin</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">dp</span><span class="p">[</span><span class="n">amount</span><span class="p">]</span> <span class="o">==</span> <span class="n">INT_MAX</span> <span class="o">?</span> <span class="o">-</span><span class="mi">1</span> <span class="o">:</span> <span class="n">dp</span><span class="p">[</span><span class="n">amount</span><span class="p">];</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>可以看到，只需要对存在型问题的解稍加修改即可得到最值型问题的答案。<strong>在使用一维数组进行覆盖更新时，一定要准确的理解为什么第二层循环要从右向左遍历。</strong></p>
+
+<h4 id="23-组合数型动态规划">2.3 组合数型动态规划</h4>
+
+<p>和存在型与最值型问题基本类似，对状态的定义稍加修改即可，故不再赘述。</p>
+
+<h3 id="3-小结">3. 小结</h3>
+
+<p>Coin Change 类问题既可以看作是 0-1 背包问题，也可以看作是完全背包问题，不过他们的本质都是一样的: 对于第 K 个硬币/物品来说，在无限硬币中我们可以选择一个都不放和放多个，在单一使用硬币中我们可以选择放和不放，动态规划中一大类问题都可以使用 Coin Change 以及 0-1 背包问题解决。</p>
+
+<p>动态规划和回溯是一对好兄弟，有时候不适合使用动态规划解决的问题，使用回溯法或许能有意外之喜。不过，这通常与输入数据的规模与分布有关。</p>
+
+<p>Leetcode 上 Coin Change 类问题:</p>
+
+<p>(1) 无限硬币</p>
+
+<ul>
+  <li><a href="https://leetcode.com/problems/coin-change/">322. Coin Change</a></li>
+  <li><a href="https://leetcode.com/problems/perfect-squares/">279. Perfect Squares</a></li>
+  <li><a href="https://leetcode.com/problems/coin-change-2/">518. Coin Change 2</a></li>
+  <li><a href="https://leetcode.com/problems/combination-sum-iv/">377. Combination Sum IV</a></li>
+</ul>
+
+<p>(2) 有限硬币</p>
+
+<ul>
+  <li><a href="https://leetcode.com/problems/partition-equal-subset-sum/">416. Partition Equal Subset Sum</a></li>
+</ul>
+
+<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/Snorlax/leetcode/coin-change/1615381012229.png" alt="Alt text" /></p>
+
+	  ]]></description>
+	</item>
+
+	<item>
 	  <title>BFS与图论问题建模</title>
 	  <link>//BFS</link>
 	  <author></author>
@@ -2321,351 +2622,6 @@ vagrant@node-1:~<span class="nv">$ </span><span class="nb">sudo </span>ip link <
 <ul>
   <li><a href="https://www.kernel.org/doc/Documentation/networking/vxlan.txt">https://www.kernel.org/doc/Documentation/networking/vxlan.txt</a></li>
   <li><a href="https://support.huawei.com/enterprise/zh/doc/EDOC1100087027">https://support.huawei.com/enterprise/zh/doc/EDOC1100087027</a></li>
-</ul>
-
-	  ]]></description>
-	</item>
-
-	<item>
-	  <title>浅析gRPC</title>
-	  <link>//gRPC</link>
-	  <author></author>
-	  <pubDate>2020-07-23T09:06:25+00:00</pubDate>
-	  <guid>//gRPC</guid>
-	  <description><![CDATA[
-	     <p>gRPC是一个高性能、通用的开源RPC框架，其由Google主要面向移动应用开发并基于HTTP/2协议标准而设计，基于ProtoBuf(Protocol Buffers)序列化协议开发，且支持众多开发语言。(这Ctrl-C/V也是没有下限了….</p>
-
-<!---more--->
-
-<h3 id="1-protocol-buffers">1. Protocol Buffers</h3>
-
-<p>在早期，ProtoBuf主要用于解决Google内部的服务器高低版本的兼容性问题，后来由于其高效的数据传输效率被用于gRPC的传输数据格式。</p>
-
-<p>相较于XML以及Json，ProtoBuf在传输和存储时由于其体积更小，所以效率更高，并且序列化的速度也比Json的序列化速度更快，原因将在后续部分介绍。</p>
-
-<p>除此之外，ProtoBuf的最大特点就是支持向后兼容。如果使用Json或者XML的话，需要应用程序自行处理新旧版本数据格式之间的兼容性。而ProtoBuf则不需要破坏已经被部署的服务结构，ProtoBuf会帮助用户处理好高低版本的兼容性问题。</p>
-
-<h4 id="11-protobuf所支持的数据类型">1.1 ProtoBuf所支持的数据类型</h4>
-
-<p>对于基本数据类型，如int，float，double，string，bool以及bytes，ProtoBuf均支持定义以上数据类型。对于int类型的数据，ProtoBuf对其进行了额外的拓展，在不同的场景使用不同的整型将会有不同的运行效率。</p>
-
-<table>
-  <thead>
-    <tr>
-      <th style="text-align: left">ProtoBuf Type</th>
-      <th style="text-align: left">Explain</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align: left">int32</td>
-      <td style="text-align: left">int32最大支持4字节的整型数字，编码负数时效率较低</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">int64</td>
-      <td style="text-align: left">int32最大支持8字节的整型数字，编码负数时效率较低</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">uint32</td>
-      <td style="text-align: left">uint32最大支持4字节的无符整数</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">uint64</td>
-      <td style="text-align: left">uint32最大支持8字节的无符整数</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">sint32</td>
-      <td style="text-align: left">sint32最大支持4字节的有符整数，编码负数时效率更高</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">sint64</td>
-      <td style="text-align: left">sint32最大支持8字节的有符整数，编码负数时效率更高</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">fixed32</td>
-      <td style="text-align: left">不使用可变长度方式进行编码，总是传输4字节，在编码超过$2^{28}$数值的整数时效率更高</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">fixed64</td>
-      <td style="text-align: left">不使用可变长度方式进行编码，总是传输8字节，在编码超过$2^{56}$数值的整数时效率更高</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>除了上述的基本数据类型以外，ProtoBuf同时也支持列表，字典以及枚举类型的定义，再加上<code class="highlighter-rouge">message</code>类型支持嵌套定义，几乎可以说能够覆盖日常开发中的所有需求了。</p>
-
-<h4 id="12-protobuf中的消息定义">1.2 ProtoBuf中的消息定义</h4>
-
-<p><code class="highlighter-rouge">message</code>数据类型是ProtoBuf在序列化和反序列化中的最小单位，和C结构体非常类似。</p>
-
-<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">message</span> <span class="nc">Response</span> <span class="p">{</span>
-    <span class="kt">int32</span> <span class="na">code</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="kt">string</span> <span class="na">msg</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
-    <span class="kt">int32</span> <span class="na">data</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p><code class="highlighter-rouge">message</code>中的字段类型和字段名称无需赘述，值得关注的是后面的Field Numbers，字段序列号。该序列号将会在数据存储和传输时用于指代<code class="highlighter-rouge">message</code>中所定义的字段，即对源数据编码成ProtoBuf格式数据后，字段名称将会被舍弃，转而使用字段系列号进行代替，所以会说ProtoBuf并不是自描述的传输格式，同时也是数据体积更小的原因之一。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MicroService/gRPC/FieldNumbers.png" alt="" /></p>
-
-<p>所以，一个<code class="highlighter-rouge">message</code>中的字段系列号必须唯一，同时范围必须在[$1$, $2^{29}-1$]之间。并且19000到19999之间的数值被ProtoBuf内部所用，也不可定义。</p>
-
-<p>下面是一个使用了大部分数据类型的<code class="highlighter-rouge">message</code>定义:</p>
-
-<div class="language-protobuf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">enum</span> <span class="n">UserStatus</span> <span class="p">{</span>
-    <span class="c1">// 值为0的枚举值必须定义，因为这是ProtoBuf对枚举值的默认值
-</span>    <span class="c1">// 同时，该零值不应该被应用程序所使用，否则会出现歧义
-</span>    <span class="na">USER_STATUS_INVALID</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    
-    <span class="na">USER_STATUS_NORMAL</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="na">USER_STATUS_FROZEN</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
-    <span class="na">USER_STATUS_DELETED</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
-<span class="p">}</span>
-
-<span class="kd">message</span> <span class="nc">MainAddress</span> <span class="p">{</span>
-    <span class="kt">string</span> <span class="na">province</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="kt">string</span> <span class="na">city</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
-    <span class="kt">string</span> <span class="na">address</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
-<span class="p">}</span>
-
-<span class="kd">message</span> <span class="nc">UserInfo</span> <span class="p">{</span>
-    <span class="kt">uint32</span> <span class="na">user_id</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="kt">string</span> <span class="na">mobile</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
-    <span class="k">repeated</span> <span class="kt">string</span> <span class="na">extra_mobile</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
-    <span class="n">UserStatus</span> <span class="na">status</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
-    <span class="n">MainAddress</span> <span class="na">main_address</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
-    <span class="kt">bool</span> <span class="na">is_vip</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<h4 id="13-protobuf编码">1.3 ProtoBuf编码</h4>
-
-<p>ProtoBuf格式的数据体积更小的原因一方面归功于使用字段系列号来代替字段名称，另一方面则是因为对整型采用了可变长度编码方式，即使是指定了<code class="highlighter-rouge">int32</code>类型的数据也可能只使用一字节存储。</p>
-
-<h5 id="131-base-128-varints">1.3.1 Base 128 Varints</h5>
-
-<p>Varint使用一个或者多个字节表示一个数字，数字的值越小，所使用的字节数也会更小。其长度并不固定，所以称之为”可变长整数”。</p>
-
-<p>Varint中的每个字节(最后一个字节除外)都设置了最高有效位(msb)，用于表示后面还会有更多字节出现，所以Varint中的最后一个字节不会设置msb。由于首位被当做是msb使用，所以一个字节只有7位有效位。</p>
-
-<p>例如数字1，可以使用1字节进行表示，那么其最高有效位即可设置为0:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000 0001
-</code></pre></div></div>
-
-<p>对于多字节的数字，除了最后一个字节以外，其余字节的首位都应该置为1，以表示后续仍有字节。以数字1024为例，在一般情况下，1024需要使用2个字才能表示:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1024 <span class="o">=</span> 0000 0100 0000 0000
-</code></pre></div></div>
-
-<p>现在来看下Varint的编码过程:</p>
-
-<ul>
-  <li>首先，1024超过了7位，所以必须使用至少2个字节表示，但是又小于14位，所以需要2个字节表示。按每7位取一个字节，若不够7位则用0补齐:</li>
-</ul>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0000 0100 0000 0000 -&gt; 0001000 0000000
-</code></pre></div></div>
-
-<ul>
-  <li>将低字节写入到高字节，最后一个字节最高位补0，其余字节最高位补1，即为最终结果:</li>
-</ul>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>10000000 00001000
-</code></pre></div></div>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MicroService/gRPC/Varint.png" alt="" /></p>
-
-<h5 id="132-message-structure">1.3.2 Message Structure</h5>
-
-<p>在ProtoBuf中，<code class="highlighter-rouge">message</code>结构其实就是一系列的键值对，只不过<code class="highlighter-rouge">message</code>在序列化成二进制时，对键和值进行了特殊的处理而已。</p>
-
-<p>首先来看对键的处理，键的计算方式是<code class="highlighter-rouge">(field_number &lt;&lt; 3) | wire_type</code>，根据键的计算公式可以看出，键的最后3位就是字段类型。<code class="highlighter-rouge">field_number</code>即为用户自定义的字段序列号，而<code class="highlighter-rouge">wire_type</code>则是一个由ProtoBuf所定义的对类型的”枚举”。:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th style="text-align: left">Write Type</th>
-      <th style="text-align: left">Meaning</th>
-      <th style="text-align: left">Used For</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align: left">0</td>
-      <td style="text-align: left">Varint</td>
-      <td style="text-align: left">int32, int64, uint32, uint64, sint32, sint64, bool, enum</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">1</td>
-      <td style="text-align: left">64-bit</td>
-      <td style="text-align: left">fixed64, sfixed64, double</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">2</td>
-      <td style="text-align: left">Length-delimited</td>
-      <td style="text-align: left">string, bytes, embedded messages, packed repeated fields</td>
-    </tr>
-    <tr>
-      <td style="text-align: left">5</td>
-      <td style="text-align: left">32-bit</td>
-      <td style="text-align: left">fixed32, sfixed32, float</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>值得注意是当<code class="highlighter-rouge">wire_type</code>为2时，序列化结果中还需要包含数据的长度，即<code class="highlighter-rouge">length</code>。</p>
-
-<ul>
-  <li>当<code class="highlighter-rouge">wire_type</code>为0、1和5时，序列化的结果为<strong>key + 数据</strong>，数据长度由数据自描述。</li>
-  <li>当<code class="highlighter-rouge">wire_type</code>为2时，序列化的结果为<strong>key + length + 数据</strong>，数据长度由<code class="highlighter-rouge">length</code>决定。</li>
-</ul>
-
-<p>下面通过一个实际的例子看下Message Structure的编码形式:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
-
-message foo <span class="o">{</span>
-    string bar <span class="o">=</span> 5<span class="p">;</span>
-<span class="o">}</span>
-</code></pre></div></div>
-
-<p>将<code class="highlighter-rouge">bar</code>的值设置为”Hello”，序列化后将得到以下结果:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>052a 6548 6c6c 006f
-</code></pre></div></div>
-
-<p>ProtoBuf是小端字节序，阅读起来不是很方便，将其转换一下:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2a05 4865 6c6c 6f
-</code></pre></div></div>
-
-<p>其中<code class="highlighter-rouge">4865 6c6c 6f</code>为字符串”Hello”的16进制表示，那么<code class="highlighter-rouge">2a05</code>就是前面提到的<strong>key+length</strong>了。<code class="highlighter-rouge">2a</code>的二进制格式为<code class="highlighter-rouge">101010</code>，最后3位为<code class="highlighter-rouge">010</code>，转换成十进制结果是2，对应string类型的<code class="highlighter-rouge">write_type</code>。<code class="highlighter-rouge">101</code>转换成十进制结果为5，对应bar字段的<code class="highlighter-rouge">field_number</code>。length则由<code class="highlighter-rouge">05</code>确定，表示字符串的长度为5。</p>
-
-<h3 id="2-http2">2. HTTP/2</h3>
-
-<p>HTTP/2协议在原有的HTTP/1协议版本之上进行了大幅度的修改，其传输效率大大提升，并且能够有效地降低服务端的资源消耗。</p>
-
-<ul>
-  <li>由文本传输改变为二进制数据传输，解析更加高效。</li>
-  <li>使用新的二进制分帧机制改变了客户端和服务端之间交换数据的方式，每个二进制帧可进行乱序传输，解决了HTTP/1中的首部阻塞问题。</li>
-  <li>对请求头部字段的压缩使得传输数据更小，传输效率更高。</li>
-</ul>
-
-<p>为了更好的理解HTTP/2，首先要明确HTTP/1的缺陷之处，首当其冲的就是TCP连接数限制。在浏览器中，同一个域名下同时只能创建6~8个TCP连接，剩下的请求只能等待这些请求的返回。并且，每个TCP连接只能承载一次请求/响应，当初始发送的请求响应时间较长时，整个页面加载也会受到阻塞。</p>
-
-<h4 id="21-二进制分帧">2.1 二进制分帧</h4>
-
-<p>在HTTP/1中，请求的数据以明文进行传输，例如:</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GET / HTTP/1.1
-Host: example.com
-</code></pre></div></div>
-
-<p>而在HTTP/2中，请求或者响应数据不再以文本的方式进行传输，而是直接使用二进制数据进行传输，使得解析更加高效。其原因在于HTTP/1是通过特殊符号，如空格，<code class="highlighter-rouge">\r\n</code>等特殊字符进行分割并解析的。而HTTP/2首先对数据进行了分类，将请求头和Payload分开，并且在每一个传输单元中都进行了标记。</p>
-
-<p>HTTP/2的基本传输单元为帧(Frame)，每一个都以固定的9个字节开头，后跟不定长度的Payload。Payload可以是用户传输的数据，也可以是协议本身携带的数据。</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+-----------------------------------------------+
-|                 Length <span class="o">(</span>24<span class="o">)</span>                   |
-+---------------+---------------+---------------+
-|   Type <span class="o">(</span>8<span class="o">)</span>    |   Flags <span class="o">(</span>8<span class="o">)</span>   |
-+-+-------------+---------------+-------------------------------+
-| R <span class="o">(</span>1<span class="o">)</span> |                 Stream Identifier <span class="o">(</span>31<span class="o">)</span>                |
-+<span class="o">=</span>+<span class="o">=============================================================</span>+
-|                   Frame Payload <span class="o">(</span>0...<span class="o">)</span>                      ...
-+---------------------------------------------------------------+
-</code></pre></div></div>
-
-<p>24+8+8+1+31，刚好为72位，即9字节。下面来看每一个字段的含义:</p>
-
-<ul>
-  <li>Length: 表示Payload的长度，是一个24位的无符整数，单位为字节。也就是说，通常情况下一个帧最多能够传输2^14(16,384)个字节。如果想在一个帧中传输更多的数据，则可以通过传输<code class="highlighter-rouge">SETTINGS_MAX_FRAME_SIZE</code>帧来改变基本大小。</li>
-  <li>Type: 帧的类型，如<code class="highlighter-rouge">DATA</code>帧、<code class="highlighter-rouge">HEADERS</code>帧。</li>
-  <li>Flags: 该字段用于各类型的帧进行补充说明，表示特殊的含义。一个常见的标志就是<code class="highlighter-rouge">END_HEADERS</code>，表示头数据已经结束。</li>
-  <li>R: 预留位，并未使用。</li>
-  <li>Stream Identifier: 流标识符，31位无符整数，作用将在下方描述。</li>
-</ul>
-
-<h4 id="22-多路复用">2.2 多路复用</h4>
-
-<p>HTTP/2一个最重要的特性就是多路复用，即在一个TCP连接中同时传输多个请求或者是响应，而HTTP/1想要做到这一点的话，必须要建立多个TCP连接。</p>
-
-<p>在HTTP/2中引入了”流”(Stream)的概念，对应HTT/1的话，其实就是一个请求: 在一个连接中发送多个请求其实就是发送多个流。而流又是由帧组成的，所以在帧中需要字段<code class="highlighter-rouge">Stream Identifier</code>来标记当前帧属于哪个流。</p>
-
-<p>实现多路复用的逻辑概念就是流，和TCP流式传输不同的是，HTTP/2中的流只是一个逻辑上的概念，每一个流使用<code class="highlighter-rouge">Stream Identifier</code>进行标识。一个请求或者是响应在拆分成多个帧以后，将使用同一个流ID在连接中进行传输，接收方在接收到乱序传输的帧以后，按照流ID进行组装，即可得到一个完整的请求或者是响应。</p>
-
-<p><img src="https://smartkeyerror.oss-cn-shenzhen.aliyuncs.com/ZeroMind/MicroService/gRPC/stream.png" alt="" /></p>
-
-<h4 id="22-头部字段压缩">2.2 头部字段压缩</h4>
-
-<p>TODO</p>
-
-<h3 id="3-一些实践的代码用例">3. 一些实践的代码用例</h3>
-
-<h4 id="31-python-client">3.1 Python Client</h4>
-
-<p>gRPC的错误响应(如Not Found，Internal Server Error等)通常会以异常的形式抛出，所以，Python Client必须要对gRPC的相关方法进行进一步的封装，例如重试机制或者是进行其它行为。</p>
-
-<p>最为常见的异常就是<code class="highlighter-rouge">_Rendezvous</code>，该异常为<code class="highlighter-rouge">RpcError</code>的一个子类，通常来说，只需要捕获该异常即可。</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">time</span>
-<span class="kn">from</span> <span class="nn">grpc</span> <span class="kn">import</span> <span class="n">StatusCode</span><span class="p">,</span> <span class="n">RpcError</span>
-
-
-<span class="c"># define retry times with different situation</span>
-<span class="n">MAX_RETRIES_BY_CODE</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="n">StatusCode</span><span class="o">.</span><span class="n">INTERNAL</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="n">StatusCode</span><span class="o">.</span><span class="n">ABORTED</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="n">StatusCode</span><span class="o">.</span><span class="n">UNAVAILABLE</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
-    <span class="n">StatusCode</span><span class="o">.</span><span class="n">DEADLINE_EXCEEDED</span><span class="p">:</span> <span class="mi">5</span>
-<span class="p">}</span>
-
-<span class="c"># define MIN and MAX sleeping seconds</span>
-<span class="n">MIN_SLEEPING</span> <span class="o">=</span> <span class="mf">0.015625</span>
-<span class="n">MAX_SLEEPING</span> <span class="o">=</span> <span class="mf">1.0</span>
-
-
-<span class="k">class</span> <span class="nc">RetriesExceeded</span><span class="p">(</span><span class="nb">Exception</span><span class="p">):</span>
-    <span class="s">"""docstring for RetriesExceeded"""</span>
-    <span class="k">pass</span>
-
-
-<span class="k">def</span> <span class="nf">retry</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">wraps</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">retries</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-            <span class="k">except</span> <span class="n">RpcError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">code</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">()</span>  <span class="c"># 使用e.code()获取响应码</span>
-                <span class="n">max_retries</span> <span class="o">=</span> <span class="n">MAX_RETRIES_BY_CODE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
-
-                <span class="k">if</span> <span class="n">max_retries</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="n">e</span>
-
-                <span class="k">if</span> <span class="n">retries</span> <span class="o">&gt;</span> <span class="n">max_retries</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="n">RetriesExceeded</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-
-                <span class="n">back_off</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">MIN_SLEEPING</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">retries</span><span class="p">,</span> <span class="n">MAX_SLEEPING</span><span class="p">)</span>
-
-                <span class="n">retries</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">back_off</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">wraps</span>
-</code></pre></div></div>
-
-<h4 id="32-golang-server">3.2 Golang Server</h4>
-
-<p>TODO</p>
-
-<h3 id="4-reference">4. Reference</h3>
-
-<ul>
-  <li><a href="https://hpbn.co/">https://hpbn.co/</a></li>
-  <li><a href="https://blog.wangriyu.wang/">https://blog.wangriyu.wang/</a></li>
-  <li><a href="https://tools.ietf.org/html/rfc7540">https://tools.ietf.org/html/rfc7540</a></li>
-  <li><a href="https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn">https://developers.google.com/web/fundamentals/performance/http2/?hl=zh-cn</a></li>
 </ul>
 
 	  ]]></description>

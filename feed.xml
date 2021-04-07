@@ -8,6 +8,21 @@
     
       
       <item>
+        <title>Coin Change——自顶向下思考，自底向上实现</title>
+        
+          <description>&lt;p&gt;&lt;a href=&quot;https://leetcode.com/problems/coin-change/&quot;&gt;Coin Change&lt;/a&gt; 是一道动态规划问题中一道非常经典的题目，这是因为只要对原有的 Coin Change 问题稍加修改，就可以得到更复杂的动态规划问题，甚至是回溯问题。&lt;/p&gt;
+
+</description>
+        
+        <pubDate>Tue, 06 Apr 2021 08:50:25 +0000</pubDate>
+        <link>
+        https://smartkeyerror.com/Coin-Change</link>
+        <guid isPermaLink="true">https://smartkeyerror.com/Coin-Change</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>BFS与图论问题建模</title>
         
           <description>&lt;p&gt;在 DP 问题中我们将会着重的关注状态转移方程，同样地，在使用 BFS 对某些问题进行图论模型建模时，我们同样会关注状态转移。&lt;/p&gt;
